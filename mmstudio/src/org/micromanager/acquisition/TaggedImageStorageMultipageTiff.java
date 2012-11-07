@@ -22,61 +22,79 @@
 package org.micromanager.acquisition;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Set;
+import java.nio.ByteOrder;
+import java.util.*;
+import loci.common.DateTools;
+import loci.common.services.ServiceFactory;
+import loci.formats.MetadataTools;
+import loci.formats.meta.IMetadata;
+import loci.formats.ome.OMEXMLMetadata;
+import loci.formats.services.OMEXMLService;
+import loci.formats.services.OMEXMLServiceImpl;
 import mmcorej.TaggedImage;
+import ome.xml.model.enums.Binning;
+import ome.xml.model.primitives.*;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.micromanager.MMStudioMainFrame;
 import org.micromanager.api.TaggedImageStorage;
-import org.micromanager.utils.JavaUtils;
-import org.micromanager.utils.MDUtils;
-import org.micromanager.utils.MMException;
-import org.micromanager.utils.ReportingUtils;
+import org.micromanager.utils.*;
 
 
 
 
-public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
+public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
 
+   public static final String OME_DATE_FORMAT = "EEE MMM dd HH:mm:ss zzz yyyy";
+   
    private JSONObject summaryMetadata_;
    private JSONObject displayAndComments_;
    private boolean newDataSet_;
+   private int lastFrameOpenedDataSet_ = -1;
    private String directory_;
    private Thread shutdownHook_;
-   private int lastFrame_ = -1;
    private int numPositions_;
    private CachedImages cached_;
+   final public boolean omeTiff_;
+   final private boolean seperateMetadataFile_;
+   private IMetadata omeMD_;
+   private boolean finished_ = false;
+   private boolean expectedImageOrder_ = true;
+   private int numChannels_, numSlices_;
+  
+   //used for estimating total length of ome xml
+   private int totalNumImagePlanes_ = 0;
+   private int omeXMLBaseLength_ = -1;
+   private int omeXMLImageLength_ = -1;
       
-   //map of position indecies to number of tiff files written for that position
-   private HashMap<Integer,Integer> numFiles_;
-   //map of position indecies to writers/readers
-   private HashMap<Integer, MultipageTiffWriter> tiffWritersByPosition_;
-   private HashMap<Integer, MultipageTiffReader> tiffReadersByPosition_;
+   //map of position indices to objects associated with each
+   private HashMap<Integer, Position> positions_;
+   
    //Map of image labels to file 
-   private HashMap<String, MultipageTiffReader> tiffReadersByLabel_;
-
-   public TaggedImageStorageMultipageTiff(String dir, Boolean newDataSet, JSONObject summaryMetadata) {
-      summaryMetadata_ = summaryMetadata;
+   private TreeMap<String, MultipageTiffReader> tiffReadersByLabel_;
+  
+   public TaggedImageStorageMultipageTiff(String dir, Boolean newDataSet, JSONObject summaryMetadata) throws IOException {            
+      this(dir, newDataSet, summaryMetadata, MMStudioMainFrame.getInstance().getOMETiffEnabled(),
+              MMStudioMainFrame.getInstance().getMetadataFileWithMultipageTiff());
+   }
+   
+   /*
+    * Constructor that doesnt make reference to MMStudioMainFrame so it can be used independently of MM GUI
+    */
+   public TaggedImageStorageMultipageTiff(String dir, boolean newDataSet, JSONObject summaryMetadata, 
+           boolean omeTiff, boolean seperateMDFile) throws IOException {
+      omeTiff_ = omeTiff;
+      seperateMetadataFile_ = seperateMDFile;
 
       newDataSet_ = newDataSet;
       directory_ = dir;
-      tiffReadersByLabel_ = new HashMap<String, MultipageTiffReader>();
+      tiffReadersByLabel_ = new TreeMap<String, MultipageTiffReader>(new ImageLabelComparator());
       cached_ = new CachedImages();
+      setSummaryMetadata(summaryMetadata);
 
-      System.out.println("MP Start: " + System.currentTimeMillis());
-
-      if (summaryMetadata_ != null) {  
-         displayAndComments_ = VirtualAcquisitionDisplay.getDisplaySettingsFromSummary(summaryMetadata);
-         try {
-            numPositions_ = MDUtils.getNumPositions(summaryMetadata);
-         } catch (JSONException ex) {
-            ReportingUtils.logError(ex);
-         }
-      }
-     
       // TODO: throw error if no existing dataset
       if (!newDataSet_) {
          openExistingDataSet();
@@ -86,40 +104,69 @@ public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
       shutdownHook_ = new Thread() {
          @Override
          public void run() {
+            finished();
             writeDisplaySettings();
          }
       };    
       Runtime.getRuntime().addShutdownHook(this.shutdownHook_); 
    }
    
-   private void openExistingDataSet() {
+   private void processSummaryMD() {
+      displayAndComments_ = VirtualAcquisitionDisplay.getDisplaySettingsFromSummary(summaryMetadata_);
+      try {
+         numPositions_ = MDUtils.getNumPositions(summaryMetadata_);
+         if (numPositions_ <= 0) {
+            numPositions_ = 1;
+         }
+      } catch (JSONException ex) {
+         ReportingUtils.logError(ex);
+         numPositions_ = 1;
+      }
+      try {
+         //Estimate of max number of image planes
+         numChannels_ = MDUtils.getNumChannels(summaryMetadata_);
+         numSlices_ = MDUtils.getNumSlices(summaryMetadata_);
+         totalNumImagePlanes_ = numChannels_ * MDUtils.getNumFrames(summaryMetadata_)
+                 * numPositions_ * numSlices_;
+      } catch (Exception ex) {
+         ReportingUtils.logError("Error estimating total number of image planes");
+         totalNumImagePlanes_ = 1;
+      }
+   }
+   
+   boolean slicesFirst() {
+      return ((ImageLabelComparator) tiffReadersByLabel_.comparator()).getSlicesFirst();
+   }
+   
+   boolean timeFirst() {
+      return ((ImageLabelComparator) tiffReadersByLabel_.comparator()).getTimeFirst();
+   }
+
+   private void openExistingDataSet() throws IOException {
       //Need to throw error if file not found
 
       MultipageTiffReader reader = null;
       File dir = new File(directory_);
       for (File f : dir.listFiles()) {
-         if (f.getName().endsWith(".tif")) {
+         if (f.getName().endsWith(".tif") || f.getName().endsWith(".TIF")) {
             reader = new MultipageTiffReader(f);
             Set<String> labels = reader.getIndexKeys();
             for (String label : labels) {
                tiffReadersByLabel_.put(label, reader);
                int frameIndex = Integer.parseInt(label.split("_")[2]);
-               lastFrame_ = Math.max(frameIndex, lastFrame_);
+               lastFrameOpenedDataSet_ = Math.max(frameIndex, lastFrameOpenedDataSet_);
             }
          }
       }
 
-
       try {
-         summaryMetadata_ = reader.getSummaryMetadata();
+         setSummaryMetadata(reader.getSummaryMetadata());
          numPositions_ = MDUtils.getNumPositions(summaryMetadata_);
          displayAndComments_ = reader.getDisplayAndComments();
       } catch (JSONException ex) {
          ReportingUtils.logError(ex);
       } 
    }
-   
-   
    
    @Override
    public TaggedImage getImage(int channelIndex, int sliceIndex, int frameIndex, int positionIndex) {
@@ -147,30 +194,6 @@ public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
       return tiffReadersByLabel_.get(label).readImage(label).tags;   
    }
 
-   private String createFilename(int positionIndex, int fileIndex) {
-      String filename = "";
-      try {
-         String prefix = summaryMetadata_.getString("Prefix");
-         if (prefix.length() == 0) {
-            filename = "images";
-         } else {
-            filename = prefix + "_images";
-         }
-      } catch (JSONException ex) {
-         ReportingUtils.logError("Can't find Prefix in summary metadata");
-         filename = "images";
-      }
-      if (numPositions_ > 0 ) {
-//TODO: put position name if it exists
-         filename += "_" + positionIndex;
-      }
-      if (fileIndex > 0) {
-         filename += "_" +fileIndex;
-      }
-      filename += ".tif";
-      return filename;
-   }
-
    @Override
    public void putImage(TaggedImage taggedImage) throws MMException {
       if (!newDataSet_) {
@@ -183,52 +206,32 @@ public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
          ReportingUtils.logError(ex);
       }
       String label = MDUtils.getLabel(taggedImage.tags);
-      
-      if (tiffWritersByPosition_ == null) {
+      if (positions_ == null) {
          try {
-            tiffWritersByPosition_ = new HashMap<Integer, MultipageTiffWriter>();
-            tiffReadersByPosition_ = new HashMap<Integer, MultipageTiffReader>();
-            numFiles_ = new HashMap<Integer, Integer>();
+            positions_ = new HashMap<Integer,Position>();       
             JavaUtils.createDirectory(directory_);
          } catch (Exception ex) {
             ReportingUtils.logError(ex);
          }
       }
-     
-      //Create new writer if none exists for position or if existing one is full
-      if ( tiffWritersByPosition_.get(positionIndex) != null && !tiffWritersByPosition_.get(positionIndex).hasSpaceToWrite(taggedImage) ) {
-         try {
-            tiffWritersByPosition_.get(positionIndex).close();
-            tiffReadersByPosition_.get(positionIndex).finishedWriting();
-         } catch (IOException ex) {
-            ReportingUtils.logError(ex);
+      
+      if (omeTiff_) {
+         if (omeMD_ == null) {
+            omeMD_ = MetadataTools.createOMEXMLMetadata();
          }
-      }           
-              
-      int fileIndex = 0;
-      if (tiffWritersByPosition_.containsKey(positionIndex) && tiffWritersByPosition_.get(positionIndex).isClosed()) {
-         fileIndex = numFiles_.get(positionIndex) + 1;
       }
-      if (tiffWritersByPosition_.get(positionIndex) == null || tiffWritersByPosition_.get(positionIndex).isClosed()) {
-         numFiles_.put(positionIndex, fileIndex);
-         String filename = createFilename(positionIndex, fileIndex);
-         File f = new File(directory_ + "/" + filename);
-
-         MultipageTiffWriter writer = new MultipageTiffWriter(f, summaryMetadata_, taggedImage);    
-         tiffWritersByPosition_.put(positionIndex, writer);
-         tiffReadersByPosition_.put(positionIndex, new MultipageTiffReader(summaryMetadata_, writer));
+      
+      if (positions_.get(positionIndex) == null) {
+         //Create new position, which handles all reading and writing for a given position
+         positions_.put(positionIndex, new Position(positionIndex, taggedImage.tags, this));
       }
-
-
+      Position pos = positions_.get(positionIndex);
       try {
-         long offset = tiffWritersByPosition_.get(positionIndex).writeImage(taggedImage);
-         MultipageTiffReader currentReader = tiffReadersByPosition_.get(positionIndex);
-         currentReader.addToIndexMap(taggedImage, offset);
-         tiffReadersByLabel_.put(label, currentReader);
+         pos.writeImage(taggedImage);
       } catch (IOException ex) {
-         ReportingUtils.logError(ex);
+        ReportingUtils.showError("problem writing image to file");
       }
-
+      tiffReadersByLabel_.put(label, pos.getCurrentReader());
          
       int frame;
       try {
@@ -236,8 +239,8 @@ public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
       } catch (JSONException ex) {
          frame = 0;
       }
+      lastFrameOpenedDataSet_ = Math.max(frame, lastFrameOpenedDataSet_);
       cached_.add(taggedImage, label);
-      lastFrame_ = Math.max(lastFrame_, frame);
    }
 
    @Override
@@ -251,24 +254,26 @@ public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
     * After calling this function, the imagestorage is read-only
     */
    @Override
-   public void finished() {
+   public synchronized void finished() {
+      if (finished_) {
+         return;
+      }
       newDataSet_ = false;
       try {
-         if (tiffWritersByPosition_ != null) {
-            for (Integer i : tiffWritersByPosition_.keySet()) {
-               MultipageTiffWriter w = tiffWritersByPosition_.get(i);
-               if (!w.isClosed()) {
-                  w.close();
-                  tiffReadersByPosition_.get(i).finishedWriting();
-
+         if (positions_ != null) {
+            for (Position p : positions_.values()) {
+               if (expectedImageOrder_) {
+                  p.finishAbortedAcqIfNeeded();
                }
             }
-         }
-         System.out.println("MP End: " + System.currentTimeMillis());
-                 
+            for (Position p : positions_.values()) {
+               p.finished();
+            }
+         }                 
       } catch (IOException ex) {
          ReportingUtils.logError(ex);
       }
+      finished_ = true;
    }
 
    @Override
@@ -279,11 +284,19 @@ public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
    @Override
    public void setSummaryMetadata(JSONObject md) {
       summaryMetadata_ = md;
-      displayAndComments_ = VirtualAcquisitionDisplay.getDisplaySettingsFromSummary(summaryMetadata_);
-      try {
-         numPositions_ = MDUtils.getNumPositions(md);
-      } catch (JSONException ex) {
-        ReportingUtils.logError(ex);
+      if (summaryMetadata_ != null) {
+         try {
+            boolean slicesFirst = summaryMetadata_.getBoolean("SlicesFirst");
+            boolean timeFirst = summaryMetadata_.getBoolean("TimeFirst");
+            TreeMap<String, MultipageTiffReader> oldImageMap = tiffReadersByLabel_;
+            tiffReadersByLabel_ = new TreeMap<String, MultipageTiffReader>(new ImageLabelComparator(slicesFirst, timeFirst));
+            tiffReadersByLabel_.putAll(oldImageMap);
+         } catch (JSONException ex) {
+            ReportingUtils.logError("Couldn't find SlicesFirst or TimeFirst in summary metadata");
+         }
+         if (summaryMetadata_ != null && summaryMetadata_.length() > 0) {
+            processSummaryMD();
+         }
       }
    }
 
@@ -339,7 +352,15 @@ public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
 
    @Override
    public int lastAcquiredFrame() {
-      return lastFrame_;
+      if (newDataSet_) {
+         int lastFrame = 0;
+         for (Position p : positions_.values()) {
+            lastFrame = Math.max(lastFrame, p.getLastFrame());
+         }
+         return lastFrame;
+      } else {
+         return lastFrameOpenedDataSet_;
+      }
    }
 
    public long getDataSetSize() {
@@ -360,7 +381,475 @@ public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
       }
       return size;
    }
+
+   //Class encapsulating a single XY stage position and everything associated with it
+   private class Position {
+      private LinkedList<MultipageTiffWriter> tiffWriters_;
+      private FileWriter mdWriter_;
+      private int index_;
+      private String baseFilename_;
+      private String currentTiffFilename_;
+      private String metadataFileFullPath_;
+      private boolean finished_ = false;
+      private int ifdCount_ = 0;
+      private int planeIndex_ = 0;
+      private int tiffDataIndex_ = -1;
+      private int tiffDataPlaneCount_ = 0;
+      private int nextExpectedChannel_ = 0, nextExpectedSlice_ = 0, nextExpectedFrame_ = 0;
+      private String positionName_;
+      private TaggedImageStorageMultipageTiff mpTiff_;
+      private int lastFrame_ = -1;
+      
+      public Position(int index, JSONObject firstImageTags, TaggedImageStorageMultipageTiff mpt) {
+         index_ = index;
+         tiffWriters_ = new LinkedList<MultipageTiffWriter>();  
+         mpTiff_ = mpt;
+         try {
+            positionName_ = MDUtils.getPositionName(firstImageTags);
+         } catch (JSONException ex) {
+            ReportingUtils.logError("Couldn't find position name in image metadata");
+            positionName_ = "pos" + index_;
+         }
+         
+         //get file path and name
+         baseFilename_ = createBaseFilename();
+         currentTiffFilename_ = baseFilename_ + (omeTiff_ ? ".ome.tif" : ".tif");
+         //make first writer
+         tiffWriters_.add(new MultipageTiffWriter(directory_, currentTiffFilename_, summaryMetadata_, mpt));
    
+         if (omeTiff_) {
+            try {
+               startOMEXML();
+            } catch (Exception ex) {
+               ReportingUtils.logError("Problem starting OME XML");
+            }
+         }
+         try {
+            if (seperateMetadataFile_) {
+               startMetadataFile();
+            }
+         } catch (JSONException ex) {
+            ReportingUtils.showError("Problem with summary metadata");
+         }
+      }
+
+      public void finished() throws IOException {
+         if (finished_) {
+            return;
+         }
+         
+         try {
+            if (seperateMetadataFile_) {
+               finishMetadataFile();
+            }
+         } catch (JSONException ex) {
+            ReportingUtils.logError("Problem finishing metadata.txt");
+         }
+         for (MultipageTiffWriter w : tiffWriters_) {
+            String omeXML = "";
+            try {
+               OMEXMLService service = new ServiceFactory().getInstance(OMEXMLService.class);
+               omeXML = service.getOMEXML(omeMD_);
+            } catch (Exception ex) {
+               ReportingUtils.logError(ex);
+            }
+            omeXML += " ";
+            w.close(omeXML);
+         }
+         finished_ = true;
+      }
+
+      public MultipageTiffReader getCurrentReader() {
+         return tiffWriters_.getLast().getReader();
+      }
+      
+      public void writeImage(TaggedImage img) throws IOException {
+         //check if current writer is out of space, if so, make a new one
+         if (!tiffWriters_.getLast().hasSpaceToWrite(img, omeTiff_ ? estimateOMEMDSize(): 0  )) {
+            currentTiffFilename_ = baseFilename_ + "_" + tiffWriters_.size() + (omeTiff_ ? ".ome.tif" : ".tif");
+            ifdCount_ = 0;
+            tiffWriters_.add(new MultipageTiffWriter(directory_ ,currentTiffFilename_, summaryMetadata_, mpTiff_));
+         }      
+
+         //Add filename to image tags
+         try {
+            img.tags.put("FileName", currentTiffFilename_);
+         } catch (JSONException ex) {
+            ReportingUtils.logError("Error adding filename to metadata");
+         }
+
+         //write image
+         tiffWriters_.getLast().writeImage(img);  
+
+         //write metadata
+         if (omeTiff_) {
+            addToOMEMetadata(img.tags);  
+         }
+         
+         checkForExpectedImageOrder(img.tags);        
+         
+         try {
+            int frame = MDUtils.getFrameIndex(img.tags);
+            lastFrame_ = Math.max(frame, lastFrame_);
+         } catch (JSONException ex) {
+            ReportingUtils.showError("Couldn't find frame index in image tags");
+         }       
+         
+         try {
+            if (seperateMetadataFile_) {
+               writeToMetadataFile(img.tags);
+            }
+         } catch (JSONException ex) {
+            ReportingUtils.logError("Problem with image metadata");
+         }
+      }
+   
+      private void checkForExpectedImageOrder(JSONObject tags) {
+         try {
+            //Determine next expected indices
+            
+
+            int channel = MDUtils.getChannelIndex(tags), frame = MDUtils.getFrameIndex(tags),
+                    slice = MDUtils.getSliceIndex(tags);
+            if (slice != nextExpectedSlice_ || channel != nextExpectedChannel_ ||
+                    frame != nextExpectedFrame_) {
+               expectedImageOrder_ = false;
+            }
+            //Figure out next expected indices
+            if (slicesFirst()) {
+               nextExpectedSlice_ = slice + 1;
+               if (nextExpectedSlice_ == numSlices_) {
+                  nextExpectedSlice_ = 0;
+                  nextExpectedChannel_ = channel + 1;
+                  if (nextExpectedChannel_ == numChannels_) {
+                     nextExpectedChannel_ = 0;
+                     nextExpectedFrame_ = frame + 1;
+                  }
+               }
+            } else {
+               nextExpectedChannel_ = channel + 1;
+               if (nextExpectedChannel_ == numChannels_) {
+                  nextExpectedChannel_ = 0;
+                  nextExpectedSlice_ = slice + 1;
+                  if (nextExpectedSlice_ == numSlices_) {
+                     nextExpectedSlice_ = 0;
+                     nextExpectedFrame_ = frame + 1;
+                  }
+               }
+            }
+         } catch (JSONException ex) {
+            ReportingUtils.logError("Couldnt find channel, slice, or frame index in Image tags");
+            expectedImageOrder_ = false;
+         }
+      }
+
+      private int estimateOMEMDSize() {
+         return totalNumImagePlanes_ * omeXMLImageLength_ + numPositions_ * omeXMLBaseLength_;
+      }
+
+      public int getLastFrame() {
+         return lastFrame_;
+      }
+
+      private void writeToMetadataFile(JSONObject md) throws JSONException {
+         try {
+            mdWriter_.write(",\r\n\"FrameKey-" + MDUtils.getFrameIndex(md)
+                    + "-" + MDUtils.getChannelIndex(md) + "-" + MDUtils.getSliceIndex(md) + "\": ");
+            mdWriter_.write(md.toString(2));
+         } catch (IOException ex) {
+            ReportingUtils.logError("Problem writing to metadata.txt file");
+         }
+      }
+
+      private void startMetadataFile() throws JSONException {
+            metadataFileFullPath_ = directory_ + "/" + baseFilename_ + "_metadata.txt";
+            try {
+               mdWriter_ = new FileWriter(metadataFileFullPath_);
+               mdWriter_.write("{" + "\r\n");
+               mdWriter_.write("\"Summary\": ");
+               mdWriter_.write(summaryMetadata_.toString(2));
+            } catch (IOException ex) {
+               ReportingUtils.logError("Problem creating metadata.txt file");
+            }
+      }
+
+      private void finishMetadataFile() throws JSONException {
+         try {
+            mdWriter_.write("\r\n}\r\n");
+            mdWriter_.close();
+         } catch (IOException ex) {
+            ReportingUtils.logError("Problem creating metadata.txt file");
+         }
+      }
+
+      private String createBaseFilename() {
+         String baseFilename = "";
+         try {
+            String prefix = summaryMetadata_.getString("Prefix");
+            if (prefix.length() == 0) {
+               baseFilename = "MMImages";
+            } else {
+               baseFilename = prefix + "_MMImages";
+            }
+         } catch (JSONException ex) {
+            ReportingUtils.logError("Can't find Prefix in summary metadata");
+            baseFilename = "MMImages";
+         }
+
+         if (numPositions_ > 1) {
+            baseFilename += "_" + positionName_;
+         }
+         return baseFilename;
+      }
+
+      /**
+       * Generate all expected labels for the last frame, and write dummy images for ones 
+       * that weren't written. Modify ImageJ and OME max number of frames as appropriate
+       */
+      private void finishAbortedAcqIfNeeded() {
+         try {
+            if (timeFirst()) {
+               //some positions may have complete time lapse, the one on which this
+               //method is called is incomplete. There may be other positions that were never 
+               //even run
+               completeFrameWithBlankImages(lastFrame_);
+            } else {
+               //One position may be on the next frame compared to others. Complete each position
+               //with blank images to fill this frame
+               completeFrameWithBlankImages(lastAcquiredFrame());
+            }
+         } catch (JSONException e) {
+            ReportingUtils.logError("Problem finishing aborted acq with blank images");
+         }
+      }
+
+      /*
+       * Completes the current time point of an aborted acquisition with blank images, 
+       * so that it can be opened correctly by ImageJ/BioForamts
+       */
+      private void completeFrameWithBlankImages(int frame) throws JSONException {
+         int numFrames = MDUtils.getNumFrames(summaryMetadata_);
+         int numSlices = MDUtils.getNumSlices(summaryMetadata_);
+         int numChannels = MDUtils.getNumChannels(summaryMetadata_);
+         if (numFrames > frame + 1 && lastFrame_ != -1) {
+            if (omeTiff_) {
+               omeMD_.setPixelsSizeT(new PositiveInteger(frame + 1), index_);
+            }
+            TreeSet<String> writtenImages = new TreeSet<String>();
+            for (MultipageTiffWriter w : tiffWriters_) {
+               writtenImages.addAll(w.getIndexMap().keySet());
+               w.setAbortedNumFrames(frame + 1);
+            }
+            TreeSet<String> lastFrameLabels = new TreeSet<String>();
+            for (int c = 0; c < numChannels; c++) {
+               for (int z = 0; z < numSlices; z++) {
+                  lastFrameLabels.add(MDUtils.generateLabel(c, z, frame, index_));
+               }
+            }
+            lastFrameLabels.removeAll(writtenImages);
+            try {
+               for (String label : lastFrameLabels) {
+                  tiffWriters_.getLast().writeBlankImage(label);
+                  if (omeTiff_) {
+                     JSONObject dummyTags = new JSONObject();
+                     int channel = Integer.parseInt(label.split("_")[0]);
+                     int slice = Integer.parseInt(label.split("_")[1]);
+                     MDUtils.setChannelIndex(dummyTags, channel);
+                     MDUtils.setFrameIndex(dummyTags, frame);
+                     MDUtils.setSliceIndex(dummyTags, slice);
+                     addToOMEMetadata(dummyTags);
+                  }
+               }
+            } catch (IOException ex) {
+               ReportingUtils.logError("problem writing dummy image");
+            }
+         }
+      }
+
+      private void startOMEXML() throws JSONException, MMScriptException {
+         //Last one is samples per pixel
+         MetadataTools.populateMetadata(omeMD_, index_, baseFilename_, MultipageTiffWriter.BYTE_ORDER.equals(ByteOrder.LITTLE_ENDIAN),
+                 slicesFirst() ? "XYZCT" : "XYCZT", "uint" + (MDUtils.isGRAY8(summaryMetadata_) ? "8" : "16"),
+                 MDUtils.getWidth(summaryMetadata_), MDUtils.getHeight(summaryMetadata_),
+                 MDUtils.getNumSlices(summaryMetadata_), MDUtils.getNumChannels(summaryMetadata_),
+                 MDUtils.getNumFrames(summaryMetadata_), 1);
+
+         if (summaryMetadata_.has("PixelSize_um") && !summaryMetadata_.isNull("PixelSize_um")) {
+            double pixelSize = summaryMetadata_.getDouble("PixelSize_um");
+            if (pixelSize > 0) {
+               omeMD_.setPixelsPhysicalSizeX(new PositiveFloat(pixelSize), index_);
+               omeMD_.setPixelsPhysicalSizeY(new PositiveFloat(pixelSize), index_);
+            }
+         }
+         if (summaryMetadata_.has("z-step_um") && !summaryMetadata_.isNull("z-step_um")) {
+            double zStep = summaryMetadata_.getDouble("z-step_um");
+            if (zStep > 0) {
+               omeMD_.setPixelsPhysicalSizeZ(new PositiveFloat(zStep), index_);
+            }
+         }
+         
+         omeMD_.setStageLabelName(positionName_, index_);  
+         
+         String instrumentID = MetadataTools.createLSID("Microscope");
+         omeMD_.setInstrumentID(instrumentID, 0);
+         // link Instrument and Image
+         omeMD_.setImageInstrumentRef(instrumentID, index_);
+
+         JSONObject comments = displayAndComments_.getJSONObject("Comments");;
+         if (comments.has("Summary") && !comments.isNull("Summary")) {
+            omeMD_.setImageDescription(comments.getString("Summary"), index_);
+         } 
+         
+         JSONArray channels = displayAndComments_.getJSONArray("Channels");
+         for (int channelIndex = 0; channelIndex < channels.length(); channelIndex++) {
+            JSONObject channel = channels.getJSONObject(channelIndex);
+            omeMD_.setChannelColor(new Color(channel.getInt("Color")), index_, channelIndex);
+            omeMD_.setChannelName(channel.getString("Name"), index_, channelIndex);
+         }
+      }
+
+      private void addToOMEMetadata(JSONObject tags) {
+         try {
+            //Add these tags in only once, but need to get them from image rather than summary metadata
+            if (planeIndex_ == 0) {
+               setOMEDetectorMetadata(tags);
+               if (tags.has("Time") && !tags.isNull("Time")) {
+                  omeMD_.setImageAcquisitionDate( new Timestamp( 
+                          DateTools.formatDate(tags.getString("Time"), "yyyy-MM-dd HH:mm:ss") ),index_);
+               }
+            }
+         } catch (Exception e) {
+            ReportingUtils.logError("Problem adding System state cahce metadata to OME Metadata");
+         }
+
+
+         //Required tags: Channel, slice, and frame index
+         try {
+            int slice = MDUtils.getSliceIndex(tags);
+            int frame = MDUtils.getFrameIndex(tags);
+            int channel = MDUtils.getChannelIndex(tags);
+                 
+            //New tiff data if unexpected index, or new file
+            boolean newTiffData = slice != nextExpectedSlice_ || channel != nextExpectedChannel_ ||
+                    frame != nextExpectedFrame_ || ifdCount_ == 0; //ifdCount is 0 when a new file started
+            if (newTiffData) {   //create new tiff data element
+               tiffDataIndex_++;
+               omeMD_.setTiffDataFirstZ(new NonNegativeInteger(slice), index_, tiffDataIndex_);
+               omeMD_.setTiffDataFirstC(new NonNegativeInteger(channel), index_, tiffDataIndex_);
+               omeMD_.setTiffDataFirstT(new NonNegativeInteger(frame), index_, tiffDataIndex_);
+               omeMD_.setTiffDataIFD(new NonNegativeInteger(ifdCount_), index_, tiffDataIndex_);
+               omeMD_.setUUIDFileName(currentTiffFilename_, index_, tiffDataIndex_);
+               tiffDataPlaneCount_ = 1;
+            } else {   //continue adding to previous tiffdata element
+               tiffDataPlaneCount_++;
+            }
+            omeMD_.setTiffDataPlaneCount(new NonNegativeInteger(tiffDataPlaneCount_), index_, tiffDataIndex_);
+            
+
+            omeMD_.setPlaneTheZ(new NonNegativeInteger(slice), index_, planeIndex_);
+            omeMD_.setPlaneTheC(new NonNegativeInteger(channel), index_, planeIndex_);
+            omeMD_.setPlaneTheT(new NonNegativeInteger(frame), index_, planeIndex_);
+         } catch (JSONException ex) {
+            ReportingUtils.showError("Image Metadata missing ChannelIndex, SliceIndex, or FrameIndex");
+         }
+
+         //Optional tags
+         try {
+            
+            if (tags.has("Exposure-ms") && !tags.isNull("Exposure-ms")) {
+               omeMD_.setPlaneExposureTime(tags.getDouble("Exposure-ms") / 1000.0, index_, planeIndex_);
+            }
+            if (tags.has("XPositionUm") && !tags.isNull("XPositionUm")) {
+               omeMD_.setPlanePositionX(tags.getDouble("XPositionUm"), index_, planeIndex_);
+               if (planeIndex_ == 0) { //should be set at start, but dont have position coordinates then
+                  omeMD_.setStageLabelX(tags.getDouble("XPositionUm"), index_);
+               }
+            }
+            if (tags.has("YPositionUm") && !tags.isNull("YPositionUm")) {
+               omeMD_.setPlanePositionY(tags.getDouble("YPositionUm"), index_, planeIndex_);
+               if (planeIndex_ == 0) {
+                  omeMD_.setStageLabelY(tags.getDouble("YPositionUm"), index_);
+               }
+            }
+            if (tags.has("ZPositionUm") && !tags.isNull("ZPositionUm")) {
+               omeMD_.setPlanePositionZ(tags.getDouble("ZPositionUm"), index_, planeIndex_);
+            }
+            if (tags.has("ElapsedTime-ms") && !tags.isNull("ElapsedTime-ms")) {
+               omeMD_.setPlaneDeltaT(tags.getDouble("ElapsedTime-ms")/1000.0, index_, planeIndex_);
+            }
+
+         } catch (JSONException e) {
+            ReportingUtils.logError("Problem adding tags to OME Metadata");
+         }
+
+         ifdCount_++;
+         planeIndex_++;
+         
+         
+         //This code is used is estimating the length of OME XML to be added in, so
+         //images arent written into file space reserved for it
+         if (omeXMLBaseLength_ == -1) {
+            try {
+               OMEXMLService service = new ServiceFactory().getInstance(OMEXMLService.class);
+               omeXMLBaseLength_ = service.getOMEXML(omeMD_).length();
+            } catch (Exception ex) {
+               ReportingUtils.logError("Unable to calculate OME XML Base length");
+            }
+         } else if (omeXMLImageLength_ == -1) {
+            //This is the first image plane to be written, so calculate the change in length from the base OME
+            //XML length to estimate the approximate memory needed per an image plane
+            try {
+               OMEXMLService service = new ServiceFactory().getInstance(OMEXMLService.class);
+               omeXMLImageLength_ = (int) (1.1*(service.getOMEXML(omeMD_).length() - omeXMLBaseLength_));
+            } catch (Exception ex) {
+               ReportingUtils.logError("Unable to calculate OME XML Image length");
+            }
+         }
+      }
+
+      private void setOMEDetectorMetadata(JSONObject tags) throws JSONException {
+         if (!tags.has("Core-Camera") || tags.isNull("Core-Camera")) {
+            return;
+         }
+         String coreCam = tags.getString("Core-Camera");
+         String[] cameras;
+         if (tags.has(coreCam + "-Physical Camera 1")) {       //Multicam mode
+            int numCams = 1;
+            if (!tags.getString(coreCam + "-Physical Camera 3").equals("Undefined") ) {
+               numCams = 3;
+            } else if (!tags.getString(coreCam + "-Physical Camera 2").equals("Undefined")) {
+               numCams = 2;
+            }
+            cameras = new String[numCams];
+            for (int i = 0; i < numCams; i++) {
+               cameras[i] = tags.getString(coreCam + "-Physical Camera " + (1+i));
+            }
+         } else { //Single camera mode
+            cameras = new String[1];
+            cameras[0] = coreCam;
+         }
+         
+         for (int detectorIndex = 0; detectorIndex < cameras.length; detectorIndex++) {
+            String camera = cameras[detectorIndex];
+            String detectorID = MetadataTools.createLSID(camera);
+            //Instrument index, detector index
+            omeMD_.setDetectorID(detectorID, 0, detectorIndex);
+            if (tags.has(camera + "-Name") && !tags.isNull(camera + "-Name")) {
+               omeMD_.setDetectorManufacturer(tags.getString(camera+"-Name"), 0, detectorIndex);
+            }
+            if (tags.has(camera + "-CameraName") && !tags.isNull(camera + "-CameraName")) {
+               omeMD_.setDetectorModel(tags.getString(camera+"-CameraName"), 0, detectorIndex);
+            }
+            if (tags.has(camera + "-Offset") && !tags.isNull(camera + "-Offset")) {
+               omeMD_.setDetectorOffset(Double.parseDouble(tags.getString(camera+"-Offset")), 0, detectorIndex);
+            }
+            if (tags.has(camera + "-CameraID") && !tags.isNull(camera + "-CameraID")) {
+               omeMD_.setDetectorSerialNumber(tags.getString(camera+"-CameraID"), 0, detectorIndex);
+            }
+
+         }
+      }
+   }
    
    private class CachedImages {
       private static final int NUM_TO_CACHE = 10;
@@ -388,6 +877,5 @@ public class TaggedImageStorageMultipageTiff implements TaggedImageStorage {
       }
       
    }
-   
-   
+    
 }

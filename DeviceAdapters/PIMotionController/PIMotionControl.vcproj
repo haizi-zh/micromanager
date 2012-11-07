@@ -65,11 +65,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="MMC410.lib"
-				OutputFile="$(OutDir)/mmgr_dal_PIMercuryStep.dll"
+				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="..\..\3rdparty\MMC410"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/PiMotionStage.pdb"
+				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -145,7 +145,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="MMC410.lib"
-				OutputFile="$(OutDir)/mmgr_dal_PIMercuryStep.dll"
+				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="..\..\3rdparty\MMC410"
 				GenerateDebugInformation="true"

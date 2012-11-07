@@ -280,10 +280,12 @@
       (show-where-pointing!
         pointing-screen-atom showing-screen-atom))))
 
-(defn show [memory-tiles acquired-images]
-  (let [frame (main-frame)
+(defn show [dir acquired-images]
+  (let [memory-tiles (tile-cache/create-tile-cache 100 dir)
+        memory-tiles2 (tile-cache/create-tile-cache 100 dir)
+        frame (main-frame)
         [panel screen-state] (view-panel memory-tiles acquired-images)
-        [panel2 screen-state2] (view-panel memory-tiles acquired-images)
+        [panel2 screen-state2] (view-panel memory-tiles2 acquired-images)
         split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true panel panel2)]
     (doto split-pane
       (.setResizeWeight 0.5)
@@ -301,7 +303,7 @@
     (handle-point-and-show screen-state screen-state2)
     ;(make-view-controllable panel2 screen-state2)
     ;(handle-open frame)
-    screen-state))
+    [screen-state memory-tiles]))
 
 
 

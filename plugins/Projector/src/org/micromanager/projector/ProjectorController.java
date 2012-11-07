@@ -5,26 +5,34 @@
 package org.micromanager.projector;
 
 import ij.IJ;
+import ij.WindowManager;
 import ij.gui.ImageCanvas;
+import ij.gui.ImageWindow;
 import ij.gui.PointRoi;
 import ij.gui.Roi;
 import ij.plugin.filter.GaussianBlur;
-import java.awt.geom.AffineTransform;
-import org.micromanager.api.AcquisitionEngine;
-import org.micromanager.utils.ReportingUtils;
+import ij.plugin.frame.RoiManager;
 import ij.process.ImageProcessor;
 import java.awt.Point;
+import java.awt.Polygon;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.prefs.Preferences;
+import javax.swing.JOptionPane;
 import mmcorej.CMMCore;
+import org.micromanager.api.AcquisitionEngine;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.utils.ImageUtils;
+import org.micromanager.utils.JavaUtils;
 import org.micromanager.utils.MathFunctions;
-import ij.plugin.frame.RoiManager;
+import org.micromanager.utils.ReportingUtils;
 
 /**
  *
@@ -35,19 +43,20 @@ public class ProjectorController {
    private String slm;
    private CMMCore mmc;
    private final ScriptInterface gui;
-   private AffineTransform affineTransform;
    private boolean imageOn_ = false;
    final private ProjectionDevice dev;
    private MouseListener pointAndShootMouseListener;
-   private boolean usePointAndShootInterval;
    private double pointAndShootInterval;
+   private Roi[] individualRois_ = {};
+   private int reps_ = 1;
+   private long interval_us_ = 500000;
 
    public ProjectorController(ScriptInterface app) {
       gui = app;
       mmc = app.getMMCore();
       String slm = mmc.getSLMDevice();
       String galvo = mmc.getGalvoDevice();
-
+      
       if (slm.length() > 0) {
          dev = new SLM(mmc, 5);
       } else if (galvo.length() > 0) {
@@ -55,33 +64,64 @@ public class ProjectorController {
       } else {
          dev = null;
       }
+      
       pointAndShootMouseListener = setupPointAndShootMouseListener();
    }
 
+   public boolean isSLM() {
+       return (dev instanceof SLM);
+   }
+   
    public void calibrate() {
       final boolean liveModeRunning = gui.isLiveModeOn();
       gui.enableLiveMode(false);
       Thread th = new Thread("Projector calibration thread") {
-
          public void run() {
-
+            Roi originalROI = IJ.getImage().getRoi();
             AffineTransform firstApprox = getFirstApproxTransform();
-            affineTransform = getFinalTransform(firstApprox);
+            AffineTransform affineTransform = getFinalTransform(firstApprox);
             dev.turnOff();
+            try {
+               Thread.sleep(500);
+            } catch (InterruptedException ex) {
+               ReportingUtils.logError(ex);
+            }
+            saveAffineTransform(affineTransform);
             gui.enableLiveMode(liveModeRunning);
+            JOptionPane.showMessageDialog(IJ.getImage().getWindow(), "Calibration finished.");
+            IJ.getImage().setRoi(originalROI);
          }
       };
       th.start();
    }
 
+   private Preferences getCalibrationNode() {
+       return Preferences.userNodeForPackage(ProjectorPlugin.class)
+               .node("calibration")
+               .node(dev.getChannel())
+               .node(mmc.getCameraDevice());
+   }
+   
+   public void saveAffineTransform(AffineTransform affineTransform) {
+       JavaUtils.putObjectInPrefs(getCalibrationNode(), dev.getName(), affineTransform);
+   }
+
+      public AffineTransform loadAffineTransform() {
+      AffineTransform transform = (AffineTransform) JavaUtils.getObjectFromPrefs(getCalibrationNode(), dev.getName(), null);
+      if (transform == null) {
+         ReportingUtils.showError("The galvo has not been calibrated for the current settings.");
+         return null;
+      } else {
+         return transform;
+      }
+   }
 // then use:
 //imgp.updateImage();
 //imgp.getCanvas().repaint();
    public Point measureSpot(Point dmdPt) {
       dev.displaySpot(dmdPt.x, dmdPt.y);
-      mmc.sleep(2000);
+      dev.waitForDevice();
       gui.snapSingleImage();
-
       mmc.sleep(200);
       ImageProcessor proc = IJ.getImage().getProcessor();
       Point maxPt = findPeak(proc);
@@ -90,7 +130,7 @@ public class ProjectorController {
    }
 
    private Point findPeak(ImageProcessor proc) {
-      ImageProcessor blurImage = ((ImageProcessor) proc.clone());
+      ImageProcessor blurImage = ((ImageProcessor) proc.duplicate());
       blurImage.setRoi((Roi) null);
       GaussianBlur blur = new GaussianBlur();
       blur.blurGaussian(blurImage, 20, 20, 0.01);
@@ -140,7 +180,6 @@ public class ProjectorController {
       mapSpot(spotMap2, dmdPoint);
       dmdPoint = (Point2D.Double) firstApprox.transform(new Point2D.Double((double) s, (double) imgHeight - s), null);
       mapSpot(spotMap2, dmdPoint);
-
       return MathFunctions.generateAffineTransformFromPointPairs(spotMap2);
    }
 
@@ -153,62 +192,106 @@ public class ProjectorController {
    }
 
    void activateAllPixels() {
-      try {
-         mmc.setSLMPixelsTo(slm, (short) 255);
-         if (imageOn_ == true) {
-            mmc.displaySLMImage(slm);
+     if (dev instanceof SLM) {
+        try {
+           mmc.setSLMPixelsTo(slm, (short) 255);
+           if (imageOn_ == true) {
+              mmc.displaySLMImage(slm);
+           }
+        } catch (Exception ex) {
+           ReportingUtils.showError(ex);
+        }
+     }
+   }
+
+   public static Roi[] separateOutPointRois(Roi[] rois) {
+      List<Roi> roiList = new ArrayList<Roi>();
+      for (Roi roi : rois) {
+         if (roi.getType() == Roi.POINT) {
+            Polygon poly = ((PointRoi) roi).getPolygon();
+            for (int i = 0; i < poly.npoints; ++i) {
+               roiList.add(new PointRoi(
+                       poly.xpoints[i],
+                       poly.ypoints[i]));
+            }
+         } else {
+            roiList.add(roi);
          }
-      } catch (Exception ex) {
-         ReportingUtils.showError(ex);
       }
+      return (Roi[]) roiList.toArray(rois);
    }
-
-   public void setRois(int reps) {
-      Roi singleRoi = gui.getImageWin().getImagePlus().getRoi();
-      Roi[] rois = null;
-      final RoiManager mgr = RoiManager.getInstance();
-      if (mgr != null) {
-         rois = mgr.getRoisAsArray();
-      } else if (singleRoi != null) {
-         rois = new Roi[] {singleRoi};
+   
+   public int setRois(int reps) {
+      AffineTransform transform = loadAffineTransform();
+      if (transform != null) {
+         Roi[] rois = null;
+         Roi[] roiMgrRois = {};
+         Roi singleRoi = gui.getImageWin().getImagePlus().getRoi();
+         final RoiManager mgr = RoiManager.getInstance();
+         if (mgr != null) {
+            roiMgrRois = mgr.getRoisAsArray();
+         }
+         if (roiMgrRois.length > 0) {
+            rois = roiMgrRois;
+         } else if (singleRoi != null) {
+            rois = new Roi[] {singleRoi};
+         } else {
+            ReportingUtils.showError("Please first select ROI(s)");
+         }
+         individualRois_ = separateOutPointRois(rois);
+         sendRoiData();
+         return individualRois_.length;
       } else {
-         ReportingUtils.showError("Please first select ROI(s)");
+         return 0;
       }
-      dev.setRois(rois, affineTransform);
-      dev.setPolygonRepetitions(reps);
    }
 
+   private void sendRoiData() {
+      if (individualRois_.length > 0) {
+         AffineTransform transform = loadAffineTransform();
+         if (transform != null) {
+            dev.setRois(individualRois_, transform);
+            dev.setPolygonRepetitions(reps_);
+            dev.setSpotInterval(interval_us_);
+         }
+      }
+   }
+   
    public void setRoiRepetitions(int reps) {
-      dev.setPolygonRepetitions(reps);
+      reps_ = reps;
+      sendRoiData();
    }
 
    public MouseListener setupPointAndShootMouseListener() {
-      final ProjectorController controller = this;
+      final ProjectorController thisController = this;
       return new MouseAdapter() {
          public void mouseClicked(MouseEvent e) {
             Point p = e.getPoint();
             ImageCanvas canvas = (ImageCanvas) e.getSource();
             Point pOffscreen = new Point(canvas.offScreenX(p.x),canvas.offScreenY(p.y));
-            Point2D.Double devP = (Point2D.Double) affineTransform.transform(
+            Point2D.Double devP = (Point2D.Double) loadAffineTransform().transform(
                     new Point2D.Double(pOffscreen.x, pOffscreen.y), null);
-            if (controller.usePointAndShootInterval) {
-               dev.displaySpot(devP.x, devP.y, controller.pointAndShootInterval);
-            } else {
-               dev.displaySpot(devP.x, devP.y);
-            }
+            dev.displaySpot(devP.x, devP.y, thisController.getPointAndShootInterval());
          }
       };
    }
-
+ 
    public void activatePointAndShootMode(boolean on) {
-      final ImageCanvas canvas = gui.getImageWin().getCanvas();
-           for (MouseListener listener:canvas.getMouseListeners()) {
+      ImageCanvas canvas = null;
+      ImageWindow window = WindowManager.getCurrentWindow();
+      if (window != null) {
+         canvas = window.getCanvas();
+         for (MouseListener listener : canvas.getMouseListeners()) {
             if (listener == pointAndShootMouseListener) {
                canvas.removeMouseListener(listener);
             }
          }
+      }
+
       if (on) {
-         canvas.addMouseListener(pointAndShootMouseListener);
+         if (canvas != null) {
+            canvas.addMouseListener(pointAndShootMouseListener);
+         }
       }
    }
 
@@ -234,14 +317,14 @@ public class ProjectorController {
       gui.getAcquisitionEngine().clearRunnables();
    }
 
-   public void setPointAndShootUseInterval(boolean on) {
-      this.usePointAndShootInterval = on;
-   }
-
    public void setPointAndShootInterval(double intervalUs) {
       this.pointAndShootInterval = intervalUs;
    }
 
+   public double getPointAndShootInterval() {
+       return this.pointAndShootInterval;
+   }
+   
    void runPolygons() {
       dev.runPolygons();
    }
@@ -254,5 +337,10 @@ public class ProjectorController {
       double x = dev.getWidth() / 2;
       double y = dev.getHeight() / 2;
       dev.displaySpot(x, y);
+   }
+
+   void setSpotInterval(long interval_us) {
+     interval_us_ = interval_us;
+     this.sendRoiData();
    }
 }

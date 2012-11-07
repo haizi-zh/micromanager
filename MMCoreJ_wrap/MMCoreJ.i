@@ -326,6 +326,8 @@
 
 %typemap(javaimports) CMMCore %{
    import org.json.JSONObject;
+   import java.awt.geom.Point2D;
+   import java.awt.Rectangle;
 %}
 
 %typemap(javacode) CMMCore %{
@@ -365,6 +367,35 @@
      return "";
    }
 
+   private String getMultiCameraChannel(JSONObject tags, int cameraChannelIndex) {
+      try {
+      String camera = tags.getString("Core-Camera");
+      String physCamKey = camera + "-Physical Camera " + (1 + cameraChannelIndex);
+      if (tags.has(physCamKey)) {
+         try {
+            return tags.getString(physCamKey);
+         } catch (Exception e2) {
+            return null;
+         }
+      } else {
+         return null;
+      }
+     } catch (Exception e) {
+       return null;
+     }
+
+   }
+
+   private TaggedImage createTaggedImage(Object pixels, Metadata md, int cameraChannelIndex) throws java.lang.Exception {
+      TaggedImage image = createTaggedImage(pixels, md);
+      image.tags.put("CameraChannelIndex", cameraChannelIndex);
+      String physicalCamera = getMultiCameraChannel(image.tags, cameraChannelIndex);
+      if (physicalCamera != null) {
+         image.tags.put("Camera", physicalCamera);
+      }
+      return image;
+   }
+
    private TaggedImage createTaggedImage(Object pixels, Metadata md) throws java.lang.Exception {
       JSONObject tags = metadataToMap(md);
       PropertySetting setting;
@@ -384,13 +415,14 @@
       try {
          tags.put("Binning", getProperty(getCameraDevice(), "Binning"));
       } catch (Exception ex) {}
+      
       return new TaggedImage(pixels, tags);	
    }
 
    public TaggedImage getTaggedImage(int cameraChannelIndex) throws java.lang.Exception {
       Metadata md = new Metadata();
       Object pixels = getImage(cameraChannelIndex);
-      return createTaggedImage(pixels, md);
+      return createTaggedImage(pixels, md, cameraChannelIndex);
    }
 
    public TaggedImage getTaggedImage() throws java.lang.Exception {
@@ -400,7 +432,7 @@
    public TaggedImage getLastTaggedImage(int cameraChannelIndex) throws java.lang.Exception {
       Metadata md = new Metadata();
       Object pixels = getLastImageMD(cameraChannelIndex, 0, md);
-      return createTaggedImage(pixels, md);
+      return createTaggedImage(pixels, md, cameraChannelIndex);
    }
    
    public TaggedImage getLastTaggedImage() throws java.lang.Exception {
@@ -416,13 +448,44 @@
    public TaggedImage popNextTaggedImage(int cameraChannelIndex) throws java.lang.Exception {
       Metadata md = new Metadata();
       Object pixels = popNextImageMD(cameraChannelIndex, 0, md);
-      return createTaggedImage(pixels, md);
+      return createTaggedImage(pixels, md, cameraChannelIndex);
    }
 
    public TaggedImage popNextTaggedImage() throws java.lang.Exception {
       return popNextTaggedImage(0);
    }
 
+   // convenience functions follow
+   
+   /*
+    * Convenience function. Returns the ROI of the current camera in a java.awt.Rectangle.
+    */
+   public Rectangle getROI() throws java.lang.Exception {
+      // ROI values are given as x,y,w,h in individual one-member arrays (pointers in C++):
+      int[][] a = new int[4][1];
+      getROI(a[0], a[1], a[2], a[3]);
+      return new Rectangle(a[0][0], a[1][0], a[2][0], a[3][0]);
+   }
+
+   /* 
+    * Convenience function. Returns the current x,y position of the stage in a Point2D.Double.
+    */
+   public Point2D.Double getXYStagePosition(String stage) throws java.lang.Exception {
+      // stage position is given as x,y in individual one-member arrays (pointers in C++):
+      double p[][] = new double[2][1];
+      getXYPosition(stage, p[0], p[1]);
+      return new Point2D.Double(p[0][0], p[1][0]);
+   }
+   
+   /* 
+    * Convenience function. Returns the current x,y position of the galvo in a Point2D.Double.
+    */
+   public Point2D.Double getGalvoPosition(String galvoDevice) throws java.lang.Exception {
+      // stage position is given as x,y in individual one-member arrays (pointers in C++):
+      double p[][] = new double[2][1];
+      getGalvoPosition(galvoDevice, p[0], p[1]);
+      return new Point2D.Double(p[0][0], p[1][0]);
+   }
 %}
 
 

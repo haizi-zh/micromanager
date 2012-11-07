@@ -181,6 +181,7 @@ public:
    MM::PropertyType getPropertyType(const char* label, const char* propName) const throw (CMMError);
    MM::DeviceType getDeviceType(const char* label) throw (CMMError);
    std::string getDeviceLibrary(const char* label) throw (CMMError);
+   void unloadLibrary(const char* moduleName) throw (CMMError);
    std::string getDeviceName(const char* label) throw (CMMError);
    std::string getParentLabel(const char* label) throw (CMMError);
    void setParentLabel(const char* label, const char* parentLabel) throw (CMMError);
@@ -272,10 +273,10 @@ public:
    */
    //@ {
    void setROI(int x, int y, int xSize, int ySize) throw (CMMError); 
-   void getROI(int& x, int& y, int& xSize, int& ySize) const throw (CMMError); 
+   void getROI(int& x, int& y, int& xSize, int& ySize) throw (CMMError); 
    void clearROI() throw (CMMError);
    void setExposure(double exp) throw (CMMError);
-   double getExposure() const throw (CMMError);
+   double getExposure() throw (CMMError);
    void* getImage() throw (CMMError);
    void* getImage(unsigned numChannel) throw (CMMError);
    void snapImage() throw (CMMError);
@@ -349,7 +350,7 @@ public:
    */
    //@ {
    void setState(const char* deviceLabel, long state) throw (CMMError);
-   long getState(const char* deviceLabel) const throw (CMMError);
+   long getState(const char* deviceLabel) throw (CMMError);
    long getNumberOfStates(const char* deviceLabel);
    void setStateLabel(const char* deviceLabel, const char* stateLabel) throw (CMMError);
    std::string getStateLabel(const char* deviceLabel) const throw (CMMError);
@@ -457,6 +458,7 @@ public:
    */
    //@ {
    void pointGalvoAndFire(const char* deviceLabel, double x, double y, double pulseTime_us) throw (CMMError);
+   void setGalvoSpotInterval(const char* deviceLabel, double pulseTime_us) throw (CMMError);
    void setGalvoPosition(const char* deviceLabel, double x, double y) throw (CMMError);
    void getGalvoPosition(const char* deviceLabel, double &x_stage, double &y_stage) throw (CMMError); // using x_stage to get swig to work
    void setGalvoIlluminationState(const char* deviceLabel, bool on) throw (CMMError);
@@ -468,6 +470,7 @@ public:
    void setGalvoPolygonRepetitions(const char* deviceLabel, int repetitions) throw (CMMError);
    void runGalvoPolygons(const char* deviceLabel) throw (CMMError);
    void runGalvoSequence(const char* deviceLabel) throw (CMMError);
+   std::string getGalvoChannel(const char* deviceLabel) throw (CMMError);
    //@ }
 
    /** @name Acquisition context API
@@ -475,12 +478,8 @@ public:
    * API notifying core of acquisition context events
    */
    //@ {
-   void acqBefore() throw (CMMError);
-   void acqAfter() throw (CMMError);
    void acqBeforeFrame() throw (CMMError);
    void acqAfterFrame() throw (CMMError);
-   void acqBeforeStack() throw (CMMError);
-   void acqAfterStack() throw (CMMError);
    //@ }
 
    // device discovery

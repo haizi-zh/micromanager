@@ -34,6 +34,8 @@ MMJ_.jar:  \
 	$(srcdir)/src/org/micromanager/acquisition/TaggedImageQueue.java \
 	$(srcdir)/src/org/micromanager/acquisition/TaggedImageStorageDiskDefault.java \
 	$(srcdir)/src/org/micromanager/acquisition/TaggedImageStorageRam.java \
+	$(srcdir)/src/org/micromanager/acquisition/TaggedImageStorageMultipageTiff.java \
+	$(srcdir)/src/org/micromanager/acquisition/MultipageTiffReader.java \
 	$(srcdir)/src/org/micromanager/acquisition/ProcessorStack.java \
 	$(srcdir)/src/org/micromanager/acquisition/SequenceSettings.java \
 	$(srcdir)/src/org/micromanager/api/Autofocus.java \
@@ -125,7 +127,7 @@ MMJ_.jar:  \
 	test -d build || mkdir build
 	rm -rf build/*
 	cp $(srcdir)/bin/plugins_mmstudio.config build/plugins.config
-	$(JAVAC) -source 1.5 -target 1.5 -sourcepath ../MMCoreJ_wrap:$(srcdir)/src:../hcs/src:. -classpath $(IJJARPATH):$(BSHJARPATH):$(SWINGXJARPATH):$(COMMONSMATHJARPATH):$(SWINGLAYOUTJARPATH):$(CLASSEXT)/clojure.jar:$(topsrcdir)/bin/MMCoreJ.jar:. $(srcdir)/src/*.java $(srcdir)/src/org/micromanager/acquisition/*.java $(srcdir)/src/org/micromanager/utils/*.java $(srcdir)/src/org/micromanager/api/*.java $(srcdir)/src/org/micromanager/conf2/*.java -d build
+	$(JAVAC) -source 1.5 -target 1.5 -sourcepath ../MMCoreJ_wrap:$(srcdir)/src:../hcs/src:. -classpath $(IJJARPATH):$(BSHJARPATH):$(SWINGXJARPATH):$(COMMONSMATHJARPATH):$(SWINGLAYOUTJARPATH):$(CLASSEXT)/*:$(topsrcdir)/bin/MMCoreJ.jar:. $(srcdir)/src/*.java $(srcdir)/src/org/micromanager/acquisition/*.java $(srcdir)/src/org/micromanager/utils/*.java $(srcdir)/src/org/micromanager/api/*.java $(srcdir)/src/org/micromanager/conf2/*.java -d build
 	cp -rf $(srcdir)/src/org/micromanager/icons build/org/micromanager
 	cp -rf $(srcdir)/src/org/micromanager/conf2/*html build/org/micromanager/conf2
 	## Work around bug in 'jar': jar cf MM_.jar -C bin/ bin/* does not work
@@ -154,6 +156,6 @@ clean:
 javadoc:
 	test -d $(srcdir)/doc || mkdir $(srcdir)/doc
 	rm -rf $(srcdir)/doc/*
-	javadoc -public -classpath $(IJJARPATH):$(BSHJARPATH):$(IJPATH)/plugins/Micro-Manager/MMCoreJ.jar:$(IJPATH)/plugins/Micro-Manager/MMJ_.jar:. -d doc $(srcdir)/src/org/micromanager/*.java $(srcdir)/src/org/micromanager/*/*.java
+	javadoc -public -classpath $(IJJARPATH):$(BSHJARPATH):$(IJPATH)/plugins/Micro-Manager/MMCoreJ.jar:$(IJPATH)/plugins/Micro-Manager/MMJ_.jar:$(CLASSEXT)/scifio.jar:$(CLASSEXT)/commons-math-2.0.jar:. -d doc $(srcdir)/src/org/micromanager/*.java $(srcdir)/src/org/micromanager/*/*.java
 
 EXTRA_DIST = bin src build.xml license.txt

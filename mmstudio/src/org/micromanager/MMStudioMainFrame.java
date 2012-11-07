@@ -112,15 +112,16 @@ import ij.Menus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import java.awt.Cursor;
+import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
 import java.awt.Menu;
 import java.awt.MenuItem;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collections;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
@@ -131,7 +132,10 @@ import org.json.JSONException;
 import org.micromanager.acquisition.AcquisitionWrapperEngine;
 import org.micromanager.acquisition.LiveModeTimer;
 import org.micromanager.acquisition.MMAcquisition;
+import org.micromanager.api.ImageCache;
 import org.micromanager.acquisition.MetadataPanel;
+import org.micromanager.acquisition.ProcessorStack;
+import org.micromanager.acquisition.TaggedImageQueue;
 import org.micromanager.acquisition.TaggedImageStorageDiskDefault;
 import org.micromanager.acquisition.TaggedImageStorageMultipageTiff;
 import org.micromanager.acquisition.VirtualAcquisitionDisplay;
@@ -147,13 +151,14 @@ import org.micromanager.utils.ReportingUtils;
 import org.micromanager.utils.SnapLiveContrastSettings;
 
 
+
 /*
  * Main panel and application class for the MMStudio.
  */
 public class MMStudioMainFrame extends JFrame implements ScriptInterface, DeviceControlGUI {
 
-   private static final String MICRO_MANAGER_TITLE = "Micro-Manager 1.4";
-   private static final String VERSION = "1.4.7  20111110";
+   private static final String MICRO_MANAGER_TITLE = "Micro-Manager";
+   private static final String VERSION = "1.4.11  20121102";
    private static final long serialVersionUID = 3556500289598574541L;
    private static final String MAIN_FRAME_X = "x";
    private static final String MAIN_FRAME_Y = "y";
@@ -658,6 +663,34 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       return getAcquisition(acquisitionName).getImageCache();
    }
 
+   
+   /*
+    * Shows images as they appear in the default display window. Uses
+    * the default processor stack to process images as they arrive on
+    * the rawImageQueue.
+    */
+    public void runDisplayThread(BlockingQueue rawImageQueue, final DisplayImageRoutine displayImageRoutine) {
+        final BlockingQueue processedImageQueue = ProcessorStack.run(rawImageQueue, getAcquisitionEngine().getImageProcessors());
+        new Thread("Display thread") {
+            public void run() {
+                try {
+                    TaggedImage image = null;
+                    do {
+                        image = (TaggedImage) processedImageQueue.take();
+                        if (image != TaggedImageQueue.POISON) {
+                            displayImageRoutine.show(image);
+                        }
+                    } while (image != TaggedImageQueue.POISON);
+                } catch (InterruptedException ex) {
+                    ReportingUtils.logError(ex);
+                }
+            }
+        }.start();
+    }
+
+   public interface DisplayImageRoutine {
+      public void show(TaggedImage image);
+   }
  
    /**
     * Callback to update GUI when a change happens in the MMCore.
@@ -906,7 +939,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       
       setBounds(x, y, width, height);
       setExitStrategy(options_.closeOnExit_);
-      setTitle(MICRO_MANAGER_TITLE);
+      setTitle(MICRO_MANAGER_TITLE + " " + VERSION);
       setBackground(guiColors_.background.get((options_.displayBackground_)));
       SpringLayout topLayout = new SpringLayout();
       
@@ -2190,9 +2223,17 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    public double getPreferredWindowMag() {
       return options_.windowMag_;
    }
+   
+   public boolean getMetadataFileWithMultipageTiff() {
+      return options_.multipageTiffMetadataFile_;
+   }
+   
+   public boolean getOMETiffEnabled() {
+      return options_.omeTiff_;
+   }
 
    private void updateTitle() {
-      this.setTitle("System: " + sysConfigFile_);
+      this.setTitle(MICRO_MANAGER_TITLE + " " + VERSION + " - " + sysConfigFile_);
    }
 
    public void updateLineProfile() {
@@ -2940,7 +2981,11 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    }
 
    public boolean displayImage(final Object pixels) {
-      return displayImage(pixels, true);
+      if (pixels instanceof TaggedImage) {
+         return displayTaggedImage((TaggedImage) pixels, true);
+      } else {
+         return displayImage(pixels, true);
+      }
    }
 
 
@@ -2988,37 +3033,92 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    }
 
    public void doSnap() {
+      doSnap(false);
+   }
+
+   public void doSnap(final boolean album) {
       if (core_.getCameraDevice().length() == 0) {
          ReportingUtils.showError("No camera configured");
          return;
       }
 
+      BlockingQueue snapImageQueue = new LinkedBlockingQueue();
+      
       try {
          core_.snapImage();
          long c = core_.getNumberOfCameraChannels();
-         for (int i = 0; i < c; ++i) {
-            displayImage(core_.getTaggedImage(i), (i == c - 1), i);
-         }
-         simpleDisplay_.getImagePlus().getWindow().toFront();
+         runDisplayThread(snapImageQueue, new DisplayImageRoutine() {
+            public void show(final TaggedImage image) {
+                normalizeTags(image);
+                  if (album) {
+                     try {
+                        addToAlbum(image);
+                     } catch (MMScriptException ex) {
+                        ReportingUtils.showError(ex);
+                     }
+                  } else {
+                     displayImage(image);
+                  }
+            }
+
+         });
          
+         for (int i = 0; i < c; ++i) {
+            TaggedImage img = core_.getTaggedImage(i);
+            img.tags.put("Channels", c);
+            snapImageQueue.put(img);
+         }
+         
+         snapImageQueue.put(TaggedImageQueue.POISON);
+
+         if (simpleDisplay_ != null) {
+            ImagePlus imgp = simpleDisplay_.getImagePlus();
+            if (imgp != null) {
+               ImageWindow win = imgp.getWindow();
+               if (win != null) {
+                  win.toFront();
+               }
+            }
+         }
       } catch (Exception ex) {
          ReportingUtils.showError(ex);
       }
    }
 
-   public boolean displayImage(TaggedImage ti) {
-      return displayImage(ti, true, 0);
-   }
-
-   private boolean displayImage(TaggedImage ti, boolean update, int channel) {
+   public void normalizeTags(TaggedImage ti) {
+      if (ti != TaggedImageQueue.POISON) {
+      int channel = 0;
       try {
-         checkSimpleAcquisition(ti);
-         setCursor(new Cursor(Cursor.WAIT_CURSOR));
-         ti.tags.put("Summary", getAcquisition(SIMPLE_ACQ).getSummaryMetadata());
+         
+         if (ti.tags.has("Multi Camera-CameraChannelIndex")) {
+            channel = ti.tags.getInt("Multi Camera-CameraChannelIndex");
+         } else if (ti.tags.has("CameraChannelIndex")) {
+            channel = ti.tags.getInt("CameraChannelIndex");
+         } else if (ti.tags.has("ChannelIndex")) {
+            channel = MDUtils.getChannelIndex(ti.tags);
+         }
          ti.tags.put("ChannelIndex", channel);
          ti.tags.put("PositionIndex", 0);
          ti.tags.put("SliceIndex", 0);
          ti.tags.put("FrameIndex", 0);
+         
+      } catch (JSONException ex) {
+         ReportingUtils.logError(ex);
+      }
+      }
+   }
+
+
+   public boolean displayImage(TaggedImage ti) {
+      normalizeTags(ti);
+      return displayTaggedImage(ti, true);
+   }
+
+   private boolean displayTaggedImage(TaggedImage ti, boolean update) {
+      try {
+         checkSimpleAcquisition(ti);
+         setCursor(new Cursor(Cursor.WAIT_CURSOR));
+         ti.tags.put("Summary", getAcquisition(SIMPLE_ACQ).getSummaryMetadata());
          addStagePositionToTags(ti);
          addImage(SIMPLE_ACQ, ti, update, true);
       } catch (Exception ex) {
@@ -3388,7 +3488,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       } catch (NullPointerException e) {
          if (core_ != null)
             this.logError(e);
-      }
+      }     
       // disposing sometimes hangs ImageJ!
       // this.dispose();
       if (options_.closeOnExit_) {
@@ -3401,6 +3501,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
             }
          }
       }
+     
 
    }
 
@@ -3618,7 +3719,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 
    /**
     * Returns the current background color
-    * @return
+    * @return current background color
     */
    @Override
    public Color getBackgroundColor() {
@@ -3661,26 +3762,6 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       }
    }
 
-   private class LoadAcq implements Runnable {
-
-      private String filePath_;
-
-      public LoadAcq(String path) {
-         filePath_ = path;
-      }
-
-      @Override
-      public void run() {
-         // stop current acquisition if any
-         engine_.shutdown();
-
-         // load protocol
-         if (acqControlWin_ != null) {
-            acqControlWin_.loadAcqSettingsFromFile(filePath_);
-         }
-      }
-   }
-
    private void testForAbortRequests() throws MMScriptException {
       if (scriptPanel_ != null) {
          if (scriptPanel_.stopRequestPending()) {
@@ -3697,6 +3778,9 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 
    @Override
    public String runAcquisition() throws MMScriptException {
+      if (SwingUtilities.isEventDispatchThread()) {
+         throw new MMScriptException("Acquisition can not be run from this (EDT) thread");
+      }
       testForAbortRequests();
       if (acqControlWin_ != null) {
          String name = acqControlWin_.runAcquisition();
@@ -3724,6 +3808,21 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
             while (acqControlWin_.isAcquisitionRunning()) {
                Thread.sleep(100);
             }
+            // ensure that the acquisition has finished.
+            // This does not seem to work, needs something better
+            MMAcquisition acq = acqMgr_.getAcquisition(acqName);
+            boolean finished = false;
+            while (!finished) {
+               ImageCache imCache = acq.getImageCache();
+               if (imCache != null) {
+                  if (imCache.isFinished()) {
+                     finished = true;
+                  } else {
+                     Thread.sleep(100);
+                  }
+               }
+            }
+
          } catch (InterruptedException e) {
             ReportingUtils.showError(e);
          }
@@ -3742,7 +3841,17 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    @Override
    public void loadAcquisition(String path) throws MMScriptException {
       testForAbortRequests();
-      SwingUtilities.invokeLater(new LoadAcq(path));
+      try {
+         engine_.shutdown();
+
+         // load protocol
+         if (acqControlWin_ != null) {
+            acqControlWin_.loadAcqSettingsFromFile(path);
+         }
+      } catch (Exception ex) {
+         throw new MMScriptException(ex.getMessage());
+      }
+
    }
 
    @Override
@@ -4367,7 +4476,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
          if (this.isLiveModeOn()) {
             copyFromLiveModeToAlbum(simpleDisplay_);
          } else {
-            getAcquisitionEngine2010().acquireSingle();
+            doSnap(true);
          }
       } catch (Exception ex) {
          ReportingUtils.logError(ex);
@@ -4574,7 +4683,6 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       }
    }
 }
-
 class BooleanLock extends Object {
 
    private boolean value;

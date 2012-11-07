@@ -32,8 +32,11 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+import loci.formats.FormatException;
 import mmcorej.TaggedImage;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -53,16 +56,18 @@ public class MultipageTiffReader {
    public static final char STRIP_OFFSETS = MultipageTiffWriter.STRIP_OFFSETS;    
    public static final char SAMPLES_PER_PIXEL = MultipageTiffWriter.SAMPLES_PER_PIXEL;
    public static final char STRIP_BYTE_COUNTS = MultipageTiffWriter.STRIP_BYTE_COUNTS;
+   public static final char IMAGE_DESCRIPTION = MultipageTiffWriter.IMAGE_DESCRIPTION;
    
    public static final char MM_METADATA = MultipageTiffWriter.MM_METADATA;
    
-   private  ByteOrder byteOrder_;  
+   private ByteOrder byteOrder_;  
+   private File file_;
    private RandomAccessFile raFile_;
    private FileChannel fileChannel_;
       
    private JSONObject displayAndComments_;
    private JSONObject summaryMetadata_;
-   private int byteDepth_;
+   private int byteDepth_ = 0;;
    private boolean rgb_;
    private boolean writingFinished_;
    
@@ -71,84 +76,56 @@ public class MultipageTiffReader {
    /**
     * This constructor is used for a file that is currently being written
     */
-   public MultipageTiffReader(JSONObject summaryMD, MultipageTiffWriter writer) {
+   public MultipageTiffReader(JSONObject summaryMD) {
       displayAndComments_ = new JSONObject();
-      fileChannel_ = writer.getFileChannel();
       summaryMetadata_ = summaryMD;
-      indexMap_ = writer.getIndexMap();
       byteOrder_ = MultipageTiffWriter.BYTE_ORDER;
-      getRGBAndByteDepth();
+      getRGBAndByteDepth(summaryMD);
       writingFinished_ = false;
    }
-
+   
+   public void setIndexMap(HashMap<String,Long> indexMap) {
+      indexMap_ = indexMap;
+   }
+   
+   public void setFileChannel(FileChannel fc) {
+      fileChannel_ = fc;
+   }
+  
    /**
     * This constructor is used for opening datasets that have already been saved
     */
-   public MultipageTiffReader(File file) {
+   public MultipageTiffReader(File file) throws IOException {
+      displayAndComments_ = new JSONObject();
+      file_ = file;
       try {
-         displayAndComments_ = new JSONObject();
-         createFileChannel(file);
-         writingFinished_ = true;
-         
-         long firstIFD = readHeader();
-         try {
-            readIndexMap();         
-            displayAndComments_.put("Channels", readDisplaySettings());
-            displayAndComments_.put("Comments", readComments());        
-            summaryMetadata_ = readSummaryMD();
-         } catch (Exception e) {
-            fixInterruptedFile(firstIFD);
-         }
-         
-         getRGBAndByteDepth();
-         
+         createFileChannel();
       } catch (Exception ex) {
-         ReportingUtils.logError(ex);
+         ReportingUtils.showError("Can't successfully open file: " +  file_.getName());
       }
-   }
-   
-   private void fixInterruptedFile(long firstIFD) throws IOException, JSONException {  
-      int choice = JOptionPane.showConfirmDialog(null, "This dataset cannot be opened bcause it appears to have \n"
-              + "been improperly saved.  Would you like Micro-Manger to attempt to fix it?"
-              , "Micro-Manager", JOptionPane.YES_NO_OPTION);
-      if (choice == JOptionPane.NO_OPTION) {
-         return;
-      }
+      writingFinished_ = true;
+      long firstIFD = readHeader();
       summaryMetadata_ = readSummaryMD();
-      long nextIFD = firstIFD;
-      indexMap_ = new HashMap<String, Long>();
-       final ProgressBar progressBar = new ProgressBar("Fixing dataset", 0, (int)(fileChannel_.size()/2L) );
-            progressBar.setRange(0, (int)(fileChannel_.size()/2L));
-            progressBar.setProgress(0);
-            progressBar.setVisible(true);
-      while (nextIFD > 0) {
+      try {
+         readIndexMap();
+      } catch (Exception e) {
+         ReportingUtils.showError("Can't read index map in file: " + file_.getName());
          try {
-            IFDData data = readIFD(nextIFD);
-            TaggedImage ti = readTaggedImage(data);
-            String label = null;
-            label = MDUtils.getLabel(ti.tags);
-            if (label == null) {
-               break;
-            }
-            indexMap_.put(label, nextIFD);
-            final int progress = (int) (nextIFD/2L);
-            SwingUtilities.invokeLater(new Runnable() {
-               public void run() {
-                  progressBar.setProgress(progress);
-               }
-            });
-            nextIFD = data.nextIFD;
-         } catch (Exception e) {
-            break;
+            fixIndexMap(firstIFD);
+         } catch (JSONException ex) {
+            ReportingUtils.showError("Fixing of dataset unsuccessful for file: " + file_.getName());
          }
       }
-      progressBar.setVisible(false);
-      long position = writeIndexMap(nextIFD);
-      JSONObject displayAndComments = VirtualAcquisitionDisplay.getDisplaySettingsFromSummary(summaryMetadata_);
-      JSONArray channels = displayAndComments.getJSONArray("Channels");
-      JSONObject comments = displayAndComments.getJSONObject("Comments"); 
-      position = writeDisplaySettings(position, channels);
-      writeComments(position,comments);
+      try {
+         displayAndComments_.put("Channels", readDisplaySettings());
+         displayAndComments_.put("Comments", readComments());
+      } catch (Exception ex) {
+         ReportingUtils.logError("Problem with JSON Representation of DisplayAndComments");
+      }
+
+      if (summaryMetadata_ != null) {
+         getRGBAndByteDepth(summaryMetadata_);
+      }
    }
    
    public static boolean isMMMultipageTiff(String directory) throws IOException {
@@ -164,7 +141,7 @@ public class MultipageTiffReader {
                   break;
                }
             }
-         } else if (child.getName().endsWith(".tif")) {
+         } else if (child.getName().endsWith(".tif") || child.getName().endsWith(".TIF")) {
             testFile = child;
             break;
          }
@@ -206,9 +183,9 @@ public class MultipageTiffReader {
       writingFinished_ = true;
    }
 
-   private void getRGBAndByteDepth() {
+   private void getRGBAndByteDepth(JSONObject md) {
       try {
-         String pixelType = MDUtils.getPixelType(summaryMetadata_);
+         String pixelType = MDUtils.getPixelType(md);
          rgb_ = pixelType.startsWith("RGB");
          
             if (pixelType.equals("RGB32") || pixelType.equals("GRAY8")) {
@@ -221,10 +198,6 @@ public class MultipageTiffReader {
       }
    }
 
-   public void addToIndexMap(TaggedImage img, long offset) {
-      indexMap_.put(MDUtils.getLabel(img.tags), offset);
-   }
-   
    public JSONObject getSummaryMetadata() {
       return summaryMetadata_;
    }
@@ -257,38 +230,49 @@ public class MultipageTiffReader {
       return indexMap_.keySet();
    }
 
-   private JSONObject readSummaryMD() throws IOException, JSONException {
-      ByteBuffer mdInfo = ByteBuffer.allocate(8).order(byteOrder_);
-      fileChannel_.read(mdInfo, 32);
-      int header = mdInfo.getInt(0);
-      int length = mdInfo.getInt(4);
+   private JSONObject readSummaryMD() {
+      try {
+         ByteBuffer mdInfo = ByteBuffer.allocate(8).order(byteOrder_);
+         fileChannel_.read(mdInfo, 32);
+         int header = mdInfo.getInt(0);
+         int length = mdInfo.getInt(4);
+         
+         if (header != MultipageTiffWriter.SUMMARY_MD_HEADER) {
+            ReportingUtils.logError("Summary Metadata Header Incorrect");
+            return null;
+         }
 
-      if (header != MultipageTiffWriter.SUMMARY_MD_HEADER) {
-         ReportingUtils.logError("Summary Metadata Header Incorrect");
+         ByteBuffer mdBuffer = ByteBuffer.allocate(length);
+         fileChannel_.read(mdBuffer, 40);
+         JSONObject summaryMD = new JSONObject(getString(mdBuffer));
+
+         //Summary MD written start of acquisition and never changed, this code makes sure acquisition comment
+         //field is current
+         if (displayAndComments_ != null && displayAndComments_.has("Comments") 
+                 && displayAndComments_.getJSONObject("Comments").has("Summary")) {
+            summaryMD.put("Comment", displayAndComments_.getJSONObject("Comments").getString("Summary"));
+         }
+         return summaryMD;
+      } catch (Exception ex) {
+         ReportingUtils.showError("Couldn't read summary Metadata from file: " + file_.getName());
          return null;
       }
-
-      ByteBuffer mdBuffer = ByteBuffer.allocate(length);
-      fileChannel_.read(mdBuffer, 40);
-      JSONObject summaryMD = new JSONObject(getString(mdBuffer));
-
-      //Summary MD written start of acquisition and never changed, this code makes sure acquisition comment
-      //field is current
-      if (displayAndComments_ != null && displayAndComments_.has("Comments") 
-              && displayAndComments_.getJSONObject("Comments").has("Summary")) {
-         summaryMD.put("Comment", displayAndComments_.getJSONObject("Comments").getString("Summary"));
-      }
-      return summaryMD;
    }
    
-   private JSONObject readComments() throws IOException, JSONException, MMException {
-      long offset = readOffsetHeaderAndOffset(MultipageTiffWriter.COMMENTS_OFFSET_HEADER, 24);
-      ByteBuffer header = readIntoBuffer(offset, 8);
-      if (header.getInt(0) != MultipageTiffWriter.COMMENTS_HEADER) {
-         throw new MMException("Error reading comments header");
+   private JSONObject readComments()  {
+      try {
+         long offset = readOffsetHeaderAndOffset(MultipageTiffWriter.COMMENTS_OFFSET_HEADER, 24);
+         ByteBuffer header = readIntoBuffer(offset, 8);
+         if (header.getInt(0) != MultipageTiffWriter.COMMENTS_HEADER) {
+            ReportingUtils.logError("Can't find image comments in file: " + file_.getName());
+            return null;
+         }
+         ByteBuffer buffer = readIntoBuffer(offset + 8, header.getInt(4));
+         return new JSONObject(getString(buffer));
+      } catch (Exception ex) {
+         ReportingUtils.logError("Can't find image comments in file: " + file_.getName());
+            return null;
       }
-      ByteBuffer buffer = readIntoBuffer(offset + 8, header.getInt(4));
-      return new JSONObject(getString(buffer));
    }
    
    public void rewriteComments(JSONObject comments) throws IOException, JSONException {
@@ -319,14 +303,20 @@ public class MultipageTiffReader {
       displayAndComments_.put("Channels", settings);
    }
 
-   private JSONArray readDisplaySettings() throws IOException, JSONException, MMException {
-     long offset = readOffsetHeaderAndOffset(MultipageTiffWriter.DISPLAY_SETTINGS_OFFSET_HEADER,16);
-     ByteBuffer header = readIntoBuffer(offset, 8);
-     if (header.getInt(0) != MultipageTiffWriter.DISPLAY_SETTINGS_HEADER) {
-         throw new MMException("Error reading display settings header");
+   private JSONArray readDisplaySettings() {
+      try {
+         long offset = readOffsetHeaderAndOffset(MultipageTiffWriter.DISPLAY_SETTINGS_OFFSET_HEADER,16);
+          ByteBuffer header = readIntoBuffer(offset, 8);
+          if (header.getInt(0) != MultipageTiffWriter.DISPLAY_SETTINGS_HEADER) {
+             ReportingUtils.logError("Can't find display settings in file: " + file_.getName());
+             return null;
+          }
+          ByteBuffer buffer = readIntoBuffer(offset + 8, header.getInt(4));
+         return new JSONArray(getString(buffer));
+      } catch (Exception ex) {
+         ReportingUtils.logError("Can't find display settings in file: " + file_.getName());
+         return null;
       }
-     ByteBuffer buffer = readIntoBuffer(offset + 8, header.getInt(4));
-     return new JSONArray(getString(buffer));
    }
    
    private ByteBuffer readIntoBuffer(long position, int length) throws IOException {
@@ -378,9 +368,10 @@ public class MultipageTiffReader {
             data.pixelOffset = entry.value;
          } else if (entry.tag == STRIP_BYTE_COUNTS) {
             data.bytesPerImage = entry.value;
-         }     
+         } 
       }
       data.nextIFD = unsignInt(entries.getInt(numEntries*12));
+      data.nextIFDOffsetLocation = byteOffset + 2 + numEntries*12;
       return data;
    }
 
@@ -404,6 +395,11 @@ public class MultipageTiffReader {
       } catch (JSONException ex) {
          ReportingUtils.logError("Error reading image metadata from file");
       }
+      
+      if ( byteDepth_ == 0) {
+         getRGBAndByteDepth(md);
+      }
+      
       if (rgb_) {
          if (byteDepth_ == 1) {
             byte[] pixels = new byte[(int) (4 * data.bytesPerImage / 3)];
@@ -485,8 +481,8 @@ public class MultipageTiffReader {
       }
    }
    
-   private void createFileChannel(File file) throws FileNotFoundException, IOException {      
-      raFile_ = new RandomAccessFile(file,"rw");
+   private void createFileChannel() throws FileNotFoundException, IOException {      
+      raFile_ = new RandomAccessFile(file_,"rw");
       fileChannel_ = raFile_.getChannel();
    }
    
@@ -500,86 +496,101 @@ public class MultipageTiffReader {
          raFile_ = null;
       }
    }
-   
-   /*
-    * To be used when fixing corrupted datasets 
-    */
-   private long writeIndexMap(long indexMapOffset) throws IOException {
-      //Write 4 byte header, 4 byte number of entries, and 20 bytes for each entry
-      int numMappings = indexMap_.size();
-      ByteBuffer buffer = ByteBuffer.allocate(8 + 20*numMappings).order(byteOrder_);
-      buffer.putInt(0,MultipageTiffWriter.INDEX_MAP_HEADER);
-      buffer.putInt(4, numMappings );
-      int position = 2;
-      for (String label : indexMap_.keySet()) {
-         String[] indecies = label.split("_");
-         for(String index : indecies) {
-            buffer.putInt(4*position,Integer.parseInt(index));
-            position++;
-         }
-         buffer.putInt(4*position,indexMap_.get(label).intValue());
-         position++;
-      }
-      fileChannel_.write(buffer, indexMapOffset);
       
-      ByteBuffer header = ByteBuffer.allocate(8).order(byteOrder_);
-      header.putInt(0,MultipageTiffWriter.INDEX_MAP_OFFSET_HEADER);
-      header.putInt(4,(int)indexMapOffset);
-      fileChannel_.write(header, 8);
-      return indexMapOffset + 20*indexMap_.keySet().size();
-   }
-   
-     
-   /*
-    * To be used when fixing corrupted datasets 
-    */
-   private long writeDisplaySettings(long position, JSONArray settings) throws IOException, JSONException {
-      int numChannels;
-      try {
-         numChannels = MDUtils.getNumChannels(summaryMetadata_);
-      } catch (Exception ex) {
-         numChannels = 7;
-      }
-      int numReservedBytes =  numChannels*MultipageTiffWriter.DISPLAY_SETTINGS_BYTES_PER_CHANNEL;
-      ByteBuffer header = ByteBuffer.allocate(8).order(byteOrder_);
-      ByteBuffer buffer = ByteBuffer.wrap(getBytesFromString(settings.toString()));
-      header.putInt(0,MultipageTiffWriter.DISPLAY_SETTINGS_HEADER);
-      header.putInt(4,numReservedBytes);
-      fileChannel_.write(header,position);
-      fileChannel_.write(buffer, position + 8);
-        
-      ByteBuffer offsetHeader = ByteBuffer.allocate(8).order(byteOrder_);
-      offsetHeader.putInt(0,MultipageTiffWriter.DISPLAY_SETTINGS_OFFSET_HEADER);
-      offsetHeader.putInt(4,(int)position);        
-      fileChannel_.write(offsetHeader, 16);
-      
-      return position + numReservedBytes + 8;
-   }
-       
-   /*
-    * To be used when fixing corrupted datasets 
-    */
-   private void writeComments(long position, JSONObject comments) throws IOException {
-      String commentsString = comments.toString();
-      ByteBuffer header = ByteBuffer.allocate(8).order(byteOrder_);
-      header.putInt(0,MultipageTiffWriter.COMMENTS_HEADER);     
-      header.putInt(4,commentsString.length());
-      ByteBuffer buffer = ByteBuffer.wrap(getBytesFromString(commentsString));
-      fileChannel_.write(header, position);
-      fileChannel_.write(buffer, position+8);
-      
-      ByteBuffer offsetHeader = ByteBuffer.allocate(8).order(byteOrder_);
-      offsetHeader.putInt(0,MultipageTiffWriter.COMMENTS_OFFSET_HEADER);
-      offsetHeader.putInt(4,(int)position);
-      fileChannel_.write(offsetHeader, 24);
-   }
-   
    private long unsignInt(int i) {
       long val = Integer.MAX_VALUE & i;
       if (i < 0) {
          val += BIGGEST_INT_BIT;
       }
       return val;
+   }
+   
+     //This code is intended for use in the scenario in which a datset terminates before properly closing,
+   //thereby preventing the multipage tiff writer from putting in the index map, comments, channels, and OME
+   //XML in the ImageDescription tag location 
+   private void fixIndexMap(long firstIFD) throws IOException, JSONException {  
+      int choice = JOptionPane.showConfirmDialog(null, "This dataset cannot be opened bcause it appears to have \n"
+              + "been improperly saved.  Would you like Micro-Manger to attempt to fix it?"
+              , "Micro-Manager", JOptionPane.YES_NO_OPTION);
+      if (choice == JOptionPane.NO_OPTION) {
+         return;
+      }
+      long filePosition = firstIFD;
+      indexMap_ = new HashMap<String, Long>();
+      final ProgressBar progressBar = new ProgressBar("Fixing dataset", 0, (int) (fileChannel_.size() / 2L));
+      progressBar.setRange(0, (int) (fileChannel_.size() / 2L));
+      progressBar.setProgress(0);
+      progressBar.setVisible(true);
+      long nextIFDOffsetLocation = 0;
+      IFDData data = null;
+      while (filePosition > 0) {
+         try {
+            data = readIFD(filePosition);
+            TaggedImage ti = readTaggedImage(data);
+            if (ti.tags == null) {  //Blank placeholder image, dont add to index map
+               filePosition = data.nextIFD;
+               nextIFDOffsetLocation = data.nextIFDOffsetLocation;
+               continue;
+            }
+            String label = null;
+            label = MDUtils.getLabel(ti.tags);
+            if (label == null) {
+               break;
+            }          
+            indexMap_.put(label, filePosition);
+            final int progress = (int) (filePosition/2L);
+            SwingUtilities.invokeLater(new Runnable() {
+               public void run() {
+                  progressBar.setProgress(progress);
+               }
+            });
+            filePosition = data.nextIFD;
+            nextIFDOffsetLocation = data.nextIFDOffsetLocation;
+         } catch (Exception e) {
+            break;
+         }
+      }
+      progressBar.setVisible(false);
+     
+      filePosition += writeIndexMap(filePosition);
+      
+      ByteBuffer buffer = ByteBuffer.allocate(4);
+      buffer.order(byteOrder_);
+      buffer.putInt(0, 0);
+      fileChannel_.write(buffer, nextIFDOffsetLocation); 
+      raFile_.setLength(filePosition + 8);
+      
+      fileChannel_.close();
+      raFile_.close();
+      //reopen
+      createFileChannel();
+      
+      ReportingUtils.showMessage("Dataset succcessfully repaired! Resave file to reagain full funtionality");
+   }
+   
+   private int writeIndexMap(long filePosition) throws IOException {
+      //Write 4 byte header, 4 byte number of entries, and 20 bytes for each entry
+      int numMappings = indexMap_.size();
+      ByteBuffer buffer = ByteBuffer.allocate(8 + 20 * numMappings).order(byteOrder_);
+      buffer.putInt(0, MultipageTiffWriter.INDEX_MAP_HEADER);
+      buffer.putInt(4, numMappings);
+      int position = 2;
+      for (String label : indexMap_.keySet()) {
+         String[] indecies = label.split("_");
+         for (String index : indecies) {
+            buffer.putInt(4 * position, Integer.parseInt(index));
+            position++;
+         }
+         buffer.putInt(4 * position, indexMap_.get(label).intValue());
+         position++;
+      }
+      fileChannel_.write(buffer, filePosition);
+
+      ByteBuffer header = ByteBuffer.allocate(8).order(byteOrder_);
+      header.putInt(0, MultipageTiffWriter.INDEX_MAP_OFFSET_HEADER);
+      header.putInt(4, (int) filePosition);
+      fileChannel_.write(header, 8);
+      return buffer.capacity();
    }
 
    private class IFDData {
@@ -588,6 +599,7 @@ public class MultipageTiffReader {
       public long mdOffset;
       public long mdLength;
       public long nextIFD;
+      public long nextIFDOffsetLocation;
       
       public IFDData() {}
    }

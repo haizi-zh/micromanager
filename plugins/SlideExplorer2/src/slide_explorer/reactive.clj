@@ -1,6 +1,7 @@
 (ns slide-explorer.reactive
   (:import (java.awt.event WindowAdapter)
            (java.util.concurrent Executors ExecutorService)
+           (java.util.concurrent.atomic AtomicReference)
            (java.util UUID)
            (javax.swing JFrame JLabel SwingUtilities)
            (clojure.lang IRef))
@@ -63,22 +64,40 @@
   ([reference function]
     (handle-change reference function (single-threaded-executor))))
 
+(defn assoc-if-lacking
+  "Like assoc, but leave existing key-value pair untouched."
+  [map key val]
+  (update-in map [key] #(or % val))) 
+
+(defn send-off-update
+  "Like send-off, but if the agent is piled up with tasks, then only
+   the most recent task will run (intermediate tasks will be skipped)."
+  [a f & args]
+  (alter-meta! a assoc-if-lacking ::task-ref (AtomicReference. nil))
+  (let [task-ref (::task-ref (meta a))]
+    (when-not (.getAndSet task-ref [f args])
+      (send-off a
+        #(let [[f1 args1] (.getAndSet task-ref nil)]
+           (when f1
+             (apply f1 % args1)))))))
+
 (defn handle-update
-  "Attempts to run a function whenever there is a new value in reference.
+  "Attempts to run a function asynchronously whenever there is a new value in reference.
    If the value changes too rapidly, then some values may be skipped. The
    function arguments should be [last-val current-val]."
   ([reference function agent]
     (let [last-val-agent agent]
       (add-watch-simple reference
                         (fn [_ _]
-                          (send-off last-val-agent
-                                    (fn [last-val]
-                                      (try
-                                        (let [current-val @reference]
-                                          (when-not (identical? last-val current-val)
-                                            (function last-val current-val))
-                                          current-val)
-                                        (catch Throwable t (do (def t1 t) (println t) (throw t))))))))))
+                          (send-off-update
+                            last-val-agent
+                            (fn [last-val]
+                              (try
+                                (let [current-val @reference]
+                                  (when-not (identical? last-val current-val)
+                                    (function last-val current-val))
+                                  current-val)
+                                (catch Throwable t (do (def t1 t) (println t) (throw t))))))))))
   ([reference function]
     (handle-update reference function (agent @reference))))
 

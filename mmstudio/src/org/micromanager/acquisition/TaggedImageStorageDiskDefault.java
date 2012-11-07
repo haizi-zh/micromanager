@@ -21,21 +21,13 @@ import java.io.FileFilter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 import mmcorej.TaggedImage;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.micromanager.MMStudioMainFrame;
-import org.micromanager.utils.ImageUtils;
-import org.micromanager.utils.JavaUtils;
-import org.micromanager.utils.MDUtils;
-import org.micromanager.utils.MMException;
-import org.micromanager.utils.ReportingUtils;
-import org.micromanager.utils.TextUtils;
+import org.micromanager.utils.*;
 
 /**
  *
@@ -48,7 +40,7 @@ public class TaggedImageStorageDiskDefault implements TaggedImageStorage {
    private HashMap<Integer,Writer> metadataStreams_;
    private boolean newDataSet_;
    private JSONObject summaryMetadata_;
-   private HashMap<String,String> filenameTable_;
+   private TreeMap<String,String> filenameTable_;
    private HashMap<String, JSONObject> metadataTable_ = null;
    private JSONObject displaySettings_;
    private int lastFrame_ = -1;
@@ -61,14 +53,14 @@ public class TaggedImageStorageDiskDefault implements TaggedImageStorage {
 
    public TaggedImageStorageDiskDefault(String dir, Boolean newDataSet,
            JSONObject summaryMetadata) throws Exception {
-      summaryMetadata_ = summaryMetadata;
       dir_ = dir;
       newDataSet_ = newDataSet;
-      filenameTable_ = new HashMap<String,String>();
+      filenameTable_ = new TreeMap<String,String>(new ImageLabelComparator());
       metadataStreams_ = new HashMap<Integer,Writer>();
       metadataTable_ = new HashMap<String, JSONObject>();
       displaySettings_ = new JSONObject();
       positionNames_ = new HashMap<Integer,String>();
+      setSummaryMetadata(summaryMetadata);
       
       // Note: this will throw an error if there is no existing data set
       if (!newDataSet_) {
@@ -421,11 +413,18 @@ public class TaggedImageStorageDiskDefault implements TaggedImageStorage {
                         }
                         lastFrame_ = Math.max(MDUtils.getFrameIndex(md), lastFrame_);
                         String fileName = MDUtils.getFileName(md);
+                        if (fileName == null) {
+                           fileName = "img_" + String.format("%9d", MDUtils.getFrameIndex(md))
+                                   + "_" + MDUtils.getChannelName(md)
+                                   + "_" + String.format("%3d", MDUtils.getSliceIndex(md));
+                        }
                         if (position.length() > 0)
                            fileName = position + "/" + fileName;
+                        
                         filenameTable_.put(MDUtils.getLabel(md), fileName);
                         if (metadataVersion < 10)
                            metadataTable_.put(MDUtils.getLabel(md), md);
+                        
                      } catch (Exception ex) {
                         ReportingUtils.showError(ex);
                      }
@@ -496,21 +495,13 @@ public class TaggedImageStorageDiskDefault implements TaggedImageStorage {
 
    }
 
-   private JSONObject readJsonMetadata(String pos) {
+   private JSONObject readJsonMetadata(String pos) throws Exception {
+      String fileStr;
+      fileStr = TextUtils.readTextFile(dir_ + "/" + pos + "/metadata.txt");
       try {
-         String fileStr;
-         fileStr = TextUtils.readTextFile(dir_ + "/" + pos + "/metadata.txt");
-         try {
-            return new JSONObject(fileStr);
-         } catch (JSONException ex) {
-            return new JSONObject(fileStr.concat("}"));
-         }
-      } catch (IOException ex) {
-         ReportingUtils.showError(ex, "Unable to open metadata.txt");
-         return null;
-      } catch (Exception ex) {
-         ReportingUtils.showError(ex, "Unable to read metadata.txt");
-         return null;
+         return new JSONObject(fileStr);
+      } catch (JSONException ex) {
+         return new JSONObject(fileStr.concat("}"));
       }
    }
 
@@ -525,7 +516,18 @@ public class TaggedImageStorageDiskDefault implements TaggedImageStorage {
     * @param summaryMetadata the summaryMetadata to set
     */
    public void setSummaryMetadata(JSONObject summaryMetadata) {
-      this.summaryMetadata_ = summaryMetadata;
+      summaryMetadata_ = summaryMetadata;
+      if (summaryMetadata_ != null) {
+         try {
+            boolean slicesFirst = summaryMetadata_.getBoolean("SlicesFirst");
+            boolean timeFirst = summaryMetadata_.getBoolean("TimeFirst");
+            TreeMap<String, String> oldFilenameTable = filenameTable_;
+            filenameTable_ = new TreeMap<String, String>(new ImageLabelComparator(slicesFirst, timeFirst));
+            filenameTable_.putAll(oldFilenameTable);
+         } catch (JSONException ex) {
+            ReportingUtils.logError("Couldn't find SlicesFirst or TimeFirst in summary metadata");
+         }
+      }
    }
 
    public void setDisplayAndComments(JSONObject settings) {

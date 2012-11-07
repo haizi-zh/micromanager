@@ -89,7 +89,7 @@ MM::DeviceDetectionStatus RappScannerDetect(MM::Device& /*device*/, MM::Core& /*
 //
 RappScanner::RappScanner() :
    initialized_(false), port_(""), calibrationMode_(0), polygonAccuracy_(10), polygonMinRectSize_(10),
-   ttlTriggered_("Rising Edge"), rasterFrequency_(500), spotSize_(10), laser2_(false)
+   ttlTriggered_("Rising Edge"), rasterFrequency_(500), spotSize_(10), laser2_(false), pulseTime_us_(500000)
 {
    InitializeDefaultErrorMessages();
 
@@ -159,8 +159,10 @@ int RappScanner::Initialize()
    if (UGA_->IsConnected()) 
    {
       UGA_->UseMaxCalibration(false);
-      UGA_->SetCalibrationMode(false, laser2_);
-      RunDummyCalibration();
+      UGA_->SetCalibrationMode(false, false);
+	  UGA_->SetCalibrationMode(false, true);
+      RunDummyCalibration(false);
+	  RunDummyCalibration(true);
       UGA_->CenterSpot();
       currentX_ = 0;
       currentY_ = 0;
@@ -237,6 +239,11 @@ int RappScanner::PointAndFire(double x, double y, double pulseTime_us)
    return success ? DEVICE_OK : DEVICE_ERR;
 }
 
+int RappScanner::SetSpotInterval(double pulseTime_us)
+{
+	pulseTime_us_ = pulseTime_us;
+	return DEVICE_OK;
+}
 
 int RappScanner::SetIlluminationState(bool on)
 {
@@ -298,7 +305,6 @@ int RappScanner::LoadPolygons()
       UGA_->CreateA(polygons_.at(polygonIndex), polygonAccuracy_, minRectDimensions, &rectangles, laser2_);
    }
 
-
    return DEVICE_OK;
 }
 
@@ -308,28 +314,37 @@ int RappScanner::SetPolygonRepetitions(int repetitions)
 {
    tStringList sequenceList;
    int n = (int) polygons_.size();
-   sequenceList.push_back(std::string("on"));
+   sequenceList.push_back(std::string(laser2_ ? "on2" : "on"));
    for (int i=0; i<n; ++i)
    {
-      stringstream poly;
-      poly << "poly," << i;
-      sequenceList.push_back(poly.str());
+	  tPointList polygon = polygons_.at(i);
+	  if (polygon.size() >= 3)
+	  {
+         stringstream cmd;
+         cmd << "poly," << i;
+		 sequenceList.push_back(cmd.str());
+	  }
+	  else
+	  {
+		 stringstream cmd1;
+		 cmd1 << "gotoxy" << (laser2_ ? "2" : "") << "," << polygon.at(0).x << "," << polygon.at(0).y;
+		 sequenceList.push_back(cmd1.str());
+		 sequenceList.push_back(std::string(laser2_ ? "on2" : "on"));
+		 stringstream cmd2;
+		 cmd2 << "wait," << ((long) pulseTime_us_);
+		 sequenceList.push_back(cmd2.str());
+	  }
+      
    }
-   if (repetitions > 0)
+   if (repetitions > 1)
    {
       stringstream repeat;
-      repeat << "repeat," << repetitions;
+      repeat << "repeat," << (repetitions - 1);
       sequenceList.push_back(repeat.str());
    }
    sequenceList.push_back(std::string("off"));
-   if (!UGA_->StoreSequence(sequenceList))
-   {
-      return DEVICE_ERR;
-   }
-   else
-   {
-      return DEVICE_OK;
-   }
+   
+   return SafeStoreSequence(sequenceList);
 }
 
 int RappScanner::RunPolygons()
@@ -344,10 +359,7 @@ int RappScanner::RunSequence()
       std::string sequence2 = replaceChar(sequence_, ':', ',');
       tStringList sequenceList = split(sequence2, ' ');
    
-      if (!UGA_->StoreSequence(sequenceList))
-      {
-         return DEVICE_ERR;
-      } 
+      return SafeStoreSequence(sequenceList);
    }
    
    return UGA_->RunSequence(false) ? DEVICE_OK : DEVICE_ERR; 
@@ -364,6 +376,12 @@ int RappScanner::StopSequence()
    {
       return DEVICE_ERR;
    }
+}
+
+int RappScanner::GetChannel(char* channelName)
+{
+	CDeviceUtils::CopyLimitedString(channelName, laser2_ ? "2" : "1");
+	return DEVICE_OK;
 }
 
 /////////////////////////////
@@ -525,16 +543,26 @@ int RappScanner::OnMinimumRectSize(MM::PropertyBase* pProp, MM::ActionType eAct)
 // Helper Functions
 /////////////////////////////
 
-void RappScanner::RunDummyCalibration()
+int RappScanner::SafeStoreSequence(tStringList sequenceList)
+{
+   double workLoad = UGA_->GetWorkLoad(sequenceList);
+   if (workLoad >= 100) {
+      return DEVICE_OUT_OF_MEMORY;
+   }
+
+   return UGA_->StoreSequence(sequenceList) ? DEVICE_OK : DEVICE_ERR;
+}
+
+void RappScanner::RunDummyCalibration(bool laser2)
 {
    int side = 4096;
 
-   UGA_->SetCalibrationMode(true, laser2_);
+   UGA_->SetCalibrationMode(true, laser2);
 
-   UGA_->SetAOIEdge(Up, 0, laser2_);
-   UGA_->SetAOIEdge(Down, side-1, laser2_);
-   UGA_->SetAOIEdge(Left, 0, laser2_);
-   UGA_->SetAOIEdge(Right, side-1, laser2_);
+   UGA_->SetAOIEdge(Up, 0, laser2);
+   UGA_->SetAOIEdge(Down, side-1, laser2);
+   UGA_->SetAOIEdge(Left, 0, laser2);
+   UGA_->SetAOIEdge(Right, side-1, laser2);
 
    pointf p0(0, 0);
    pointf p1((float) side-1, 0);
@@ -542,20 +570,20 @@ void RappScanner::RunDummyCalibration()
    pointf p3((float) side-1, (float) side-1);
 
    UGA_->UseMaxCalibration(false);
-   UGA_->InitializeCalibration(4, laser2_);
+   UGA_->InitializeCalibration(4, laser2);
 
    UGA_->CenterSpot();
    UGA_->MoveLaser(Up, side/2 - 1);
    UGA_->MoveLaser(Left, side/2 - 1);
-   UGA_->SetCalibrationPoint(false, 0, p0, laser2_); 
+   UGA_->SetCalibrationPoint(false, 0, p0, laser2); 
    UGA_->MoveLaser(Right, side);
-   UGA_->SetCalibrationPoint(false, 1, p1, laser2_);
+   UGA_->SetCalibrationPoint(false, 1, p1, laser2);
    UGA_->MoveLaser(Down, side);
-   UGA_->SetCalibrationPoint(false, 3, p3, laser2_); //Point-ID 2->3
+   UGA_->SetCalibrationPoint(false, 3, p3, laser2); //Point-ID 2->3
    UGA_->MoveLaser(Left, side);
-   UGA_->SetCalibrationPoint(false, 2, p2, laser2_); //Point-ID 3->2
+   UGA_->SetCalibrationPoint(false, 2, p2, laser2); //Point-ID 3->2
 
-   UGA_->SetCalibrationMode(calibrationMode_ == 1, laser2_);
+   UGA_->SetCalibrationMode(calibrationMode_ == 1, laser2);
 }
 
 std::vector<std::string> & split(const std::string &s, char delim, std::vector<std::string> &elems) {

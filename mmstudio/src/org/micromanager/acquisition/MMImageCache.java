@@ -4,13 +4,16 @@
  */
 package org.micromanager.acquisition;
 
+import ij.CompositeImage;
 import java.awt.Color;
 import org.micromanager.api.ImageCache;
 import org.micromanager.api.ImageCacheListener;
 import java.util.ArrayList;
+import java.util.Collections;
 import org.micromanager.api.TaggedImageStorage;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,7 +35,7 @@ import org.micromanager.utils.ReportingUtils;
 public class MMImageCache implements ImageCache {
 
    public static String menuName_ = null;
-   public ArrayList<ImageCacheListener> imageStorageListeners_ = new ArrayList<ImageCacheListener>();
+   public final List<ImageCacheListener> imageStorageListeners_ = Collections.synchronizedList(new ArrayList<ImageCacheListener>());
    private TaggedImageStorage imageStorage_;
    private Set<String> changingKeys_;
    private JSONObject firstTags_;
@@ -41,15 +44,21 @@ public class MMImageCache implements ImageCache {
    private final ExecutorService fileExecutor_;
 
    public void addImageCacheListener(ImageCacheListener l) {
-      imageStorageListeners_.add(l);
+      synchronized (imageStorageListeners_) {
+         imageStorageListeners_.add(l);
+      }
    }
 
    public ImageCacheListener[] getImageCacheListeners() {
-      return (ImageCacheListener[]) imageStorageListeners_.toArray();
+      synchronized (imageStorageListeners_) {
+         return (ImageCacheListener[]) imageStorageListeners_.toArray();
+      }
    }
 
-   public void removeCacheListener(ImageCacheListener l) {
-      imageStorageListeners_.remove(l);
+   public void removeImageCacheListener(ImageCacheListener l) {
+      synchronized (imageStorageListeners_) {
+         imageStorageListeners_.remove(l);
+      }
    }
 
    public MMImageCache(TaggedImageStorage imageStorage) {
@@ -61,6 +70,7 @@ public class MMImageCache implements ImageCache {
 
    private void preloadImages() {
       new Thread() {
+         @Override
          public void run() {
             for (String label : MMImageCache.this.imageKeys()) {
                int pos[] = MDUtils.getIndices(label);
@@ -73,8 +83,10 @@ public class MMImageCache implements ImageCache {
    public void finished() {
       imageStorage_.finished();
       String path = getDiskLocation();
-      for (ImageCacheListener l : imageStorageListeners_) {
-         l.imagingFinished(path);
+      synchronized (imageStorageListeners_) {
+         for (ImageCacheListener l : imageStorageListeners_) {
+            l.imagingFinished(path);
+         }
       }
    }
 
@@ -107,7 +119,9 @@ public class MMImageCache implements ImageCache {
 
    public void close() {
       imageStorage_.close();
-      imageStorageListeners_.clear();
+      synchronized (imageStorageListeners_) {
+         imageStorageListeners_.clear();
+      }
    }
 
    public void saveAs(TaggedImageStorage newImageFileManager) {
@@ -122,8 +136,7 @@ public class MMImageCache implements ImageCache {
 
       newImageFileManager.setSummaryMetadata(imageStorage_.getSummaryMetadata());
       newImageFileManager.setDisplayAndComments(this.getDisplayAndComments());
-      //Thread th = new Thread(new Runnable() {
-      //   public void run() {
+
       final String progressBarTitle = (newImageFileManager instanceof TaggedImageStorageRam) ? "Loading images..." : "Saving images...";
       final ProgressBar progressBar = new ProgressBar(progressBarTitle, 0, 100);
             ArrayList<String> keys = new ArrayList<String>(imageKeys());
@@ -145,14 +158,11 @@ public class MMImageCache implements ImageCache {
                      }
                   });
             }
+            newImageFileManager.finished();
             progressBar.setVisible(false);
             if (useNewStorage) {
                imageStorage_ = newImageFileManager;
             }
-            newImageFileManager.finished();
-         //}
-      // });
-      //th.start();
       
    }
 
@@ -177,9 +187,10 @@ public class MMImageCache implements ImageCache {
             }
          }
 
-
-         for (ImageCacheListener l : imageStorageListeners_) {
-            l.imageReceived(taggedImg);
+         synchronized (imageStorageListeners_) {
+            for (ImageCacheListener l : imageStorageListeners_) {
+               l.imageReceived(taggedImg);
+            }
          }
       } catch (Exception ex) {
          ReportingUtils.logError(ex);
@@ -332,21 +343,27 @@ public class MMImageCache implements ImageCache {
    }
 
    /////////////////////Channels section/////////////////////////
-   public void storeChannelDisplaySettings(int channelIndex, int min, int max, double gamma, int histMax) {
+   public void storeChannelDisplaySettings(int channelIndex, int min, int max, 
+           double gamma, int histMax, int displayMode) {
       try {
          JSONObject settings = getChannelSetting(channelIndex);
          settings.put("Max", max);
          settings.put("Min", min);
          settings.put("Gamma", gamma);
          settings.put("HistogramMax", histMax);
+         settings.put("DisplayMode", displayMode);
       } catch (Exception ex) {
          ReportingUtils.logError(ex);
       }
    }
-
+  
    public JSONObject getChannelSetting(int channel) {
       try {
          JSONArray array = getDisplayAndComments().getJSONArray("Channels");
+         if (channel >= array.length()) {
+            //expand size
+            array.put(channel, new JSONObject(array.getJSONObject(0).toString()));
+         }
          if (array != null && !array.isNull(channel)) {
             return array.getJSONObject(channel);
          } else {
@@ -422,6 +439,14 @@ public class MMImageCache implements ImageCache {
          ReportingUtils.logError(ex);
       }
 
+   }
+   
+   public int getDisplayMode() {
+      try {
+         return getChannelSetting(0).getInt("DisplayMode");
+      } catch (JSONException ex) {
+         return CompositeImage.COMPOSITE;
+      }
    }
 
    public int getChannelMin(int channelIndex) {

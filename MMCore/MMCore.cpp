@@ -321,7 +321,7 @@ void CMMCore::logMessage(const char* msg, bool debugOnly)
 
 /**
  * Enable or disable logging of debug messages.
- * @param enable - if set to true debug messages will be recorded in the log file 
+ * @param enable   if set to true, debug messages will be recorded in the log file 
  */
 void CMMCore::enableDebugLog(bool enable)
 {
@@ -333,7 +333,7 @@ void CMMCore::enableDebugLog(bool enable)
 
 /**
  * Enables or disables log message display on the standard console.
- * @param enable - if set to true, log file messages will be echoed on the stderr.
+ * @param enable     if set to true, log file messages will be echoed on the stderr.
  */
 void CMMCore::enableStderrLog(bool enable)
 {
@@ -445,7 +445,7 @@ string CMMCore::getAPIVersionInfo() const
 
 /**
  * Returns the entire system state, i.e. the collection of all property values from all devices.
- * @return - Configuration object containing a collection of device-property-value triplets
+ * @return Configuration object containing a collection of device-property-value triplets
  */
 Configuration CMMCore::getSystemState()
 {
@@ -482,7 +482,7 @@ Configuration CMMCore::getSystemState()
 /**
  * Returns the entire system state, i.e. the collection of all property values from all devices.
  * This method will return cached values instead of querying each device
- * @return - Configuration object containing a collection of device-property-value triplets
+ * @return  Configuration object containing a collection of device-property-value triplets
  */
 Configuration CMMCore::getSystemStateCache() const
 {
@@ -561,7 +561,7 @@ Configuration CMMCore::getConfigGroupState(const char* group, bool fromCache) th
  * if any of the properties fail or if the requested device is not present. It will
  * just quietly continue.
  *
- * @param conf - configuration object
+ * @param conf    the configuration object represeting the desired system state
  */
 void CMMCore::setSystemState(const Configuration& conf)
 {
@@ -594,7 +594,7 @@ void CMMCore::setSystemState(const Configuration& conf)
  * path to be set in the plugin manager, and force the plugin manager respect
  * this setting for both discovery and loading drivers.
  *
- * @param paths - search path.
+ * @param path    a list of search paths in a single string
  */
 void CMMCore::addSearchPath(const char *path)
 {
@@ -611,12 +611,12 @@ vector<string> CMMCore::getDeviceLibraries() throw (CMMError)
 
 /**
  * Loads a device from the plugin library.
- * @param label assigned name for the device during the core session
- * @param library the name of the plugin library (dll). The name should be supplied without the
- *                extension and path since the naming convention and locations are platform
- *                dependent
- * @param device the name of the device. The name must correspond to one of the names recognized
- *                   by the specific plugin library.
+ * @param label    assigned name for the device during the core session
+ * @param library  the name of the plugin library (dll). The name should be supplied without the
+ *                 extension and path since the naming convention and locations are platform
+ *                 dependent
+ * @param device   the name of the device. The name must correspond to one of the names recognized
+ *                 by the specific plugin library.
  */
 void CMMCore::loadDevice(const char* label, const char* library, const char* device) throw (CMMError)
 {
@@ -905,7 +905,7 @@ void CMMCore::updateCoreProperty(const char* propName, MM::DeviceType devType) t
 /**
  * Initializes specific device.
  *
- * @param label device label
+ * @param label   the device label
  */
 void CMMCore::initializeDevice(const char* label ///< the device to initialize
                                ) throw (CMMError)
@@ -961,6 +961,37 @@ std::string CMMCore::getDeviceLibrary(const char* label) throw (CMMError)
    char moduleName[MM::MaxStrLength];
    pDevice->GetModuleName(moduleName);
    return string(moduleName);
+}
+
+/**
+ * Unload a library with a particular name. Experimental.
+ */
+void CMMCore::unloadLibrary(const char* moduleName) throw (CMMError)
+{
+   try {
+      vector<string> devices = pluginManager_.GetDeviceList();
+      vector<string>::reverse_iterator it;
+      for (it=devices.rbegin(); it != devices.rend(); it++)
+      {
+         MM::Device* pDev = pluginManager_.GetDevice((*it).c_str());
+         char deviceLabel[MM::MaxStrLength] = "";
+         char deviceModuleName[MM::MaxStrLength] = "";
+         pDev->GetLabel(deviceLabel);
+         pDev->GetModuleName(deviceModuleName);
+         if (0 == strcmp(moduleName, deviceModuleName))
+         {
+            try {
+               unloadDevice(deviceLabel);
+            } catch (CMMError& /*e*/) {} // ignore error; device may already have been unloaded
+         }
+      }
+      pluginManager_.UnloadPluginLibrary(moduleName);
+   }
+   catch (CMMError& /* err */)
+   {
+      logError(moduleName, "Library updating failed.", __FILE__, __LINE__);
+      throw;
+   }
 }
 
 /**
@@ -1033,8 +1064,8 @@ std::string CMMCore::getDeviceDescription(const char* label) throw (CMMError)
  * of device status is required.
  * Some devices ignore this setting.
  *
- * @return double - delay time
- * @param const char* label
+ * @return the delay time in milliseconds
+ * @param label    the device label
  */
 double CMMCore::getDeviceDelayMs(const char* label) throw (CMMError)
 {
@@ -1052,9 +1083,8 @@ double CMMCore::getDeviceDelayMs(const char* label) throw (CMMError)
  * Overrides the built-in value for the action delay.
  * Some devices ignore this setting.
  *
- * @return void 
- * @param const char* label
- * @param double delayMs
+ * @param label      the device label
+ * @param delayMs    the desired delay in milliseconds
  */
 void CMMCore::setDeviceDelayMs(const char* label, double delayMs) throw (CMMError)
 {
@@ -1068,7 +1098,8 @@ void CMMCore::setDeviceDelayMs(const char* label, double delayMs) throw (CMMErro
 /**
  * Signals if the device will use the delay setting or not.
  *
- * @return bool - uses delay if true
+ * @param label    the device label
+ * @return true if the device uses a delay
  */
 bool CMMCore::usesDeviceDelay(const char* label) throw (CMMError)
 {
@@ -1082,7 +1113,8 @@ bool CMMCore::usesDeviceDelay(const char* label) throw (CMMError)
 
 /**
  * Checks the busy status of the specific device.
- * @param label - device label
+ * @param label the device label
+ * @return true if the device is busy
  */
 bool CMMCore::deviceBusy(const char* label) throw (CMMError)
 {
@@ -1093,7 +1125,7 @@ bool CMMCore::deviceBusy(const char* label) throw (CMMError)
 
 /**
  * Waits (blocks the calling thread) for specified time in milliseconds.
- * @param double intervalMs
+ * @param intervalMs the time to sleep in milliseconds
  */
 void CMMCore::sleep(double intervalMs) const
 {
@@ -1104,7 +1136,7 @@ void CMMCore::sleep(double intervalMs) const
 /**
  * Waits (blocks the calling thread) until the specified device becomes
  * non-busy.
- * @param const char* label - device label
+ * @param label   the device label
  */
 void CMMCore::waitForDevice(const char* label) throw (CMMError)
 {
@@ -1118,7 +1150,7 @@ void CMMCore::waitForDevice(const char* label) throw (CMMError)
 
 /**
  * Waits (blocks the calling thread) until the specified device becomes
- * @param const MM::Device* pDev - device
+ * @param device   the device label
  */
 void CMMCore::waitForDevice(MM::Device* pDev) throw (CMMError)
 {
@@ -1145,7 +1177,7 @@ void CMMCore::waitForDevice(MM::Device* pDev) throw (CMMError)
 /**
  * Checks the busy status of the entire system. The system will report busy if any
  * of the devices is busy.
- * @return bool status - true on busy
+ * @return status (true on busy)
  */
 bool CMMCore::systemBusy() throw (CMMError)
 {
@@ -1166,8 +1198,8 @@ void CMMCore::waitForSystem() throw (CMMError)
  * Checks the busy status for all devices of the specific type.
  * The system will report busy if any of the devices of the spefified type are busy.
  *
- * @return bool - true on busy
- * @param MM::DeviceType devType
+ * @return true on busy
+ * @param devType   a constant specifying the device type
  */
 bool CMMCore::deviceTypeBusy(MM::DeviceType devType) throw (CMMError)
 {
@@ -1191,7 +1223,7 @@ bool CMMCore::deviceTypeBusy(MM::DeviceType devType) throw (CMMError)
 
 /**
  * Blocks until all devices of the specific type become ready (not-busy).
- * @param devType constant specifying the device type
+ * @param devType    a constant specifying the device type
  */
 void CMMCore::waitForDeviceType(MM::DeviceType devType) throw (CMMError)
 {
@@ -1202,8 +1234,8 @@ void CMMCore::waitForDeviceType(MM::DeviceType devType) throw (CMMError)
 
 /**
  * Blocks until all devices included in the configuration become ready.
- * @param group
- * @param config
+ * @param group      the configuration group
+ * @param config     the configuration preset
  */
 void CMMCore::waitForConfig(const char* group, const char* configName) throw (CMMError)
 {
@@ -1232,8 +1264,8 @@ void CMMCore::waitForImageSynchro() throw (CMMError)
 
 /**
  * Sets the position of the stage in microns.
- * @param const char* label
- * @param double position
+ * @param label     the stage device label
+ * @param position  the desired stage position, in microns
  */
 void CMMCore::setPosition(const char* label, double position) throw (CMMError)
 {
@@ -1256,8 +1288,8 @@ void CMMCore::setPosition(const char* label, double position) throw (CMMError)
 
 /**
  * Sets the relative position of the stage in microns.
- * @param const char* label
- * @param double d
+ * @param label    the single-axis drive device label
+ * @param d        the amount to move the stage, in microns (positive or negative)
  */
 void CMMCore::setRelativePosition(const char* label, double d) throw (CMMError)
 {
@@ -1278,8 +1310,8 @@ void CMMCore::setRelativePosition(const char* label, double d) throw (CMMError)
 
 /**
  * Returns the current position of the stage in microns.
- * @return position 
- * @param label
+ * @return the position in microns
+ * @param label     the single-axis drive device label
  */
 double CMMCore::getPosition(const char* label) throw (CMMError)
 {
@@ -1299,9 +1331,9 @@ double CMMCore::getPosition(const char* label) throw (CMMError)
 
 /**
  * Sets the position of the XY stage in microns.
- * @param const char* label
- * @param x
- * @param y
+ * @param label  the XY stage device label
+ * @param x      the X axis position in microns
+ * @param y      the Y axis position in microns
  */
 void CMMCore::setXYPosition(const char* deviceName, double x, double y) throw (CMMError)
 {
@@ -1321,9 +1353,9 @@ void CMMCore::setXYPosition(const char* deviceName, double x, double y) throw (C
 
 /**
  * Sets the relative position of the XY stage in microns.
- * @param const char* label
- * @param dx
- * @param dy
+ * @param label  the xy stage device label
+ * @param dx     the distance to move in X (positive or negative)
+ * @param dy     the distance to move in Y (positive or negative)
  */
 void CMMCore::setRelativeXYPosition(const char* deviceName, double dx, double dy) throw (CMMError)
 {
@@ -1343,9 +1375,9 @@ void CMMCore::setRelativeXYPosition(const char* deviceName, double dx, double dy
 
 /**
  * Obtains the current position of the XY stage in microns.
- * @param const char* label
- * @param x
- * @param y
+ * @param deviceName   the stage device label
+ * @param x            a return parameter yielding the X position in microns
+ * @param y            a return parameter yielding the Y position in microns
  */
 void CMMCore::getXYPosition(const char* deviceName, double& x, double& y) throw (CMMError)
 {
@@ -1363,8 +1395,8 @@ void CMMCore::getXYPosition(const char* deviceName, double& x, double& y) throw 
 
 /**
  * Obtains the current position of the X axis of the XY stage in microns.
- * @return x position 
- * @param const char* label
+ * @return    the x position 
+ * @param  deviceName   the stage device label
  */
 double CMMCore::getXPosition(const char* deviceName) throw (CMMError)
 {
@@ -1385,8 +1417,8 @@ double CMMCore::getXPosition(const char* deviceName) throw (CMMError)
 
 /**
  * Obtains the current position of the Y axis of the XY stage in microns.
- * @return y position 
- * @param const char* label
+ * @return   the y position 
+ * @param   deviceName   the stage device label
  */
 double CMMCore::getYPosition(const char* deviceName) throw (CMMError)
 {
@@ -1406,13 +1438,9 @@ double CMMCore::getYPosition(const char* deviceName) throw (CMMError)
 }
 
 /**
- * stop the XY stage motors.
- * @return void 
- * @param const char* label
+ * stop the XY stage motors
+ * @param deviceName    the stage device label
  */
-///**
-// * Aborts current action.
-// */
 void CMMCore::stop(const char* deviceName) throw (CMMError)
 {
    MM::XYStage* pXYStage = getSpecificDevice<MM::XYStage>(deviceName);
@@ -1428,6 +1456,7 @@ void CMMCore::stop(const char* deviceName) throw (CMMError)
 
 /**
  * Calibrates and homes the XY stage.
+ * @param deviceName    the stage device label
  */
 void CMMCore::home(const char* deviceName) throw (CMMError)
 {
@@ -1445,8 +1474,7 @@ void CMMCore::home(const char* deviceName) throw (CMMError)
 //jizhen, 4/12/2007
 /**
  * zero the current XY position.
- * @return void 
- * @param const char* deviceName
+ * @param deviceName    the stage device label
  */
 void CMMCore::setOriginXY(const char* deviceName) throw (CMMError)
 {
@@ -1463,8 +1491,7 @@ void CMMCore::setOriginXY(const char* deviceName) throw (CMMError)
 
 /**
  * zero the current stage position.
- * @return void 
- * @param const char* deviceName
+ * @param deviceName    the stage device label
  */
 void CMMCore::setOrigin(const char* deviceName) throw (CMMError)
 {
@@ -1480,7 +1507,9 @@ void CMMCore::setOrigin(const char* deviceName) throw (CMMError)
 }
 
 /**
- * Set the current position in um to be 0
+ * Zero the stage at a particular position (in microns)
+ * @param deviceName    the stage device label
+ * @param d             the position in the old coordinate (in microns)
  */
 void CMMCore::setAdapterOrigin(const char* deviceName, double d) throw (CMMError)
 {
@@ -1497,7 +1526,10 @@ void CMMCore::setAdapterOrigin(const char* deviceName, double d) throw (CMMError
 
 
 /**
- * Set the current position to be  x,y in um
+ * Reset a parcitular x,y position to be the origin of the XY stage's coordinate system
+ * @param deviceName    the XY stage device label
+ * @param x             the x position in the old coordinate system
+ * @param y             the y position in the old coordinate system
  */
 void CMMCore::setAdapterOriginXY(const char* deviceName, double x, double y) throw (CMMError)
 {
@@ -1515,7 +1547,8 @@ void CMMCore::setAdapterOriginXY(const char* deviceName, double x, double y) thr
 
 /**
  * Queries camera if exposure can be used in a sequence
- * @param cameraLabel - device label
+ * @param cameraLabel    the camera device label
+ * @return   true if exposure can be sequenced
  */
 bool CMMCore::isExposureSequenceable(const char* cameraLabel) throw (CMMError)
 {
@@ -1535,7 +1568,7 @@ bool CMMCore::isExposureSequenceable(const char* cameraLabel) throw (CMMError)
 /**
  * Starts an ongoing sequence of triggered exposures in a camera
  * This should only be called for cameras where exposure time is sequenceable
- * @param cameraLabel - the camera
+ * @param cameraLabel    the camera device label
  */
 void CMMCore::startExposureSequence(const char* cameraLabel) throw (CMMError)
 {
@@ -1551,7 +1584,7 @@ void CMMCore::startExposureSequence(const char* cameraLabel) throw (CMMError)
 /**
  * Stops an ongoing sequence of triggered exposures in a camera
  * This should only be called for cameras where exposure time is sequenceable
- * @param cameraLabel - deviceName
+ * @param cameraLabel   the camera device label
  */
 void CMMCore::stopExposureSequence(const char* cameraLabel) throw (CMMError)
 {
@@ -1566,7 +1599,7 @@ void CMMCore::stopExposureSequence(const char* cameraLabel) throw (CMMError)
 /**
  * Gets the maximum length of a camera's exposure sequence.
  * This should only be called for cameras where exposure time is sequenceable
- * @param cameraLabel - deviceName
+ * @param cameraLabel    the camera device label
  */
 long CMMCore::getExposureSequenceMaxLength(const char* cameraLabel) throw (CMMError)
 {
@@ -1584,8 +1617,8 @@ long CMMCore::getExposureSequenceMaxLength(const char* cameraLabel) throw (CMMEr
 /**
  * Transfer a sequence of exposure times to the camera.
  * This should only be called for cameras where exposure time is sequenceable
- * @param cameraLabel - deviceName
- * @param exposureTime_ms - sequence of exposure times the camera will use during a sequence acquisition
+ * @param cameraLabel      the camera device label
+ * @param exposureTime_ms  sequence of exposure times the camera will use during a sequence acquisition
  */
 void CMMCore::loadExposureSequence(const char* cameraLabel, std::vector<double> exposureTime_ms) throw (CMMError)
 {
@@ -1614,7 +1647,8 @@ void CMMCore::loadExposureSequence(const char* cameraLabel, std::vector<double> 
 
 /**
  * Queries stage if it can be used in a sequence
- * @param deviceName - device label
+ * @param deviceName   the stage device label
+ * @return   true if the stage can be sequenced
  */
 bool CMMCore::isStageSequenceable(const char* deviceName) throw (CMMError)
 {
@@ -1633,7 +1667,7 @@ bool CMMCore::isStageSequenceable(const char* deviceName) throw (CMMError)
 /**
  * Starts an ongoing sequence of triggered events in a stage
  * This should only be called for stages
- * @param label - deviceName
+ * @param label    the stage device label
  */
 void CMMCore::startStageSequence(const char* label) throw (CMMError)
 {
@@ -1649,7 +1683,7 @@ void CMMCore::startStageSequence(const char* label) throw (CMMError)
 /**
  * Stops an ongoing sequence of triggered events in a stage
  * This should only be called for stages that are sequenceable
- * @param label - deviceName
+ * @param label    the stage device label
  */
 void CMMCore::stopStageSequence(const char* label) throw (CMMError)
 {
@@ -1665,7 +1699,8 @@ void CMMCore::stopStageSequence(const char* label) throw (CMMError)
 /**
  * Gets the maximum length of a stage's position sequence.
  * This should only be called for stages that are sequenceable
- * @param label - deviceName
+ * @param label    the stage device label
+ * @return         the maximum length (integer)
  */
 long CMMCore::getStageSequenceMaxLength(const char* label) throw (CMMError)
 {
@@ -1682,8 +1717,8 @@ long CMMCore::getStageSequenceMaxLength(const char* label) throw (CMMError)
 /**
  * Transfer a sequence of events/states/whatever to the device
  * This should only be called for device-properties that are sequenceable
- * @param label - deviceName
- * @param positionSequence - sequence of positions that the stage will execute in reponse to external triggers
+ * @param label              the device label
+ * @param positionSequence   a sequence of positions that the stage will execute in reponse to external triggers
  */
 void CMMCore::loadStageSequence(const char* label, std::vector<double> positionSequence) throw (CMMError)
 {
@@ -1711,7 +1746,7 @@ void CMMCore::loadStageSequence(const char* label, std::vector<double> positionS
 
 /**
  * Queries XY stage if it can be used in a sequence
- * @param deviceName - device label
+ * @param deviceName    the XY stage device label
  */
 bool CMMCore::isXYStageSequenceable(const char* deviceName) throw (CMMError)
 {
@@ -1731,7 +1766,7 @@ bool CMMCore::isXYStageSequenceable(const char* deviceName) throw (CMMError)
 /**
  * Starts an ongoing sequence of triggered events in an XY stage
  * This should only be called for stages
- * @param label - deviceName
+ * @param label       the XY stage device label
  */
 void CMMCore::startXYStageSequence(const char* label) throw (CMMError)
 {
@@ -1748,7 +1783,7 @@ void CMMCore::startXYStageSequence(const char* label) throw (CMMError)
 /**
  * Stops an ongoing sequence of triggered events in an XY stage
  * This should only be called for stages that are sequenceable
- * @param label - deviceName
+ * @param label     the XY stage device label
  */
 void CMMCore::stopXYStageSequence(const char* label) throw (CMMError)
 {
@@ -1763,7 +1798,8 @@ void CMMCore::stopXYStageSequence(const char* label) throw (CMMError)
 /**
  * Gets the maximum length of an XY stage's position sequence.
  * This should only be called for XY stages that are sequenceable
- * @param label - deviceName
+ * @param label   the XY stage device label
+ * @return        the maximum allowed sequence length
  */
 long CMMCore::getXYStageSequenceMaxLength(const char* label) throw (CMMError)
 {
@@ -1781,9 +1817,9 @@ long CMMCore::getXYStageSequenceMaxLength(const char* label) throw (CMMError)
  * Transfer a sequence of stage positions to the xy stage.
  * xSequence and ySequence must have the same length.
  * This should only be called for XY stages that are sequenceable
- * @param label - deviceName
- * @param xSequence - sequence of x positions that the stage will execute in reponse to external triggers
- * @param ySequence - sequence of y positions that the stage will execute in reponse to external triggers
+ * @param label        the XY stage device label
+ * @param xSequence    the sequence of x positions that the stage will execute in reponse to external triggers
+ * @param ySequence    the sequence of y positions that the stage will execute in reponse to external triggers
  */
 void CMMCore::loadXYStageSequence(const char* label,
                                   std::vector<double> xSequence,
@@ -1827,6 +1863,8 @@ void CMMCore::snapImage() throw (CMMError)
             MMERR_NotAllowedDuringSequenceAcquisition).c_str()
             ,MMERR_NotAllowedDuringSequenceAcquisition);
       }
+
+      MMThreadGuard guard(pluginManager_.getModuleLock(camera_));
 
       int ret = DEVICE_OK;
       try {
@@ -1883,7 +1921,7 @@ void CMMCore::snapImage() throw (CMMError)
 /**
  * Add device to the image-synchro list. Image acquistion waits for all devices
  * in this list.
- * @param const char* label - device label
+ * @param label   the device label
  */
 void CMMCore::assignImageSynchro(const char* label) throw (CMMError)
 {
@@ -1893,7 +1931,7 @@ void CMMCore::assignImageSynchro(const char* label) throw (CMMError)
 
 /**
  * Removes device from the image-synchro list.
- * @param const char* label - device label
+ * @param label   the device label
  */
 void CMMCore::removeImageSynchro(const char* label) throw (CMMError)
 {
@@ -1921,7 +1959,7 @@ void CMMCore::removeImageSynchroAll()
 /**
  * If this option is enabled Shutter automatically opens and closes when the image
  * is acquired.
- * @param bool state - true for enabled
+ * @param state      true for enabled
  */
 void CMMCore::setAutoShutter(bool state)
 {
@@ -1941,6 +1979,7 @@ bool CMMCore::getAutoShutter()
 
 /**
  * Opens or closes the currently selected shutter.
+ * @param  state     the desired state of the shutter (true for open)
  */
 void CMMCore::setShutterOpen(bool state) throw (CMMError)
 {
@@ -1963,7 +2002,7 @@ void CMMCore::setShutterOpen(bool state) throw (CMMError)
 }
 
 /**
- * Return the state of the currently selected shutter.
+ * Returns the state of the currently selected shutter.
  */
 bool CMMCore::getShutterOpen() throw (CMMError)
 {
@@ -1988,7 +2027,7 @@ bool CMMCore::getShutterOpen() throw (CMMError)
  *
  * Designed specifically for the SWIG wrapping for Java and scripting languages.
  * @return a pointer to the internal image buffer.
- * @throws CMMError - when the camera returns no data
+ * @throws CMMError   when the camera returns no data
  */
 void* CMMCore::getImage() throw (CMMError)
 {
@@ -2017,6 +2056,7 @@ void* CMMCore::getImage() throw (CMMError)
 
       void* pBuf(0);
       try {
+         MMThreadGuard guard(pluginManager_.getModuleLock(camera_));
          pBuf = const_cast<unsigned char*> (camera_->GetImageBuffer());
 		
       	if (imageProcessor_)
@@ -2047,7 +2087,7 @@ void* CMMCore::getImage() throw (CMMError)
  * irrespective of the channelNr argument
  * Designed specifically for the SWIG wrapping for Java and scripting languages.
  *
- * @param channelNr Channel number for which the image buffer is requested
+ * @param channelNr   Channel number for which the image buffer is requested
  * @return a pointer to the internal image buffer.
  */
 void* CMMCore::getImage(unsigned channelNr) throw (CMMError)
@@ -2058,6 +2098,7 @@ void* CMMCore::getImage(unsigned channelNr) throw (CMMError)
    {
       void* pBuf(0);
       try {
+         MMThreadGuard guard(pluginManager_.getModuleLock(camera_));
          pBuf = const_cast<unsigned char*> (camera_->GetImageBuffer(channelNr));
 		
       	if (imageProcessor_)
@@ -2098,9 +2139,9 @@ long CMMCore::getImageBufferSize() const
  * Starts straming camera sequence acquisition.
  * This command does not block the calling thread for the duration of the acquisition.
  *
- * @param numImages Number of images requested from the camera
- * @param intervalMs interval between images, currently only supported by Andor cameras
- * @param stopOnOverflow whether or not the camera stops acquiring when the circular buffer is full
+ * @param numImages        Number of images requested from the camera
+ * @param intervalMs       The interval between images, currently only supported by Andor cameras
+ * @param stopOnOverflow   whether or not the camera stops acquiring when the circular buffer is full
  */
 void CMMCore::startSequenceAcquisition(long numImages, double intervalMs, bool stopOnOverflow) throw (CMMError)
 {
@@ -2211,7 +2252,7 @@ void CMMCore::initializeCircularBuffer() throw (CMMError)
 
 /**
  * Stops streming camera sequence acquisition for a specified camera.
- * @param label Camera name
+ * @param label   The camera name
  */
 void CMMCore::stopSequenceAcquisition(const char* label) throw (CMMError)
 {
@@ -2742,7 +2783,7 @@ string CMMCore::getChannelGroup()
 
 /**
  * Sets the current shutter device.
- * @param shutter label
+ * @param shutter    the shutter device label
  */
 void CMMCore::setShutterDevice(const char* shutterLabel) throw (CMMError)
 {
@@ -2786,7 +2827,7 @@ void CMMCore::setShutterDevice(const char* shutterLabel) throw (CMMError)
 
 /**
  * Sets the current focus device.
- * @param focus stage label
+ * @param focus    the focus stage device label
  */
 void CMMCore::setFocusDevice(const char* focusLabel) throw (CMMError)
 {
@@ -2824,7 +2865,7 @@ void CMMCore::setXYStageDevice(const char* xyDeviceLabel) throw (CMMError)
 
 /**
  * Sets the current camera device.
- * @param camera label
+ * @param camera   the camera device label
  */
 void CMMCore::setCameraDevice(const char* cameraLabel) throw (CMMError)
 {
@@ -2845,8 +2886,8 @@ void CMMCore::setCameraDevice(const char* cameraLabel) throw (CMMError)
 /**
  * Returns all property names supported by the device.
  *
- * @return vector<string> property name array
- * @param const char* label device label
+ * @return property name array
+ * @param label    the device label
  */
 vector<string> CMMCore::getDevicePropertyNames(const char* label) const throw (CMMError)
 {
@@ -2879,7 +2920,7 @@ vector<string> CMMCore::getDevicePropertyNames(const char* label) const throw (C
 
 /**
  * Returns an array of labels for currently loaded devices.
- * @return vector<string> array of labels
+ * @return array of labels
  */
 vector<string> CMMCore::getLoadedDevices() const
 {
@@ -2890,8 +2931,8 @@ vector<string> CMMCore::getLoadedDevices() const
 
 /**
  * Returns an array of labels for currently loaded devices of specific type.
- * @param devType - device type identifier
- * @return vector<string> array of labels
+ * @param devType    the device type identifier
+ * @return array of labels
  */
 vector<string> CMMCore::getLoadedDevicesOfType(MM::DeviceType devType) const
 {
@@ -2910,9 +2951,9 @@ vector<string> CMMCore::getLoadedDevicesOfType(MM::DeviceType devType) const
  * However, even if all values are allowed it is not guaranteed that all of them will be
  * acually accepted by the device at run time.
  *
- * @return vector<string> the array of values
- * @param const char* label device label
- * @param const std::string& propName property name
+ * @return the array of values
+ * @param label     the device label
+ * @param propName  the property name
  */
 std::vector<std::string> CMMCore::getAllowedPropertyValues(const char* label, const char* propName) const throw (CMMError)
 {
@@ -2944,9 +2985,9 @@ std::vector<std::string> CMMCore::getAllowedPropertyValues(const char* label, co
 /**
  * Returns the property value for the specified device.
 
- * @return string property value
- * @param const char* label device label
- * @param const char* propName property name
+ * @return the property value
+ * @param label      the device label
+ * @param propName   the property name
  */
 string CMMCore::getProperty(const char* label, const char* propName) const throw (CMMError)
 {
@@ -2984,9 +3025,9 @@ string CMMCore::getProperty(const char* label, const char* propName) const throw
 /**
  * Returns the cached property value for the specified device. 
 
- * @return string property value
- * @param const char* label device label
- * @param const char* propName property name
+ * @return the property value
+ * @param label       the device label
+ * @param propName    the property name
  */
 string CMMCore::getPropertyFromCache(const char* label, const char* propName) const throw (CMMError)
 {
@@ -3012,18 +3053,9 @@ string CMMCore::getPropertyFromCache(const char* label, const char* propName) co
 /**
  * Changes the value of the device property.
  *
- * @return void 
- * @param const char* label device label
- * @param const char* propName property name
- * @param const char* propValue the new property value
- */
-/**
- * Changes the value of the device property.
- *
- * @return void 
- * @param const char* label device label
- * @param const char* propName property name
- * @param const char* propValue the new property value
+ * @param label       the device label
+ * @param propName    the property name
+ * @param propValue   the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName, 
                           const char* propValue) throw (CMMError)
@@ -3051,6 +3083,8 @@ void CMMCore::setProperty(const char* label, const char* propName,
          err.setCoreMsg(getCoreErrorText(err.getCode()).c_str());
          throw;
       }
+      
+      MMThreadGuard guard(pluginManager_.getModuleLock(pDevice));
 
       int nRet = pDevice->SetProperty(propName, propValue);
       if (nRet != DEVICE_OK) {
@@ -3068,10 +3102,9 @@ void CMMCore::setProperty(const char* label, const char* propName,
 /**
  * Changes the value of the device property.
  *
- * @return void 
- * @param const char* label device label
- * @param const char* propName property name
- * @param const bool propValue the new property value
+ * @param label        the device label
+ * @param propName     property name
+ * @param propValue    the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName, 
                           const bool propValue) throw (CMMError)
@@ -3083,10 +3116,9 @@ void CMMCore::setProperty(const char* label, const char* propName,
 /**
  * Changes the value of the device property.
  *
- * @return void 
- * @param const char* label device label
- * @param const char* propName property name
- * @param const long propValue the new property value
+ * @param label      the device label
+ * @param propName   the property name
+ * @param propValue  the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName, 
                           const long propValue) throw (CMMError)
@@ -3099,10 +3131,9 @@ void CMMCore::setProperty(const char* label, const char* propName,
 /**
  * Changes the value of the device property.
  *
- * @return void 
- * @param const char* label device label
- * @param const char* propName property name
- * @param const float propValue the new property value
+ * @param label      the device label
+ * @param propName   the property name
+ * @param propValue  the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName, 
                           const float propValue) throw (CMMError)
@@ -3115,10 +3146,9 @@ void CMMCore::setProperty(const char* label, const char* propName,
 /**
  * Changes the value of the device property.
  *
- * @return void 
- * @param const char* label device label
- * @param const char* propName property name
- * @param const double propValue the new property value
+ * @param label          the device label
+ * @param propName       the property name
+ * @param propValue      the new property value
  */
 void CMMCore::setProperty(const char* label, const char* propName, 
                           const double propValue) throw (CMMError)
@@ -3127,10 +3157,6 @@ void CMMCore::setProperty(const char* label, const char* propName,
    ovalue << propValue;
    setProperty(label, propName, ovalue.str().c_str());
 }
-
-
-
-
 
 
 /**
@@ -3159,9 +3185,9 @@ bool CMMCore::hasProperty(const char* label, const char* propName) const throw (
 /**
  * Tells us whether the property can be modified. 
  *
- * @return bool true for read-only property
- * @param const char* label device label
- * @param const char* propName property name
+ * @return true for a read-only property
+ * @param label    the device label
+ * @param propName the property name
  */
 bool CMMCore::isPropertyReadOnly(const char* label, const char* propName) const throw (CMMError)
 {
@@ -3190,9 +3216,9 @@ bool CMMCore::isPropertyReadOnly(const char* label, const char* propName) const 
 /**
  * Tells us whether the property must be defined prior to initialization. 
  *
- * @return bool true for pre-init property
- * @param const char* label device label
- * @param const char* propName property name
+ * @return true for pre-init property
+ * @param label      the device label
+ * @param propName   the property name
  */
 bool CMMCore::isPropertyPreInit(const char* label, const char* propName) const throw (CMMError)
 {
@@ -3246,7 +3272,7 @@ double CMMCore::getPropertyLowerLimit(const char* label, const char* propName) c
 }
 
 /**
- * Returns the property uper limit value, if the property has limits - 0 otherwise.
+ * Returns the property upper limit value, if the property has limits - 0 otherwise.
  */
 double CMMCore::getPropertyUpperLimit(const char* label, const char* propName) const throw (CMMError)
 {
@@ -3274,8 +3300,8 @@ double CMMCore::getPropertyUpperLimit(const char* label, const char* propName) c
 
 /**
  * Queries device if the specific property has limits.
- * @param label - devicename
- * @param propName - propertyName
+ * @param label      the device name
+ * @param propName   the property label
  */
 bool CMMCore::hasPropertyLimits(const char* label, const char* propName) const throw (CMMError)
 {
@@ -3304,8 +3330,8 @@ bool CMMCore::hasPropertyLimits(const char* label, const char* propName) const t
 
 /**
  * Queries device if the specified property can be used in a sequence
- * @param label - devicename
- * @param propName - propertyName
+ * @param label      the device name
+ * @param propName   the property label
  */
 bool CMMCore::isPropertySequenceable(const char* label, const char* propName) const throw (CMMError)
 {
@@ -3335,8 +3361,8 @@ bool CMMCore::isPropertySequenceable(const char* label, const char* propName) co
 
 /**
  * Queries device property for the maximum number of events that can be put in a sequence
- * @param label - devicename
- * @param propName - propertyName
+ * @param label      the device name
+ * @param propName   the property label
  */
 long CMMCore::getPropertySequenceMaxLength(const char* label, const char* propName) const throw (CMMError)
 {
@@ -3367,8 +3393,8 @@ long CMMCore::getPropertySequenceMaxLength(const char* label, const char* propNa
 /**
  * Starts an ongoing sequence of triggered events in a property of a device
  * This should only be called for device-properties that are sequenceable
- * @param label - deviceName
- * @param propName - propertyName
+ * @param label      the device name
+ * @param propName   the property label
  */
 void CMMCore::startPropertySequence(const char* label, const char* propName) const throw (CMMError)
 {
@@ -3395,8 +3421,8 @@ void CMMCore::startPropertySequence(const char* label, const char* propName) con
 /**
  * Stops an ongoing sequence of triggered events in a property of a device
  * This should only be called for device-properties that are sequenceable
- * @param label - deviceName
- * @param propName - propertyName
+ * @param label     the device label
+ * @param propName  the property name
  */
 void CMMCore::stopPropertySequence(const char* label, const char* propName) const throw (CMMError)
 {
@@ -3423,9 +3449,9 @@ void CMMCore::stopPropertySequence(const char* label, const char* propName) cons
 /**
  * Transfer a sequence of events/states/whatever to the device
  * This should only be called for device-properties that are sequenceable
- * @param label - deviceName
- * @param propName - propertyName
- * @param eventSequence - sequence of events/states that the device will execute in reponse to external triggers
+ * @param label           the device name
+ * @param propName        the property label
+ * @param eventSequence   the sequence of events/states that the device will execute in reponse to external triggers
  */
 void CMMCore::loadPropertySequence(const char* label, const char* propName, std::vector<std::string> eventSequence) const throw (CMMError)
 {
@@ -3492,8 +3518,8 @@ MM::PropertyType CMMCore::getPropertyType(const char* label, const char* propNam
 
 
 /**
- * Horizontal dimentsion of the image buffer in pixels.
- * @return unsigned X size
+ * Horizontal dimension of the image buffer in pixels.
+ * @return   the width in pixels (an integer)
  */
 unsigned CMMCore::getImageWidth() const
 {
@@ -3505,7 +3531,7 @@ unsigned CMMCore::getImageWidth() const
 
 /**
  * Vertical dimentsion of the image buffer in pixels.
- * @return unsigned Y size
+ * @return   the height in pixels (an integer)
  */
 unsigned CMMCore::getImageHeight() const
 {
@@ -3518,7 +3544,7 @@ unsigned CMMCore::getImageHeight() const
 /**
  * How many bytes for each pixel. This value does not necessarily reflect the
  * capabilities of the particular camera A/D converter.
- * @return unsigned number of bytes
+ * @return the number of bytes
  */
 unsigned CMMCore::getBytesPerPixel() const
 {
@@ -3533,7 +3559,7 @@ unsigned CMMCore::getBytesPerPixel() const
  * be used only as a guideline - it does not guarante that image buffer will contain
  * only values from the returned dynamic range.
  *
- * @return unsigned number of bits
+ * @return the number of bits
  */
 unsigned CMMCore::getImageBitDepth() const
 {
@@ -3578,12 +3604,13 @@ string CMMCore::getCameraChannelName(unsigned int channelNr) const
 
 /**
  * Sets the current exposure setting of the camera in milliseconds.
- * @param double dExp exposure in milliseconds
+ * @param dExp   the exposure in milliseconds
  */
 void CMMCore::setExposure(double dExp) throw (CMMError)
 {
    if (camera_)
    {
+      MMThreadGuard guard(pluginManager_.getModuleLock(camera_));
       camera_->SetExposure(dExp);
       if (camera_->HasProperty(MM::g_Keyword_Exposure))
       {
@@ -3600,12 +3627,15 @@ void CMMCore::setExposure(double dExp) throw (CMMError)
 
 /**
  * Returns the current exposure setting of the camera in milliseconds.
- * @return double dExp exposure in milliseconds
+ * @return the exposure time in milliseconds
  */
-double CMMCore::getExposure() const throw (CMMError)
+double CMMCore::getExposure() throw (CMMError)
 {
    if (camera_)
+   {
+      MMThreadGuard guard(pluginManager_.getModuleLock(camera_));
       return camera_->GetExposure();
+   }
    else
       //throw CMMError(getCoreErrorText(MMERR_CameraNotAvailable).c_str(), MMERR_CameraNotAvailable);
       return 0.0;
@@ -3615,15 +3645,16 @@ double CMMCore::getExposure() const throw (CMMError)
  * Sets hardware Region Of Interest (ROI). This command will
  * change dimensions of the image.
  * 
- * @param int x coordinate of the top left corner
- * @param int y coordinate of the top left corner
- * @param int xSize horizontal dimension
- * @param int ySize vertical dimension
+ * @param x      coordinate of the top left corner
+ * @param y      coordinate of the top left corner
+ * @param xSize  horizontal dimension
+ * @param ySize  vertical dimension
  */
 void CMMCore::setROI(int x, int y, int xSize, int ySize) throw (CMMError)
 {
    if (camera_)
    {
+      MMThreadGuard guard(pluginManager_.getModuleLock(camera_));
       int nRet = camera_->SetROI(x, y, xSize, ySize);
       if (nRet != DEVICE_OK)
          throw CMMError(getDeviceErrorText(nRet, camera_).c_str(), MMERR_DEVICE_GENERIC);
@@ -3637,16 +3668,17 @@ void CMMCore::setROI(int x, int y, int xSize, int ySize) throw (CMMError)
 /**
  * Returns info on the current Region Of Interest (ROI).
  * 
- * @param int x coordinate of the top left corner
- * @param int y coordinate of the top left corner
- * @param int xSize horizontal dimension
- * @param int ySize vertical dimension
+ * @param x      coordinate of the top left corner
+ * @param y      coordinate of the top left corner
+ * @param xSize  horizontal dimension
+ * @param ySize  vertical dimension
  */
-void CMMCore::getROI(int& x, int& y, int& xSize, int& ySize) const throw (CMMError)
+void CMMCore::getROI(int& x, int& y, int& xSize, int& ySize) throw (CMMError)
 {
    unsigned uX(0), uY(0), uXSize(0), uYSize(0);
    if (camera_)
    {
+      MMThreadGuard guard(pluginManager_.getModuleLock(camera_));
       int nRet = camera_->GetROI(uX, uY, uXSize, uYSize);
       if (nRet != DEVICE_OK)
          throw CMMError(getDeviceErrorText(nRet, camera_).c_str(), MMERR_DEVICE_GENERIC);
@@ -3666,6 +3698,7 @@ void CMMCore::clearROI() throw (CMMError)
    if (camera_)
    {
       // effectively clears the current ROI setting
+      MMThreadGuard guard(pluginManager_.getModuleLock(camera_));
       int nRet = camera_->ClearROI();
       if (nRet != DEVICE_OK)
          throw CMMError(getDeviceErrorText(nRet, camera_).c_str(), MMERR_DEVICE_GENERIC);
@@ -3676,12 +3709,13 @@ void CMMCore::clearROI() throw (CMMError)
  * Sets the state (position) on the specific device. The command will fail if
  * the device does not support states.
  *
- * @param const char* deviceLabel device label
- * @param long state new state
+ * @param deviceLabel  the device label
+ * @param state        the new state
  */
 void CMMCore::setState(const char* deviceLabel, long state) throw (CMMError)
 {
    MM::State* pStateDev = getSpecificDevice<MM::State>(deviceLabel);
+   MMThreadGuard guard(pluginManager_.getModuleLock(pStateDev));
 
    int nRet = pStateDev->SetPosition(state);
    if (nRet != DEVICE_OK)
@@ -3707,12 +3741,13 @@ void CMMCore::setState(const char* deviceLabel, long state) throw (CMMError)
  * Returns the current state (position) on the specific device. The command will fail if
  * the device does not support states.
  *
- * @return long current state
- * @param const char* deviceLabel device label
+ * @return                the current state
+ * @param deviceLabel     the device label
  */
-long CMMCore::getState(const char* deviceLabel) const throw (CMMError)
+long CMMCore::getState(const char* deviceLabel) throw (CMMError)
 {
    MM::State* pStateDev = getSpecificDevice<MM::State>(deviceLabel);
+   MMThreadGuard guard(pluginManager_.getModuleLock(pStateDev));
 
    long state;
    int nRet = pStateDev->GetPosition(state);
@@ -3735,8 +3770,8 @@ long CMMCore::getNumberOfStates(const char* deviceLabel)
 /**
  * Sets device state using the previously assigned label (string).
  * 
- * @param const char* deviceLabel device label
- * @param const char* stateLabel state label
+ * @param deviceLabel     the device label
+ * @param stateLabel      the state label
  */
 void CMMCore::setStateLabel(const char* deviceLabel, const char* stateLabel) throw (CMMError)
 {
@@ -3762,8 +3797,8 @@ void CMMCore::setStateLabel(const char* deviceLabel, const char* stateLabel) thr
 /**
  * Returns the current state as the label (string).
  *
- * @return string state label 
- * @param const char* deviceLabel device label
+ * @return   the current state's label 
+ * @param deviceLabel     the device label
  */
 string CMMCore::getStateLabel(const char* deviceLabel) const throw (CMMError)
 {
@@ -3780,9 +3815,9 @@ string CMMCore::getStateLabel(const char* deviceLabel) const throw (CMMError)
 /**
  * Defines a label for the specific state/
  *
- * @param const char* deviceLabel device label
- * @param long state state
- * @param const char* label assingned label
+ * @param deviceLabel    the device label
+ * @param state          the state to be labeled
+ * @param label          the label for the specified state
  */
 void CMMCore::defineStateLabel(const char* deviceLabel, long state, const char* label) throw (CMMError)
 {
@@ -3833,8 +3868,8 @@ void CMMCore::defineStateLabel(const char* deviceLabel, long state, const char* 
 /**
  * Return labels for all states
  *
- * @return vector<string> an array of labels
- * @param const char* deviceLabel device label
+ * @return  an array of state labels
+ * @param deviceLabel       the device label
  */
 vector<string> CMMCore::getStateLabels(const char* deviceLabel) const throw (CMMError)
 {
@@ -3854,9 +3889,9 @@ vector<string> CMMCore::getStateLabels(const char* deviceLabel) const throw (CMM
 /**
  * Obtain the state for a given label.
  *
- * @return long state 
- * @param const char* deviceLabel device label
- * @param const char* stateLabel state label
+ * @return the state (an integer)
+ * @param deviceLabel     the device label
+ * @param stateLabel      the label for which the state is being queried
  */
 long CMMCore::getStateFromLabel(const char* deviceLabel, const char* stateLabel) const throw (CMMError)
 {
@@ -3876,10 +3911,10 @@ long CMMCore::getStateFromLabel(const char* deviceLabel, const char* stateLabel)
  * property settings. The new setting will override previously defined ones if it
  * refers to the same property name.
  *
- * @param const char* configName configuration name
- * @param const char* deviceLabel device label
- * @param const char* propName property name
- * @param const char* value property value
+ * @param configName   the configuration name
+ * @param deviceLabel  the device label
+ * @param propName     the property name
+ * @param value        the property value
  */
 void CMMCore::defineConfiguration(const char* configName, const char* deviceLabel, const char* propName, const char* value)
 {
@@ -3916,7 +3951,7 @@ void CMMCore::defineConfiguration(const char* configName, const char* deviceLabe
  * Applies a configuration. The command will fail if the
  * configuration was not previously defined.
  *
- * @param const char* configName configuration name
+ * @param configName      the configuration name
  */
 void CMMCore::setConfiguration(const char* configName) throw (CMMError)
 {
@@ -3942,7 +3977,7 @@ void CMMCore::setConfiguration(const char* configName) throw (CMMError)
  * Deletes a configuration. The command will fail if the
  * configuration was not previously defined.
  *
- * @param const char* configName configuration name
+ * @param configName      the configuration name
  */
 void CMMCore::deleteConfiguration(const char* configName) throw (CMMError)
 {
@@ -3960,7 +3995,7 @@ void CMMCore::deleteConfiguration(const char* configName) throw (CMMError)
 
 /**
  * Returns all defined configuration names.
- * @return std::vector<string> an array of configuration names
+ * @return an array of configuration names
  */
 std::vector<string> CMMCore::getAvailableConfigurations() const
 {
@@ -3979,7 +4014,7 @@ std::vector<string> CMMCore::getAvailableConfigurations() const
  * Also, in general it is possible that the system state fits multiple configurations.
  * This method will return only the first maching configuration, if any.
  *
- * @return string configuration name
+ * @return the name of the current configuration
  */
 string CMMCore::getConfiguration() const
 {
@@ -4011,8 +4046,8 @@ string CMMCore::getConfiguration() const
 /**
  * Returns the configuration object for a given name.
  *
- * @return Configuration configuration object
- * @param const char* configName configuration name
+ * @return The configuration object
+ * @param configName        the configuration name
  */
 Configuration CMMCore::getConfigurationData(const char* configName) const throw (CMMError)
 {
@@ -4084,8 +4119,8 @@ void CMMCore::renameConfigGroup(const char* oldGroupName, const char* newGroupNa
  * Defines a configuration. If the configuration group/name was not previously defined 
  * a new configuration will be automatically created; otherwise nothing happens.
  *
- * @param groupName group name
- * @param configName configuration name
+ * @param groupName    the configuration group name
+ * @param configName   the configuration preset name
  */
 void CMMCore::defineConfig(const char* groupName, const char* configName) throw (CMMError)
 {
@@ -4105,11 +4140,11 @@ void CMMCore::defineConfig(const char* groupName, const char* configName) throw 
  * property settings. The new setting will override previously defined ones if it
  * refers to the same property name.
  *
- * @param groupName group name
- * @param configName configuration name
- * @param deviceLabel device label
- * @param propName property name
- * @param value property value
+ * @param groupName    the group name
+ * @param configName   the configuration name
+ * @param deviceLabel  the device label
+ * @param propName     the property name
+ * @param value        the property value
  */
 void CMMCore::defineConfig(const char* groupName, const char* configName, const char* deviceLabel, const char* propName, const char* value) throw (CMMError)
 {
@@ -4180,8 +4215,8 @@ void CMMCore::setPixelSizeUm(const char* resolutionID, double pixSize)  throw (C
  * Applies a Pixel Size Configurdation. The command will fail if the
  * configuration was not previously defined.
  * 
- * @param groupName
- * @param configName
+ * @param groupName   the configuration group name
+ * @param configName  the configuration preset name
  */
 void CMMCore::setPixelSizeConfig(const char* resolutionID) throw (CMMError)
 {
@@ -4208,8 +4243,8 @@ void CMMCore::setPixelSizeConfig(const char* resolutionID) throw (CMMError)
  * Applies a configuration to a group. The command will fail if the
  * configuration was not previously defined.
  * 
- * @param groupName
- * @param configName
+ * @param groupName   the configuration group name
+ * @param configName  the configuration preset name
  */
 void CMMCore::setConfig(const char* groupName, const char* configName) throw (CMMError)
 {
@@ -4295,7 +4330,7 @@ void CMMCore::deleteConfig(const char* groupName, const char* configName, const 
 
 /**
  * Returns all defined configuration names in a given group
- * @return std::vector<string> an array of configuration names
+ * @return an array of configuration names
  */
 vector<string> CMMCore::getAvailableConfigs(const char* group) const
 {
@@ -4304,7 +4339,7 @@ vector<string> CMMCore::getAvailableConfigs(const char* group) const
 
 /**
  * Returns the names of all defined configuration groups
- * @return std::vector<string> an array of names of configuration groups
+ * @return  an array of names of configuration groups
  */
 vector<string> CMMCore::getAvailableConfigGroups() const
 {
@@ -4313,7 +4348,7 @@ vector<string> CMMCore::getAvailableConfigGroups() const
 
 /**
  * Returns all defined resolution preset names
- * @return std::vector<string> an array of resolution presets
+ * @return an array of resolution presets
  */
 vector<string> CMMCore::getAvailablePixelSizeConfigs() const
 {
@@ -4327,7 +4362,7 @@ vector<string> CMMCore::getAvailablePixelSizeConfigs() const
  * Also, in general it is possible that the system state fits multiple configurations.
  * This method will return only the first matching configuration, if any.
  *
- * @return string configuration name
+ * @return The current configuration preset's name
  */
 string CMMCore::getCurrentConfig(const char* groupName) throw (CMMError)
 {
@@ -4361,7 +4396,7 @@ string CMMCore::getCurrentConfig(const char* groupName) throw (CMMError)
  * Also, in general it is possible that the system state fits multiple configurations.
  * This method will return only the first matching configuration, if any.
  *
- * @return string configuration name
+ * @return The cache's current configuration preset name
  */
 string CMMCore::getCurrentConfigFromCache(const char* groupName) throw (CMMError)
 {
@@ -4390,7 +4425,7 @@ string CMMCore::getCurrentConfigFromCache(const char* groupName) throw (CMMError
 /**
  * Returns the configuration object for a given group and name.
  *
- * @return Configuration configuration object
+ * @return The configuration object
  */
 Configuration CMMCore::getConfigData(const char* groupName, const char* configName) throw (CMMError)
 {
@@ -4408,7 +4443,7 @@ Configuration CMMCore::getConfigData(const char* groupName, const char* configNa
 
 /**
  * Returns the configuration object for a give pixel size preset.
- * @return Configuration configuration object
+ * @return The configuration object
  */
 Configuration CMMCore::getPixelSizeConfigData(const char* configName) throw (CMMError)
 {
@@ -4789,7 +4824,7 @@ void CMMCore::setSerialPortCommand(const char* name, const char* command, const 
 }
 
 /**
- * Continouously read from the serial port until the terminating sequence is encountered.
+ * Continuously read from the serial port until the terminating sequence is encountered.
  */
 std::string CMMCore::getSerialPortAnswer(const char* name, const char* term) throw (CMMError) 
 {
@@ -4970,6 +5005,19 @@ void CMMCore::pointGalvoAndFire(const char* deviceLabel, double x, double y, dou
    }
 }
 
+void CMMCore::setGalvoSpotInterval(const char* deviceLabel, double pulseTime_us) throw (CMMError)
+{
+   MM::Galvo* pGalvo = getSpecificDevice<MM::Galvo>(deviceLabel);
+
+   int ret = pGalvo->SetSpotInterval(pulseTime_us);
+
+   if (ret != DEVICE_OK)
+   {
+      logError(deviceLabel, getDeviceErrorText(ret, pGalvo).c_str());
+      throw CMMError(deviceLabel, getDeviceErrorText(ret, pGalvo).c_str(), MMERR_DEVICE_GENERIC);
+   }
+}
+
 
 /**
  * Set the Galvo to an x,y position
@@ -5130,6 +5178,23 @@ void CMMCore::runGalvoSequence(const char* deviceLabel) throw (CMMError)
       logError(deviceLabel, getDeviceErrorText(ret, pGalvo).c_str());
       throw CMMError(deviceLabel, getDeviceErrorText(ret, pGalvo).c_str(), MMERR_DEVICE_GENERIC);
    }
+}
+
+/**
+ * Get the name of the active galvo channel (for a multi-laser galvo device).
+ */
+string CMMCore::getGalvoChannel(const char* deviceLabel) throw (CMMError)
+{
+   MM::Galvo* pGalvo = getSpecificDevice<MM::Galvo>(deviceLabel);
+   char channelName[MM::MaxStrLength];
+   int ret = pGalvo->GetChannel(channelName);
+   
+   if (ret != DEVICE_OK)
+   {
+      logError(deviceLabel, getDeviceErrorText(ret, pGalvo).c_str());
+      throw CMMError(deviceLabel, getDeviceErrorText(ret, pGalvo).c_str(), MMERR_DEVICE_GENERIC);
+   }
+   return string(channelName);
 }
 
 /* SYSTEM STATE */
@@ -6138,13 +6203,6 @@ void CMMCore::updateAllowedChannelGroups()
 // Acqusition context methods
 // experimental implementation works only with image processor devices
 //
-void CMMCore::acqBefore() throw (CMMError)
-{
-}
-
-void CMMCore::acqAfter() throw (CMMError)
-{
-}
 
 void CMMCore::acqBeforeFrame() throw (CMMError)
 {
@@ -6177,15 +6235,18 @@ void CMMCore::acqAfterFrame() throw (CMMError)
    }
 }
 
-void CMMCore::acqBeforeStack() throw (CMMError)
-{
-}
 
-void CMMCore::acqAfterStack() throw (CMMError)
-{
-}
+///////////////////////////////////////////////////////////////////////////////
+//  Automatic device and serial port discovery methods
+//
 
-
+/**
+ * Tries to communicate to a device through a given serial port
+ * Used to automate discovery of correct serial port
+ * Also configures the serial port correctly
+ *
+ * @param deviceName  the label of the device for which the serial port should be found
+ */
 MM::DeviceDetectionStatus CMMCore::detectDevice(char* deviceName)
 {
    MM::DeviceDetectionStatus result = MM::Unimplemented; 
@@ -6263,6 +6324,7 @@ MM::DeviceDetectionStatus CMMCore::detectDevice(char* deviceName)
 
    return result;
 }
+
 /**
  * Performs auto-detection and loading of child devices that are attached to a Hub device.
  * For example, if a motorized microscope is represented by a Hub device, it is capable of
@@ -6270,7 +6332,7 @@ MM::DeviceDetectionStatus CMMCore::detectDevice(char* deviceName)
  * report that Z-stage, filter changer and objective turrent are currently installed and return three
  * device names in the string list.
  *
- * @param hubDeviceLabel - A device of type Hub
+ * @param hubDeviceLabel    the label for the device of type Hub
  */
 std::vector<std::string> CMMCore::getInstalledDevices(const char* hubDeviceLabel)
 {

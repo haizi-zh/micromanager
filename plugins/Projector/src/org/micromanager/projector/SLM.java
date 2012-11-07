@@ -33,6 +33,10 @@ public class SLM implements ProjectionDevice {
       slmHeight_ = (int) mmc.getSLMHeight(slm_);
    }
 
+   public String getName() {
+       return slm_;
+   }
+   
    private void displaySpot(int x, int y) {
       ImageProcessor proc = new ByteProcessor(slmWidth_, slmHeight_);
       proc.setColor(Color.black);
@@ -161,4 +165,20 @@ public class SLM implements ProjectionDevice {
       throw new UnsupportedOperationException("Not supported yet.");
    }
 
+   public String getChannel() {
+       return "Default";
+   }
+   
+   public void waitForDevice() {
+        try {
+            mmc_.waitForDevice(slm_);
+        } catch (Exception ex) {
+            ReportingUtils.logError(ex);
+        }
+   }
+
+   @Override
+   public void setSpotInterval(long interval_us) {
+      throw new UnsupportedOperationException("Not supported yet.");
+   }
 }

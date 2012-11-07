@@ -23,14 +23,14 @@
            [java.io BufferedReader File FileReader PrintWriter]
            [java.util Comparator Vector]
            [java.util.prefs Preferences]
-           [java.util.concurrent LinkedBlockingQueue]
+           [java.util.concurrent LinkedBlockingQueue ScheduledThreadPoolExecutor]
            [java.awt Color Dimension Font Insets]
            [java.awt.event ItemEvent ItemListener KeyAdapter MouseAdapter
                            WindowAdapter WindowListener]
            [com.swtdesigner SwingResourceManager]
            [org.micromanager.api ImageCacheListener]
            [org.micromanager.acquisition MMImageCache]
-           [org.micromanager.utils JavaUtils ReportingUtils])
+           [org.micromanager.utils GUIUpdater JavaUtils ReportingUtils])
   (:use [org.micromanager.browser.utils
             :only (gen-map constrain-to-parent create-button create-icon-button
                    attach-action-key remove-borders choose-directory
@@ -40,8 +40,12 @@
                    create-alphanumeric-comparator
                    super-location? get-file-parent)]
         [clojure.data.json :only (read-json)]
-        [clojure.java.io :only (file)]
+        [clojure.java.io :only (file reader)]
         [org.micromanager.mm :only (load-mm gui json-to-data)]))
+
+(def table-updater (GUIUpdater.))
+
+(def title-bar-updater (GUIUpdater.))
 
 (def browser (atom nil))
 
@@ -85,7 +89,8 @@
       (.setTitle
         (str "Micro-Manager Data Set Browser ("
              (if (and (empty? pending-data-sets)
-                      (empty? pending-locations))
+                      (empty? pending-locations)
+                      )
                "Idle" "Scanning")
              " \u2014 " (count @current-data) " images)"))))
 
@@ -121,11 +126,13 @@
 (defn connect-search [search-field table]
   (let [d (.getDocument search-field)
         f #(send-off filter-agent
-            (fn [_]
-              (set-filter table (.getText d 0 (.getLength d)))
-              (.setBackground search-field
-                (if (zero? (.getRowCount table))
-                  Color/PINK Color/WHITE))))]
+                     (fn [_]
+                       (try
+                         (set-filter table (.getText d 0 (.getLength d)))
+                         (.setBackground search-field
+                                         (if (zero? (.getRowCount table))
+                                           Color/PINK Color/WHITE))
+                         (catch Exception _ nil))))]
     (.addDocumentListener d
       (reify DocumentListener
         (insertUpdate [_ _] (f))
@@ -189,13 +196,16 @@
       data
       (conj data new-row))))
 
+(def last-table-update (atom 0))
+
 (defn update-browser-table []
   (let [table (@browser :table)
         selected-rows (.getSelectedRows table)
         selected-paths (set (map row-index-to-path selected-rows))]
     (.. table getModel fireTableDataChanged)
-    (doseq [selected-row selected-rows]
-      (.addRowSelectionInterval table selected-row selected-row))))
+    (when (pos? (.getRowCount table))
+      (doseq [selected-row selected-rows]
+        (.addRowSelectionInterval table selected-row selected-row)))))
 
 (defn add-data [new-row]
   (let [row-vec (vec new-row)
@@ -234,11 +244,13 @@
   (let [f (file path)]
     (and (.exists f)
          (.isDirectory f)
-         (or (.exists (file f "display_and_comments.txt"))
+         (or (.exists (file f "metadata.txt"))
+             (.exists (file f "display_and_comments.txt"))
              (->> (.listFiles f)
-                  (filter #(not (.isDirectory %)))
+                  (remove #(.isDirectory %))
                   (map #(.getName %))
-                  (filter #(.contains % "_images"))
+                  (filter #(or (.contains % "_images")
+                               (.contains % "_MMImages")))
                   seq)))))
        
 (defn find-data-sets [root-dir]
@@ -264,8 +276,15 @@
 (defn as-path [f]
   (.getAbsolutePath (file f)))
 
-(defn read-summary-map [path]
-    (try  
+(defn read-summary-map-from-metadata-txt [dir]
+  (let [metadata-txt (file dir "metadata.txt")]
+    (when (.exists metadata-txt)
+      (let [preamble (apply str (take 1000 (line-seq (reader metadata-txt))))]
+        (read-json (second (re-find #"\"Summary\"\:\s*?(\{.*?})" preamble))
+                   false)))))
+
+(defn read-summary-map-from-mm-api [path]
+  (try  
     (let [name (.openAcquisitionData gui (as-path path) false false)]
      (try
       (let [cache (.getAcquisitionImageCache gui name)
@@ -274,8 +293,11 @@
         data)
       (catch Exception e (do (try (.closeAcquisition gui name)
                                   (catch Exception _ nil))
-                             (.printStackTrace e)))))
-      (catch Exception e nil)))
+                             (ReportingUtils/logError e)))))))
+
+(defn read-summary-map [path]
+  (or (read-summary-map-from-metadata-txt path)
+      (read-summary-map-from-mm-api path)))
 
 (defn get-summary-map [data-set location]
   ;(println data-set)
@@ -303,25 +325,33 @@
 
 (def default-headings ["Path" "Time" "Frames" "Comment" "Location"])
 
-(defn start-scanning-thread []
-  (doto (Thread.
-            (fn []
-              (try
-                (dorun
-                  (loop []
-                    (Thread/sleep 5)
-                    (let [location (.take pending-locations)]
+(defn start-background-iterating-thread [iteration-fn thread-name]
+  (doto
+    (Thread.
+      (fn []
+        (dorun
+          (loop []
+            (Thread/sleep 5)
+            (try (iteration-fn)
+                 (catch Exception e (.printStackTrace e)))
+            (recur))))
+      thread-name)
+    (.setPriority Thread/MIN_PRIORITY)
+    .start))
+
+(defn scanning-iteration []
+  (let [location (.take pending-locations)]
                       (when-not (= location pending-locations)
                         (doseq [data-set (find-data-sets location)]
-                          ; (println "data-set:" data-set)
                           (.put pending-data-sets [data-set location]))
-                        (recur)))))
-                  (catch Exception e nil)))
-          "data browser scanning thread") .start))
+                        )))
 
+(defn start-scanning-thread []
+  (start-background-iterating-thread scanning-iteration "DataBrowser scanning thread"))
 
-(defn read-iteration []
+(defn reading-iteration []
   (let [data-set (.take pending-data-sets)]
+    ;(println "reading" data-set)
     (if (= data-set pending-data-sets) ;; poison
       (update-browser-status)
       (let [loc (second data-set)]
@@ -329,23 +359,14 @@
           (when-let [m (apply get-summary-map data-set)]
             (add-data (map #(get m %) tags))
             ;(remove-sibling-positions m)
-            (awt-event (update-browser-status))))))))
+            (.post title-bar-updater update-browser-status)))))))
 
 (defn start-reading-thread []
-  (doto (Thread.
-          (fn []
-            (try
-              (dorun
-                (loop []
-                  (Thread/sleep 5)
-                  (read-iteration)
-                        (recur)))
-              (catch Exception e (.printStackTrace e))))
-          "data browser reading thread") .start))
+  (start-background-iterating-thread reading-iteration "DataBrowser reading thread")
+  (awt-event (update-browser-status)))
 
 (defn scan-location [location]
   (.put pending-locations location)
-    (update-browser-status)
     (awt-event (-> @settings-window :locations :table
                    .getModel .fireTableDataChanged)))
 
@@ -665,6 +686,14 @@ inside an existing location in your collection."
         (proxy [ItemListener] []
           (itemStateChanged [_] (reset! value-atom (.isSelected cb))))))))
 
+(defn update-no-faster-than [run-function interval]
+  (let [now (System/currentTimeMillis)]
+    (future
+      (Thread/sleep interval)
+      (when (> (- now @last-table-update) interval)
+        (reset! last-table-update now)
+        (run-function)))))
+
 (defn create-browser []
   (let [frame (JFrame.)
         panel (.getContentPane frame)
@@ -718,7 +747,9 @@ inside an existing location in your collection."
     (persist-window-shape prefs "browser-shape" frame)
     (add-watch current-data "updater" (fn [_ _ old new]
                                         (when (not= old new)
-                                          (awt-event (update-browser-table)))))
+                                          (update-no-faster-than
+                                            #(awt-event (update-browser-table))
+                                            1000))))
     (gen-map frame table scroll-pane settings-button search-field
              collection-menu refresh-button)))
 

@@ -320,12 +320,6 @@ public:
    bool Busy() {return busy_;}
    unsigned long GetNumberOfPositions()const {return numPos_;}
 
-
-   // Sequence related functions
-   int IsPropertySequenceable(const char* name, bool& isSequenceable);
-   int StartPropertySequence(const char* propertyName);
-   int StopPropertySequence(const char* propertyName);
-
    // action interface
    // ----------------
    int OnState(MM::PropertyBase* pProp, MM::ActionType eAct);
@@ -774,7 +768,7 @@ public:
       (const_cast<DemoDA *>(this))->SetSequenceStateOff();
       return DEVICE_OK;
    }
-   int SendDASequence() const;
+   int SendDASequence();
    int ClearDASequence();
    int AddToDASequence(double voltage);
 

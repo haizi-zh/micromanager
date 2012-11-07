@@ -65,33 +65,9 @@ CPluginManager::~CPluginManager()
    DeleteModuleLocks();
 }
 
-// disable MSVC warning about unreferenced variable "ret"
-#ifdef WIN32
-#pragma warning(disable : 4189)
-#endif
 
-/** 
- * Unloads the plugin library 
- * This function is deprecated.  Unloading the plugin libraries disallows them to maintain information
- * between invocations.  Not releasing the libraries does not seem to have bad consequences.  
- * This function can be removed and the code involved can be refactored
- */
-void CPluginManager::ReleasePluginLibrary(HDEVMODULE)
-{
-   #ifdef WIN32
-      //BOOL ret = FreeLibrary((HMODULE)hLib);
-      //assert(ret);
-   #else
-   // Note that even though we use the RTLD_NODELETE flag, the library still disappears (at least on the Mac) when dlclose is called...
-      //int nRet = dlclose(hLib);
-      //assert(nRet == 0);
-   #endif
-}
-#ifdef WIN32
-#pragma warning(default : 4189)
-#endif
-
-vector<string> CPluginManager::searchPaths_;
+std::vector<std::string> CPluginManager::searchPaths_;
+std::map<std::string, HDEVMODULE> CPluginManager::moduleMap_;
 
 /**
  * Add search path.
@@ -164,29 +140,60 @@ HDEVMODULE CPluginManager::LoadPluginLibrary(const char* shortName)
    name += LIB_NAME_SUFFIX;
    name = FindInSearchPath(name);
 
+   HDEVMODULE hMod;
    string errorText;
    #ifdef WIN32
       int originalErrorMode = SetErrorMode(SEM_NOOPENFILEERRORBOX | SEM_FAILCRITICALERRORS);
-      HMODULE hMod = LoadLibrary(name.c_str());
+      hMod = (HDEVMODULE) LoadLibrary(name.c_str());
       SetErrorMode(originalErrorMode);
-      if (hMod)
-         return (HDEVMODULE) hMod;
    #else
       int mode = RTLD_NOW | RTLD_LOCAL;
       // Hack to make Andor adapter on Linux work
       if (strcmp (shortName, "Andor") == 0)
          mode = RTLD_LAZY | RTLD_LOCAL;
-      HDEVMODULE hMod = dlopen(name.c_str(), RTLD_NOLOAD | mode);
-      if (hMod)
-         return  hMod;
-      hMod = dlopen(name.c_str(), RTLD_NODELETE | mode);
-      if (hMod)
-         return  hMod;
+      hMod = dlopen(name.c_str(), RTLD_NOLOAD | mode);
+      if (!hMod)
+      {
+         hMod = dlopen(name.c_str(), RTLD_NODELETE | mode);
+      }
    #endif // WIN32
+   if (hMod) 
+   {
+      moduleMap_[shortName] = hMod;
+      return hMod;
+   }
    GetSystemError (errorText);
    errorText += " ";
    errorText += shortName;
    throw CMMError(errorText.c_str(), MMERR_LoadLibraryFailed); // dll load failed
+}
+
+/** 
+ * Unloads the plugin library. Experimental.
+ */
+void CPluginManager::UnloadPluginLibrary(const char* moduleName)
+{
+   string name(LIB_NAME_PREFIX);
+   name += moduleName;
+   name += LIB_NAME_SUFFIX;
+   name = FindInSearchPath(name);
+
+   #ifdef WIN32
+      BOOL freed = false;
+      do {
+         HMODULE hLib = GetModuleHandle(name.c_str());
+         if (hLib != NULL) {
+            freed = FreeLibrary(hLib);
+         } else {
+            freed = false;
+         }
+      } while(freed);
+   #else
+      int ret;
+      do {
+         int ret = dlclose(moduleMap_[moduleName]);
+      } while (ret == 0);
+   #endif
 }
 
 /** 
@@ -290,20 +297,33 @@ void CPluginManager::UnloadDevice(MM::Device* pDevice)
    // delete device
    hDeleteDeviceFunc(pDevice);
 
-   // invalidate the entry in the label-device map
-   string label = GetDeviceLabel(*pDevice);
-
-   std::map<std::string, MM::Device*>::iterator dd =  devices_.find(label);
-   dd->second = NULL;
-
-   // remove the entry from the device array
-   DeviceArray::iterator it;
-   for (it = devArray_.begin(); it != devArray_.end(); it++)
-      if (*it == pDevice)
+   {
+      // remove the entry from the device map
+      CDeviceMap newDeviceMap;
+      CDeviceMap::const_iterator it;
+      for (it=devices_.begin(); it != devices_.end(); it++)
       {
-         devArray_.erase(it);
-         break;
+         if (it->second != pDevice)
+         {
+            newDeviceMap[it->first] = it->second;
+         }
       }
+      devices_ = newDeviceMap;
+   }
+
+   {
+      // remove the entry from the device set
+      DeviceVector newDevVector;
+      DeviceVector::const_iterator it;
+      for (it = devVector_.begin(); it != devVector_.end(); it++)
+      {
+         if (*it != pDevice)
+         {
+            newDevVector.push_back(*it);
+         }
+      }
+      devVector_ = newDevVector;
+   }
 }
 
 /**
@@ -311,21 +331,33 @@ void CPluginManager::UnloadDevice(MM::Device* pDevice)
  */
 void CPluginManager::UnloadAllDevices()
 {
-   // do a two pass unloading so that USB ports and com ports unload last
-   CDeviceMap::const_iterator it;
+   DeviceVector unloadingSequence;
+   {
+      DeviceVector::reverse_iterator it;
+      // do a two pass unloading so that USB ports and com ports unload last.
+      // We plan unloading, and then carry it out, so as not to iterate
+      // over a changing collection. Down with mutable collections.
 
-   // first unload all devices but serial ports
-   for (it=devices_.begin(); it != devices_.end(); it++)
-      if (it->second != 0 && it->second->GetType() != MM::SerialDevice)
-         UnloadDevice(it->second);
+      // first plan to unload all devices but serial ports
+      for (it=devVector_.rbegin(); it != devVector_.rend(); it++)
+         if (*it != 0 && (*it)->GetType() != MM::SerialDevice)
+            unloadingSequence.push_back(*it);
 
-   // now unload remaining ports
-   for (it=devices_.begin(); it != devices_.end(); it++)
-      if (it->second != 0)
-         UnloadDevice(it->second);
+      // then plan to unload remaining ports
+      for (it=devVector_.rbegin(); it != devVector_.rend(); it++)
+         if (*it != 0 && (*it)->GetType() == MM::SerialDevice)
+            unloadingSequence.push_back(*it);
+   }
 
+   {
+      DeviceVector::const_iterator it;
+      for (it=unloadingSequence.begin(); it != unloadingSequence.end(); it++)
+      {
+         UnloadDevice(*it);
+      }
+   }
    devices_.clear();
-   devArray_.clear();
+   devVector_.clear();
 }
 
 /**
@@ -372,7 +404,6 @@ MM::Device* CPluginManager::LoadDevice(const char* label, const char* moduleName
       o << label << " module " << moduleName << " device " << deviceName;
 
       CMMError newErr( o.str().c_str(), err.getCoreMsg().c_str(), err.getCode());
-      ReleasePluginLibrary(hLib);
       throw newErr;
    }
    
@@ -392,7 +423,7 @@ MM::Device* CPluginManager::LoadDevice(const char* label, const char* moduleName
 
    // assign label
    devices_[label] = pDevice;
-   devArray_.push_back(pDevice);
+   devVector_.push_back(pDevice);
 
    return pDevice;
 }
@@ -430,9 +461,9 @@ string CPluginManager::GetDeviceLabel(const MM::Device& device) const
       }
    }
    
-   char buf[MM::MaxStrLength];
-   device.GetName(buf);
-   throw CMMError(buf, MMERR_UnexpectedDevice);
+   //char buf[MM::MaxStrLength];
+   //device.GetLabel(buf);
+   throw CMMError(MMERR_UnexpectedDevice);
 }
 
 /**
@@ -444,12 +475,13 @@ string CPluginManager::GetDeviceLabel(const MM::Device& device) const
 vector<string> CPluginManager::GetDeviceList(MM::DeviceType type) const
 {
    vector<string> labels;
-   for (size_t i=0; i<devArray_.size(); i++)
+   DeviceVector::const_iterator it;
+   for (it = devVector_.begin(); it != devVector_.end(); ++it)
    {
       char buf[MM::MaxStrLength];
-      if (type == MM::AnyType || type == devArray_[i]->GetType())
+      if (type == MM::AnyType || type == (*it)->GetType())
       {
-         devArray_[i]->GetLabel(buf);
+         (*it)->GetLabel(buf);
          labels.push_back(buf);
       }
    }
@@ -534,14 +566,15 @@ vector<string> CPluginManager::GetLoadedPeripherals(const char* label) const
       return labels;
    }
 
-   for (size_t i=0; i<devArray_.size(); i++)
+   DeviceVector::const_iterator it;
+   for (it = devVector_.begin(); it != devVector_.end(); it++)
    {
       char parentID[MM::MaxStrLength];
-      devArray_[i]->GetParentID(parentID);
+      (*it)->GetParentID(parentID);
       if (strncmp(label, parentID, MM::MaxStrLength) == 0)
       {
          char buf[MM::MaxStrLength];
-         devArray_[i]->GetLabel(buf);
+         (*it)->GetLabel(buf);
          labels.push_back(buf);
       }
    }
@@ -709,11 +742,9 @@ vector<string> CPluginManager::GetAvailableDevices(const char* moduleName) throw
       o << " module " << moduleName;
 
       CMMError newErr( o.str().c_str(), err.getCoreMsg().c_str(), err.getCode());
-      ReleasePluginLibrary(hLib);
       throw newErr;
    }
    
-   ReleasePluginLibrary(hLib);
    return devices;
 }
 
@@ -764,11 +795,9 @@ vector<string> CPluginManager::GetAvailableDeviceDescriptions(const char* module
       o << " module " << moduleName ;
 
       CMMError newErr( o.str().c_str(), err.getCoreMsg().c_str(), err.getCode());
-      ReleasePluginLibrary(hLib);
       throw newErr;
    }
    
-   ReleasePluginLibrary(hLib);
    return descriptions;
 }
 
@@ -834,11 +863,9 @@ vector<long> CPluginManager::GetAvailableDeviceTypes(const char* moduleName) thr
       o << " module " << moduleName;
 
       CMMError newErr( o.str().c_str(), err.getCoreMsg().c_str(), err.getCode());
-      ReleasePluginLibrary(hLib);
       throw newErr;
    }
    
-   ReleasePluginLibrary(hLib);
    return types;
 }
 
@@ -891,12 +918,13 @@ void CPluginManager::CreateModuleLocks()
 {
    DeleteModuleLocks();
 
-   for (size_t i=0; i<devArray_.size(); i++)
+   DeviceVector::const_iterator it;
+   for (it = devVector_.begin(); it != devVector_.end(); it++)
    {
       char moduleName[MM::MaxStrLength];
-      devArray_[i]->GetModuleName(moduleName);
-      CModuleLockMap::iterator it = moduleLocks_.find(moduleName);
-      if (it == moduleLocks_.end())
+      (*it)->GetModuleName(moduleName);
+      CModuleLockMap::iterator it2 = moduleLocks_.find(moduleName);
+      if (it2 == moduleLocks_.end())
       {
          moduleLocks_[moduleName] = new MMThreadLock;
       }

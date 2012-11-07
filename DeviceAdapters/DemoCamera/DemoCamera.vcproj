@@ -71,11 +71,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)/mmgr_dal_DemoCamera.dll"
+				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="..\..\..\3rdpartypublic\boost\stage_$(PlatformName)\lib"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/DemoCamera.pdb"
+				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -158,11 +158,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)/mmgr_dal_DemoCamera.dll"
+				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="..\..\..\3rdpartypublic\boost\stage_$(PlatformName)\lib"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/DemoCamera.pdb"
+				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"

@@ -54,6 +54,7 @@ public:
 
    // Galvo API
    int PointAndFire(double x, double y, double pulseTime_us);
+   int SetSpotInterval(double pulseTime_us);
    int SetPosition(double x, double y);
    int GetPosition(double& x, double& y);
    int SetIlluminationState(bool on);
@@ -64,6 +65,7 @@ public:
    int RunPolygons();
    int RunSequence();
    int StopSequence();
+   int GetChannel(char* channelName);
 
    double GetXRange();
    double GetYRange();
@@ -94,9 +96,11 @@ private:
    std::string ttlTriggered_;
    long rasterFrequency_;
    double spotSize_;
+   double pulseTime_us_;
 
    // Helper functions
-   void RappScanner::RunDummyCalibration();
+   int SafeStoreSequence(tStringList sequenceList);
+   void RunDummyCalibration(bool laser2);
 
 };
 

@@ -85,6 +85,7 @@ public class MDUtils {
       map.put("SliceIndex", sliceIndex);
       map.put("Slice", sliceIndex);
    }
+   
 
    public static int getChannelIndex(JSONObject map) throws JSONException {
       return map.getInt("ChannelIndex");
@@ -144,7 +145,11 @@ public class MDUtils {
    }
 
    public static String getFileName(JSONObject map) throws JSONException {
-      return map.getString("FileName");
+      if (map.has("FileName")) {
+         return map.getString("FileName");
+      } else {
+         return null;
+      }
    }
 
    public static void setFileName(JSONObject map, String filename) throws JSONException {
@@ -461,7 +466,7 @@ public class MDUtils {
       return 1;
    }
    
-   public static int getNumChannels(JSONObject tags) throws MMScriptException, JSONException {
+   public static int getNumChannels(JSONObject tags) throws JSONException {
       if (tags.has("Summary")) {
          JSONObject summary = tags.getJSONObject("Summary");
          if (summary.has("Channels"))

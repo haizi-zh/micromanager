@@ -281,8 +281,11 @@ private:
    bool bShutterIntegrated_;
    int ADChannelIndex_, OutputAmplifierIndex_;
    void UpdateHSSpeeds();
+   int UpdatePreampGains();
+   int GetPreAmpGainString(int PreAmpgainIdx, char * PreAmpGainString);
 
    int HSSpeedIdx_;
+   int PreAmpGainIdx_;
 
    bool bSoftwareTriggerSupported_;
    int  iCurrentTriggerMode_;

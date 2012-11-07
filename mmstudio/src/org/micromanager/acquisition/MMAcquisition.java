@@ -58,7 +58,7 @@ import org.micromanager.utils.ReportingUtils;
  */
 public class MMAcquisition {
    
-   public static final Color[] DEFAULT_COLORS = {Color.blue, Color.green, Color.red,
+   public static final Color[] DEFAULT_COLORS = {Color.red, Color.green, Color.blue,
       Color.pink, Color.orange, Color.yellow};
    
    private int numFrames_ = 0;
@@ -296,6 +296,7 @@ public class MMAcquisition {
                throw new MMScriptException("Failed to figure out acq saving path.");
             }
          }
+         
          imageFileManager = ImageUtils.newImageStorageInstance(dirName, true, summary_);
          imageCache = new MMImageCache(imageFileManager);
       }
@@ -357,13 +358,12 @@ public class MMAcquisition {
          }
 
          initialized_ = true;
+         
       }
    }
-
+   
+  
    private void createDefaultAcqSettings(String name, ImageCache imageCache) {
-      //if (new File(rootDirectory_).exists()) {
-      //   name = generateRootName(name, rootDirectory_);
-      //}
 
       String keys[] = new String[summary_.length()];
       Iterator<String> it = summary_.keys();
@@ -418,8 +418,10 @@ public class MMAcquisition {
          summaryMetadata.put("PixelSize_um", core.getPixelSizeUm());
          summaryMetadata.put("PixelType", (core.getNumberOfComponents() == 1 ? "GRAY" : "RGB") + (8 * byteDepth_));
          summaryMetadata.put("Slices", numSlices_);
+         summaryMetadata.put("SlicesFirst", false);
          summaryMetadata.put("StartTime", MDUtils.getCurrentTime());
          summaryMetadata.put("Time", Calendar.getInstance().getTime());
+         summaryMetadata.put("TimeFirst", true);
          summaryMetadata.put("UserName", System.getProperty("user.name"));
          summaryMetadata.put("UUID", UUID.randomUUID());
          summaryMetadata.put("Width", width_);
@@ -435,11 +437,10 @@ public class MMAcquisition {
       Preferences colorPrefs = root.node(root.absolutePath() + "/" + AcqControlDlg.COLOR_SETTINGS_NODE);
       int color = DEFAULT_COLORS[index % DEFAULT_COLORS.length].getRGB();
       String channelGroup = MMStudioMainFrame.getInstance().getCore().getChannelGroup();
-      if (channelGroup.length() == 0) 
-         color = colorPrefs.getInt("Color_Camera_" + channelName, color);
-      else 
-         color = colorPrefs.getInt("Color_" + channelGroup
-                 + "_" + channelName, color);
+      if (channelGroup == null)
+         channelGroup = "";
+      color = colorPrefs.getInt("Color_Camera_" + channelName, colorPrefs.getInt("Color_" + channelGroup
+                 + "_" + channelName, color));
       
       return color;
    }
@@ -477,7 +478,7 @@ public class MMAcquisition {
                try {
                   channelNames_.put(i, String.valueOf(i));
                } catch (JSONException exx) {
-                  ;
+                  
                }
             }
             try {
@@ -653,7 +654,6 @@ public class MMAcquisition {
          if (virtAcq_.acquisitionIsRunning()) {
             virtAcq_.abort();
          }
-         virtAcq_.imageCache_.finished();
       }
    }
 
@@ -698,7 +698,7 @@ public class MMAcquisition {
 
    /**
     * @deprecated 
-    * @return 
+    * @return AcquisitionData
     */
    public AcquisitionData getAcqData() {
       return null;

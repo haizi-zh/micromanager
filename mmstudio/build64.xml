@@ -15,52 +15,24 @@
 	<property name="DriversRoot" value="../drivers"/>
 	<property name="DriversInstall" value="../Install_x64/micro-manager/drivers"/>
 	<property name="AdaptersRoot" value="../DeviceAdapters"/>
-
-	<!-- Do not modify from this point on -->
 	<property name="MMPluginDir" value="${ImageJPath}/plugins/Micro-Manager"/>
 	<property name="IJ" value="../../3rdpartypublic/classext/ij.jar"/>
-	<property name="beanshell" value="../../3rdpartypublic/classext/bsh-2.0b4.jar"/>
-	<property name="swingx" value="../../3rdpartypublic/classext/swingx-0.9.5.jar"/>
-	<property name="swing_layout" value="../../3rdpartypublic/classext/swing-layout-1.0.4.jar"/>
-	<property name="commons_math" value="../../3rdpartypublic/classext/commons-math-2.0.jar"/>
-	<property name="clojure" value="../../3rdpartypublic/classext/clojure.jar"/>
-	<property name="clooj" value="../../3rdpartypublic/classext/clooj.jar"/>
 	<property name="IJLauncher" value="../../3rdpartypublic/JavaLauncher/ImageJ.exe"/>
 	<property name="MMCoreJ" value="../bin_x64/MMCoreJ.jar"/>
 	<property name="MMPluginDir-inst" value="${InstallRoot}/plugins/Micro-Manager"/>
 	<property name="BinRoot" value="../bin_x64"/>
 
-	<path id="project.MMPlugins.path">
-		<pathelement location="${MMPluginDir}"/>
-	</path>
-
-	<path id="project.run.path">
-		<pathelement location="${MMPluginDir}/MMJ_.jar"/>
-		<pathelement location="${MMPluginDir}/MMCoreJ.jar"/>
-		<pathelement location="${MMPluginDir}/bsh-2.0b4.jar"/>
-		<pathelement location="${MMPluginDir}/swingx-0.9.5.jar"/>
-		<pathelement location="${MMPluginDir}/swing-layout-1.0.4.jar"/>
-		<pathelement location="${MMPluginDir}/commons-math-2.0.jar"/>
-		<pathelement location="${MMPluginDir}/clojure.jar"/>
-		<pathelement location="${IJ}"/>
-	</path>
-
-	<path id="project.class.path">
-		<pathelement location="${IJ}" />
-		<pathelement location="${beanshell}" />
-		<pathelement location="${swingx}" />
-		<pathelement location="${MMCoreJ}" />
-		<pathelement location="${swing_layout}" />
-		<pathelement location="${commons_math}" />
-		<pathelement location="${clojure}" />
-		<pathelement location="${MMPluginDir}/MMJ_.jar"/>
-	</path>
-
 	<target name="compile" description="Compile MM Studio.">
 		<mkdir dir="build" />
 		<javac srcdir="./src" destdir="./build" sourcepath="./src/org/micromanager/utils/AutofocusBase.java" optimize="on" source="1.5" target="1.5" debug="on">
-
-			<classpath refid="project.class.path" />
+		<classpath>
+			<fileset dir="../../3rdpartypublic/classext">
+				<include name="*.jar" />
+			</fileset>
+			<fileset dir="../bin_Win32">
+				<include name="MMCoreJ.jar" />
+			</fileset>
+		</classpath>
 			<!-- <compilerarg value="-Xlint"/> -->
 		</javac>
 		<copy file="./src/org/micromanager/icons/splash.gif" todir="./build/org/micromanager/icons" />
@@ -84,13 +56,15 @@
 
 		<mkdir dir="${MMPluginDir}" />
 		<copy file="MMJ_.jar" todir="${MMPluginDir}" overwrite="true" />
-		
-		<copy file="${beanshell}" todir="${MMPluginDir}" />
-		<copy file="${swingx}" todir="${MMPluginDir}" overwrite="true" />
 		<copy file="${MMCoreJ}" todir="${MMPluginDir}" overwrite="true"  />
-		<copy file="${swing_layout}" todir="${MMPluginDir}" overwrite="true" />
-		<copy file="${commons_math}" todir="${MMPluginDir}" overwrite="true" />
-		<copy file="${clojure}" todir="${MMPluginDir}" overwrite="true" />
+
+		<copy todir="${MMPluginDir}">
+			<fileset dir="../../3rdpartypublic/classext/" casesensitive="no">
+				<include name="*.jar"/>
+				<exclude name="ij.jar"/>
+			</fileset>
+		</copy>
+
 
 	</target>
 
@@ -122,22 +96,16 @@
 		<copy file="${IJ}" todir="${InstallRoot}" />
 		<copy file="MMJ_.jar" todir="${MMPluginDir-inst}" />
 		<copy file="MMJ_.jar" todir="${BinRoot}/plugins/Micro-Manager" />
-
-		<copy file="${beanshell}" todir="${MMPluginDir-inst}" /> 
-	 	<copy file="${swingx}" todir="${MMPluginDir-inst}" /> 
 		<copy file="${MMCoreJ}" todir="${MMPluginDir-inst}" /> 
-	 	<copy file="${swing_layout}" todir="${MMPluginDir-inst}" /> 
-	 	<copy file="${commons_math}" todir="${MMPluginDir-inst}" /> 
-	 	<copy file="${clojure}" todir="${MMPluginDir-inst}" /> 
-		<copy file="../../3rdpartypublic/classext/data.json.jar" todir="${MMPluginDir-inst}" /> 
 
 		<copy todir="${MMPluginDir-inst}">
 			<fileset dir="../../3rdpartypublic/classext/" casesensitive="no">
 				<include name="*.jar"/>
+				<exclude name="ij.jar"/>
 			</fileset>
 		</copy>
-
-		<copy file="${BinRoot}/MMCoreJ_wrap.dll" todir="${InstallRoot}" />
+		
+<copy file="${BinRoot}/MMCoreJ_wrap.dll" todir="${InstallRoot}" />
 		<copy file="${BinRoot}/LaunchMicroManager.bat" todir="${InstallRoot}" />
 		<copy file="${BinRoot}/MMConfig_demo.cfg" todir="${InstallRoot}" />
 		<copy todir="${InstallRoot}">

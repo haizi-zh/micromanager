@@ -60,6 +60,7 @@ import org.micromanager.utils.DisplayMode;
 import org.micromanager.utils.FileDialogs;
 import org.micromanager.utils.FileDialogs.FileType;
 import org.micromanager.utils.GUIColors;
+import org.micromanager.utils.GUIUtils;
 import org.micromanager.utils.ImageUtils;
 import org.micromanager.utils.MMException;
 import org.micromanager.utils.MMScriptException;
@@ -1096,10 +1097,10 @@ public class AcqControlDlg extends JFrame implements PropertyChangeListener {
       acquisitionOrderPanel_.add(acqOrderBox_);
 
       acqOrderModes_ = new AcqOrderMode[4];
-      acqOrderModes_[0] = new AcqOrderMode(AcqOrderMode.TIME_POS_CHANNEL_SLICE);
-      acqOrderModes_[1] = new AcqOrderMode(AcqOrderMode.TIME_POS_SLICE_CHANNEL);
-      acqOrderModes_[2] = new AcqOrderMode(AcqOrderMode.POS_TIME_CHANNEL_SLICE);
-      acqOrderModes_[3] = new AcqOrderMode(AcqOrderMode.POS_TIME_SLICE_CHANNEL);
+      acqOrderModes_[0] = new AcqOrderMode(AcqOrderMode.TIME_POS_SLICE_CHANNEL);
+      acqOrderModes_[1] = new AcqOrderMode(AcqOrderMode.TIME_POS_CHANNEL_SLICE);
+      acqOrderModes_[2] = new AcqOrderMode(AcqOrderMode.POS_TIME_SLICE_CHANNEL);
+      acqOrderModes_[3] = new AcqOrderMode(AcqOrderMode.POS_TIME_CHANNEL_SLICE);
       acqOrderBox_.addItem(acqOrderModes_[0]);
       acqOrderBox_.addItem(acqOrderModes_[1]);
       acqOrderBox_.addItem(acqOrderModes_[2]);
@@ -1581,7 +1582,7 @@ public class AcqControlDlg extends JFrame implements PropertyChangeListener {
     * i.e. even if the preset is not shown, this exposure time will be used
     * next time it is shown
     * 
-    * @param chanelGroup - name of the channelgroup.  If it does not match the current
+    * @param channelGroup - name of the channelgroup.  If it does not match the current
     * channel group, no action will be taken
     * @param channel - name of the preset in the current channel group
     * @param exposure  - new exposure time
@@ -1699,6 +1700,7 @@ public class AcqControlDlg extends JFrame implements PropertyChangeListener {
       for (Component c: comps)
          for (Component co: ((JPanel)c).getComponents() )
             co.setEnabled(framesEnabled);
+      framesPanel_.repaint();
       
       
       numFrames_.setValue(acqEng_.getNumFrames());
@@ -1717,11 +1719,14 @@ public class AcqControlDlg extends JFrame implements PropertyChangeListener {
       acqEng_.enableZSliceSetting(acqPrefs_.getBoolean(ACQ_ENABLE_SLICE_SETTINGS, acqEng_.isZSliceSettingEnabled()));
       acqEng_.enableMultiPosition(acqPrefs_.getBoolean(ACQ_ENABLE_MULTI_POSITION, acqEng_.isMultiPositionEnabled()));
       positionsPanel_.setSelected(acqEng_.isMultiPositionEnabled());
+      positionsPanel_.repaint();
 
       slicesPanel_.setSelected(acqEng_.isZSliceSettingEnabled());
+      slicesPanel_.repaint();
 
       acqEng_.enableChannelsSetting(acqPrefs_.getBoolean(ACQ_ENABLE_MULTI_CHANNEL, false));
       channelsPanel_.setSelected(acqEng_.isChannelsSettingEnabled());
+      channelsPanel_.repaint();
 
       savePanel_.setSelected(acqPrefs_.getBoolean(ACQ_SAVE_FILES, false));
 
@@ -1914,26 +1919,39 @@ public class AcqControlDlg extends JFrame implements PropertyChangeListener {
    protected void loadAcqSettingsFromFile() {
       File f = FileDialogs.openFile(this, "Load acquisition settings", ACQ_SETTINGS_FILE);
       if (f != null) {
-         loadAcqSettingsFromFile(f.getAbsolutePath());
+         try {
+            loadAcqSettingsFromFile(f.getAbsolutePath());
+         } catch (MMScriptException ex) {
+            ReportingUtils.showError("Failed to load Acquisition setting file");
+         }
       }
    }
 
-   public void loadAcqSettingsFromFile(String path) {
+   public void loadAcqSettingsFromFile(String path) throws MMScriptException {
       acqFile_ = new File(path);
       try {
          FileInputStream in = new FileInputStream(acqFile_);
          acqPrefs_.clear();
          Preferences.importPreferences(in);
          loadAcqSettings();
-         updateGUIContents();
-         in.close();
+         GUIUtils.invokeAndWait(new updateGUI());
          acqDir_ = acqFile_.getParent();
          if (acqDir_ != null) {
             prefs_.put(ACQ_FILE_DIR, acqDir_);
          }
       } catch (Exception e) {
-         ReportingUtils.showError(e);
-         return;
+         throw new MMScriptException (e);
+      }
+   }
+   
+   private class updateGUI implements Runnable {
+
+      public updateGUI() {
+      }
+
+      @Override
+      public void run() {
+         updateGUIContents();
       }
    }
 
@@ -2056,7 +2074,7 @@ public class AcqControlDlg extends JFrame implements PropertyChangeListener {
       
       if (used + acqTotalBytes > 0.72*max) {
          int selection = JOptionPane.showConfirmDialog(this, "Warning: available RAM may "
-                 + "be insufficent for full acquisition. \nSave images to disk or increase "
+                 + "be insufficient for full acquisition. \nSave images to disk or increase "
                  + "maximum memory by selecting \nEdit--Options--Memory & Threads on ImageJ "
                  + "toolbar. \n\n Would you like to run acquisition anyway?",
                  "Insufficient memory warning", JOptionPane.YES_NO_OPTION);

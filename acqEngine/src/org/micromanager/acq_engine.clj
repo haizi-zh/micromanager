@@ -126,9 +126,10 @@
                          (JSONObject. axes))
        "Binning" (state :binning)
        "BitDepth" (state :bit-depth)
+       "Camera" (:camera event)
+       "CameraChannelIndex" (:camera-channel-index event)
        "Channel" (get-in event [:channel :name])
        "ChannelIndex" (:channel-index event)
-       "CameraChannelIndex" (:camera-channel-index event)
        "Exposure-ms" (:exposure event)
        "Frame" (:frame-index event)
        "FrameIndex" (:frame-index event)
@@ -274,7 +275,8 @@
       (device-best-effort (core getCameraDevice) (core snapImage))
       (swap! state assoc :last-image-time (elapsed-time @state))
       (when close-after
-        (set-shutter-open false)))))
+        (set-shutter-open false)
+        (wait-for-device shutter)))))
 
 (defn load-property-sequences [property-sequences]
   (let [new-seq (not= property-sequences @active-property-sequences)]
@@ -343,7 +345,8 @@
       (-> event
           (update-in [:channel-index] make-multicamera-channel camera-channel)
           (update-in [:channel :name] super-channel-name (camera-channel-names camera-channel))
-          (assoc :camera-channel-index camera-channel)))))
+          (assoc :camera-channel-index camera-channel)
+          (assoc :camera (camera-channel-names camera-channel))))))
 
 (defn assign-z-offsets [burst-events]
  (if-let [slices (second @active-slice-sequence)]
@@ -532,6 +535,7 @@
              :start-time (jvm-time-ms)
              :init-auto-shutter (core getAutoShutter)
              :init-exposure exposure
+             :init-shutter-state (core getShutterOpen)
              :exposure {(core getCameraDevice) exposure}
              :default-z-drive default-z-drive
              :default-xy-stage default-xy-stage
@@ -556,15 +560,14 @@
       (when (core isSequenceRunning)
         (core stopSequenceAcquisition))
       (stop-trigger)
+      (return-config)
       (core setAutoShutter (@state :init-auto-shutter))
       (set-exposure (core getCameraDevice) (@state :init-exposure))
       (set-stage-position (@state :default-z-drive) (@state :init-z-position))
-      (when-let [state (@state :init-shutter-state)]
-        (set-shutter-open state))
+      (set-shutter-open (@state :init-shutter-state))
       (when (and (@state :init-continuous-focus)
                  (not (core isContinuousFocusEnabled)))
         (enable-continuous-focus true))
-      (return-config)
       (. gui enableRoiButtons true))
     (catch Throwable t (ReportingUtils/showError t "Acquisition cleanup failed."))))
 
@@ -705,8 +708,8 @@
       "Channels" (max 1 (count super-channels))
       "ChNames" (JSONArray. ch-names)
       "ChColors" (JSONArray. (channel-colors simple-channels super-channels ch-names))
-      "ChContrastMax" (JSONArray. (repeat (count super-channels) Integer/MIN_VALUE))
-      "ChContrastMin" (JSONArray. (repeat (count super-channels) Integer/MAX_VALUE))
+      "ChContrastMax" (JSONArray. (repeat (count super-channels) 65536))
+      "ChContrastMin" (JSONArray. (repeat (count super-channels) 0))
       "Comment" (:comment settings)
       "ComputerName" (.. InetAddress getLocalHost getHostName)
       "Depth" (core getBytesPerPixel)

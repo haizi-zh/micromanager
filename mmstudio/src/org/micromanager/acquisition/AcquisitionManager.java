@@ -1,5 +1,6 @@
 package org.micromanager.acquisition;
 
+import ij.CompositeImage;
 import ij.gui.ImageWindow;
 import java.awt.Point;
 import java.awt.event.WindowAdapter;
@@ -59,10 +60,13 @@ public class AcquisitionManager {
    
   
    public void closeAcquisition(final String name) throws MMScriptException {
+      if (name == null)
+         return;
       final MMScriptException ex[] = {null};
       try {
          GUIUtils.invokeAndWait(new Runnable() {
             public void run() {
+               
                if (!acqs_.containsKey(name)) {
                  ex[0] = new MMScriptException("The name does not exist");
                } else {
@@ -276,10 +280,14 @@ public class AcquisitionManager {
                histMax = channelSetting.getInt("HistogramMax");
             else
                histMax = -1;
-
-            ic.storeChannelDisplaySettings(i, min, max, gamma, histMax);
+            int displayMode = CompositeImage.COMPOSITE;
+            if (channelSetting.has("DisplayMode"))
+               displayMode = channelSetting.getInt("DisplayMode");
+            
+            ic.storeChannelDisplaySettings(i, min, max, gamma, histMax, displayMode);
             acq.getAcquisitionWindow().setChannelHistogramDisplayMax(i,histMax);
             acq.getAcquisitionWindow().setChannelContrast(i, min, max, gamma);
+            acq.getAcquisitionWindow().setDisplayMode(displayMode);
             acq.setChannelColor(i, color);
             acq.setChannelName(i, name);
 

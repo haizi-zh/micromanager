@@ -116,6 +116,7 @@ public final class VirtualAcquisitionDisplay implements AcquisitionDisplay, Imag
    private boolean[] channelContrastInitialized_;
    private static double snapWinMag_ = -1;
    private JPopupMenu saveTypePopup_;
+   private int simpleWinImagesReceived_ = 0;
 
 
    
@@ -385,7 +386,7 @@ public final class VirtualAcquisitionDisplay implements AcquisitionDisplay, Imag
       private void superDraw() {
          if (super.win != null ) {
             super.getCanvas().paint(super.getCanvas().getGraphics());
-         }
+         } 
       }
       
       private Runnable drawRunnable() {
@@ -393,6 +394,7 @@ public final class VirtualAcquisitionDisplay implements AcquisitionDisplay, Imag
             @Override
             public void run() {
                imageChangedUpdate();
+               getWindow().getCanvas().setImageUpdated();
                superDraw();
                MMStudioMainFrame.getInstance().getLiveModeTimer().updateFPS();
             }       
@@ -559,9 +561,8 @@ public final class VirtualAcquisitionDisplay implements AcquisitionDisplay, Imag
          setNumPositions(numPositions);
       }
       
-      //Load contrast settigns if opening datset
+      // Load contrast settigns if opening datset
       if (imageCache_.isFinished()) {
-         
       }
 
       updateAndDraw(false);
@@ -1181,7 +1182,22 @@ public final class VirtualAcquisitionDisplay implements AcquisitionDisplay, Imag
          hyperImage_.setPosition(1 + superChannel, 1 + slice, 1 + frame);
       }
 
-      updateAndDraw(simple_ || frame != 0);
+      boolean useGUIUpdater = frame != 0 || simple_;
+      if (simple_) {
+         simpleWinImagesReceived_++;
+         //Make sure update and draw gets called without GUI updater to initilze new snap win correctly
+         int numChannels;
+         try {
+            numChannels = MDUtils.getNumChannels(getSummaryMetadata());
+         } catch (Exception e) {
+            numChannels = 7;
+         }
+         if ( simpleWinImagesReceived_ <= numChannels) {
+            useGUIUpdater = false;
+         }
+      }
+      
+      updateAndDraw(useGUIUpdater);
       restartAnimationAfterShowing(animatedFrameIndex, animatedSliceIndex_, framesAnimated, slicesAnimated);
 
       if (eng_ != null) {
@@ -1294,21 +1310,25 @@ public final class VirtualAcquisitionDisplay implements AcquisitionDisplay, Imag
       if (bytes == 2) {
          short[] pixels = (short[]) img.getStack().getPixels(flatIndex);
          for (short value : pixels) {
-            if (value < pixMin) {
-               pixMin = value;
+            //unsign short
+            int val = value & 0xffff;
+            if (val < pixMin) {
+               pixMin = val;
             }
-            if (value > pixMax) {
-               pixMax = value;
+            if (val > pixMax) {
+               pixMax = val;
             }
          }
       } else if (bytes == 1) {
          byte[] pixels = (byte[]) img.getStack().getPixels(flatIndex);
          for (byte value : pixels) {
-            if (value < pixMin) {
-               pixMin = value;
+            //unsign byte
+            int val = value & 0xff;
+            if (val < pixMin) {
+               pixMin = val;
             }
-            if (value > pixMax) {
-               pixMax = value;
+            if (val > pixMax) {
+               pixMax = val;
             }
          }
       }
@@ -1556,7 +1576,10 @@ public final class VirtualAcquisitionDisplay implements AcquisitionDisplay, Imag
       }
 
       try {
-         TaggedImageStorage newFileManager = 
+         if (getSummaryMetadata() != null) {
+            getSummaryMetadata().put("Prefix", prefix);
+         }
+         TaggedImageStorage newFileManager =
                  (TaggedImageStorage) storageClass.getConstructor(
                  String.class, Boolean.class, JSONObject.class).newInstance(
                  root + "/" + prefix, true, getSummaryMetadata());
@@ -1566,7 +1589,7 @@ public final class VirtualAcquisitionDisplay implements AcquisitionDisplay, Imag
 
          imageCache_.saveAs(newFileManager, pointToNewStorage);
       } catch (Exception ex) {
-         ReportingUtils.showError("Failed to save file");
+         ReportingUtils.showError(ex, "Failed to save file");
       }
       MMStudioMainFrame.getInstance().setAcqDirectory(root);
       updateWindowTitleAndStatus();
@@ -1591,8 +1614,8 @@ public final class VirtualAcquisitionDisplay implements AcquisitionDisplay, Imag
       mmIP.setNChannelsUnverified(channels);
       mmIP.setNFramesUnverified(frames);
       mmIP.setNSlicesUnverified(slices);
-      if (channels > 1) {
-         hyperImage = new MMCompositeImage(mmIP, CompositeImage.COMPOSITE);
+      if (channels > 1) {        
+         hyperImage = new MMCompositeImage(mmIP, imageCache_.getDisplayMode());
          hyperImage.setOpenAsHyperStack(true);
       } else {
          hyperImage = mmIP;

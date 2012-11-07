@@ -210,6 +210,7 @@ imageTimeOut_ms_(10000),
 sequenceLength_(0),
 OutputAmplifierIndex_(0),
 HSSpeedIdx_(0),
+PreAmpGainIdx_(0),
 bSoftwareTriggerSupported_(0),
 maxTemp_(0),
 myCameraID_(-1),
@@ -837,50 +838,9 @@ int AndorCamera::GetListOfAvailableCameras()
       HSSpeedIdx_ = 0;
 
       // Pre-Amp-Gain
-      int numPreAmpGain;
-      ret = GetNumberPreAmpGains(&numPreAmpGain);
-      if (ret != DRV_SUCCESS)
+      ret = UpdatePreampGains();
+      if(DRV_SUCCESS != ret)
          return ret;
-      if (numPreAmpGain > 0 ) {
-            
-        char PreAmpGainBuf[10];
-        PreAmpGains_.clear();
-        for (int i=0; i<numPreAmpGain; i++)
-        {
-            if(ui_swVersion >= 292) {
-                ret = GetPreAmpGainText(i, PreAmpGainBuf, sizeof(PreAmpGainBuf));
-            }
-            else {
-                float pag;
-                ret = GetPreAmpGain(i, &pag); 
-                sprintf(PreAmpGainBuf, "%.2f", pag);
-            }
-            if (ret != DRV_SUCCESS)
-                return ret;
-            PreAmpGains_.push_back(PreAmpGainBuf);
-        }
-        if (PreAmpGains_.empty())
-            return ERR_INVALID_PREAMPGAIN;
-
-        if(!HasProperty("Pre-Amp-Gain"))
-        {
-            pAct = new CPropertyAction (this, &AndorCamera::OnPreAmpGain);
-            if(numPreAmpGain>1)
-                nRet = CreateProperty("Pre-Amp-Gain", PreAmpGains_[numPreAmpGain-1].c_str(), MM::String, false, pAct);
-            else
-                nRet = CreateProperty("Pre-Amp-Gain", PreAmpGains_[numPreAmpGain-1].c_str(), MM::String, true, pAct);
-            assert(nRet == DEVICE_OK);
-        }
-        nRet = SetAllowedValues("Pre-Amp-Gain", PreAmpGains_);
-        nRet = SetProperty("Pre-Amp-Gain", PreAmpGains_[PreAmpGains_.size()-1].c_str());
-        PreAmpGain_ = PreAmpGains_[numPreAmpGain-1];
-        if(numPreAmpGain > 1)
-        {
-            ret = SetPreAmpGain(numPreAmpGain-1);
-            if (ret != DRV_SUCCESS)
-                return ret;
-        }
-      }
 
       // Vertical Shift Speed
       int numVSpeed;
@@ -921,81 +881,85 @@ int AndorCamera::GetListOfAvailableCameras()
       // Vertical Clock Voltage 
       int numVCVoltages;
       ret = GetNumberVSAmplitudes(&numVCVoltages);
-      if (ret != DRV_SUCCESS) {
-         numVCVoltages = 0;
-         ostringstream eMsg;
-         eMsg << "Andor driver returned error code: " << ret << " to GetNumberVSAmplitudes";
-         LogMessage(eMsg.str().c_str(), true);
-      }
-      VCVoltages_.clear();
-      if(ui_swVersion >= 292) {
-	      for (int i = 0; i < numVCVoltages; i++)
-	      {
-		      char VCAmp[10];
-		      ret = GetVSAmplitudeString(i, VCAmp);
 
-		      if (ret != DRV_SUCCESS) {
-			     numVCVoltages = 0;
-			     ostringstream eMsg;
-			     eMsg << "Andor driver returned error code: " << ret << " to GetVSAmplitudeString";
-			     LogMessage(eMsg.str().c_str(), true);
-		      }
-		      else
-		      {
-			      VCVoltages_.push_back(VCAmp);
-		      }
-	      }
-      }
-      else {
-	      if(numVCVoltages>5)
-		     numVCVoltages = 5;
-	      switch(numVCVoltages)
-	      {
-	      case 1:
-		     VCVoltages_.push_back("Normal");
-		     break;
-	      case 2:
-		     VCVoltages_.push_back("Normal");
-		     VCVoltages_.push_back("+1");
-		     break;
-	      case 3:
-		     VCVoltages_.push_back("Normal");
-		     VCVoltages_.push_back("+1");
-		     VCVoltages_.push_back("+2");
-		     break;
-	      case 4:
-		     VCVoltages_.push_back("Normal");
-		     VCVoltages_.push_back("+1");
-		     VCVoltages_.push_back("+2");
-		     VCVoltages_.push_back("+3");
-		     break;
-	      case 5:
-		     VCVoltages_.push_back("Normal");
-		     VCVoltages_.push_back("+1");
-		     VCVoltages_.push_back("+2");
-		     VCVoltages_.push_back("+3");
-		     VCVoltages_.push_back("+4");
-		     break;
-	      default:
-		     VCVoltages_.push_back("Normal");
-	      }
-      }
-      if (numVCVoltages>=1)
+      if(DRV_NOT_AVAILABLE != ret) //not available on all cameras (e.g. luca)
       {
-         if(!HasProperty("VerticalClockVoltage"))
+         if (ret != DRV_SUCCESS) {
+            numVCVoltages = 0;
+            ostringstream eMsg;
+            eMsg << "Andor driver returned error code: " << ret << " to GetNumberVSAmplitudes";
+            LogMessage(eMsg.str().c_str(), true);
+         }
+         VCVoltages_.clear();
+         if(ui_swVersion >= 292) {
+	         for (int i = 0; i < numVCVoltages; i++)
+	         {
+		         char VCAmp[10];
+		         ret = GetVSAmplitudeString(i, VCAmp);
+
+		         if (ret != DRV_SUCCESS) {
+			        numVCVoltages = 0;
+			        ostringstream eMsg;
+			        eMsg << "Andor driver returned error code: " << ret << " to GetVSAmplitudeString";
+			        LogMessage(eMsg.str().c_str(), true);
+		         }
+		         else
+		         {
+			         VCVoltages_.push_back(VCAmp);
+		         }
+	         }
+         }
+         else {
+	         if(numVCVoltages>5)
+		        numVCVoltages = 5;
+	         switch(numVCVoltages)
+	         {
+	         case 1:
+		        VCVoltages_.push_back("Normal");
+		        break;
+	         case 2:
+		        VCVoltages_.push_back("Normal");
+		        VCVoltages_.push_back("+1");
+		        break;
+	         case 3:
+		        VCVoltages_.push_back("Normal");
+		        VCVoltages_.push_back("+1");
+		        VCVoltages_.push_back("+2");
+		        break;
+	         case 4:
+		        VCVoltages_.push_back("Normal");
+		        VCVoltages_.push_back("+1");
+		        VCVoltages_.push_back("+2");
+		        VCVoltages_.push_back("+3");
+		        break;
+	         case 5:
+		        VCVoltages_.push_back("Normal");
+		        VCVoltages_.push_back("+1");
+		        VCVoltages_.push_back("+2");
+		        VCVoltages_.push_back("+3");
+		        VCVoltages_.push_back("+4");
+		        break;
+	         default:
+		        VCVoltages_.push_back("Normal");
+	         }
+         }
+         if (numVCVoltages>=1)
          {
-            pAct = new CPropertyAction (this, &AndorCamera::OnVCVoltage);
-            if(numVCVoltages>1)
-               nRet = CreateProperty("VerticalClockVoltage", VCVoltages_[0].c_str(), MM::String, false, pAct);
-            else
-               nRet = CreateProperty("VerticalClockVoltage", VCVoltages_[0].c_str(), MM::String, true, pAct);
+            if(!HasProperty("VerticalClockVoltage"))
+            {
+               pAct = new CPropertyAction (this, &AndorCamera::OnVCVoltage);
+               if(numVCVoltages>1)
+                  nRet = CreateProperty("VerticalClockVoltage", VCVoltages_[0].c_str(), MM::String, false, pAct);
+               else
+                  nRet = CreateProperty("VerticalClockVoltage", VCVoltages_[0].c_str(), MM::String, true, pAct);
+               assert(nRet == DEVICE_OK);
+            }
+            nRet = SetAllowedValues("VerticalClockVoltage", VCVoltages_);
+            assert(nRet == DEVICE_OK);
+            nRet = SetProperty("VerticalClockVoltage", VCVoltages_[0].c_str());
+            VCVoltage_ = VCVoltages_[0];
             assert(nRet == DEVICE_OK);
          }
-         nRet = SetAllowedValues("VerticalClockVoltage", VCVoltages_);
-         assert(nRet == DEVICE_OK);
-         nRet = SetProperty("VerticalClockVoltage", VCVoltages_[0].c_str());
-         VCVoltage_ = VCVoltages_[0];
-         assert(nRet == DEVICE_OK);
       }
 
 
@@ -1345,13 +1309,13 @@ int AndorCamera::GetListOfAvailableCameras()
 
       //DMA parameters
       //if(caps.ulSetFunctions & AC_SETFUNCTION_DMAPARAMETERS)
-      {
+      { 
          int NumFramesPerDMA = 1;
          float SecondsPerDMA = 0.001f;
          ret = SetDMAParameters(NumFramesPerDMA, SecondsPerDMA);
          if (DRV_SUCCESS != ret)
             return (int)ret;
-      }
+      } 
 
 
       pAct = new CPropertyAction (this, &AndorCamera::OnTimeOut);
@@ -1935,13 +1899,14 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnReadoutMode(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
 
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
 
@@ -1960,6 +1925,11 @@ int AndorCamera::GetListOfAvailableCameras()
                {
                   HSSpeedIdx_ = i;
                   GetReadoutTime();
+
+                  int retCode = UpdatePreampGains();
+                  if (DRV_SUCCESS != retCode)
+                     return retCode;
+
                   if (acquiring)
                      StartSequenceAcquisition(sequenceLength_ - imageCounter_, intervalMs_, stopOnOverflow_);
                   PrepareSnap();
@@ -1970,6 +1940,7 @@ int AndorCamera::GetListOfAvailableCameras()
       }
       else if (eAct == MM::BeforeGet)
       {
+		  DriverGuard dg(this);
          pProp->Set(readoutModes_[HSSpeedIdx_].c_str());
       }
       return DEVICE_OK;
@@ -1995,47 +1966,61 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnGain(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+	   
       if (eAct == MM::AfterSet)
       {
          long gain;
          pProp->Get(gain);
-         if (!EMSwitch_) {
-            currentGain_ = gain;
-            return DEVICE_OK;
-         }
-         if(gain == currentGain_)
-            return DEVICE_OK;
+
+		 {
+			 DriverGuard dg(this);
+
+			 if (!EMSwitch_) {
+				currentGain_ = gain;
+				return DEVICE_OK;
+			 }
+			 if(gain == currentGain_)
+				return DEVICE_OK;
+		 } //need to release driver guard to allow AcqSequenceThread to terminate
 
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+		 
+		 {
+			 DriverGuard dg(this);
 
-         if (sequenceRunning_)
-            return ERR_BUSY_ACQUIRING;
+			 if (sequenceRunning_)
+				return ERR_BUSY_ACQUIRING;
 
-         if (gain!=0 && gain < (long) EmCCDGainLow_ ) 
-            gain = (long)EmCCDGainLow_;
-         if (gain > (long) EmCCDGainHigh_ ) 
-            gain = (long)EmCCDGainHigh_;
-         pProp->Set(gain);
+			 if (gain!=0 && gain < (long) EmCCDGainLow_ ) 
+				gain = (long)EmCCDGainLow_;
+			 if (gain > (long) EmCCDGainHigh_ ) 
+				gain = (long)EmCCDGainHigh_;
+			 pProp->Set(gain);
 
-         //added to use RTA
-         if(!(iCurrentTriggerMode_ == SOFTWARE))
-            SetToIdle();
+			 //added to use RTA
+			 if(!(iCurrentTriggerMode_ == SOFTWARE))
+				SetToIdle();
 
-         unsigned ret = SetEMCCDGain((int)gain);
-         if (DRV_SUCCESS != ret)
-            return (int)ret;
-         currentGain_ = gain;
+			 unsigned ret = SetEMCCDGain((int)gain);
+			 if (DRV_SUCCESS != ret)
+				return (int)ret;
+			 currentGain_ = gain;
 
-         if (acquiring)
-            StartSequenceAcquisition(sequenceLength_ - imageCounter_, intervalMs_, stopOnOverflow_);
+          int retCode = UpdatePreampGains();
+          if (DRV_SUCCESS != retCode)
+             return retCode;
 
-         PrepareSnap();
+			 if (acquiring)
+				StartSequenceAcquisition(sequenceLength_ - imageCounter_, intervalMs_, stopOnOverflow_);
+
+			 PrepareSnap();
+		 }
       }
       else if (eAct == MM::BeforeGet)
       {
+		  DriverGuard dg(this); //not even sure this is needed
          pProp->Set(currentGain_);
       }
       return DEVICE_OK;
@@ -2046,51 +2031,58 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnEMSwitch(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
-         std::string EMSwitch;
-         pProp->Get(EMSwitch);
-         if (EMSwitch == "Off" && !EMSwitch_)
-            return DEVICE_OK;
-         if (EMSwitch == "On" && EMSwitch_)
-            return DEVICE_OK;
+		  std::string EMSwitch;
+		  {
+			  DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
+			
+			 pProp->Get(EMSwitch);
+			 if (EMSwitch == "Off" && !EMSwitch_)
+				return DEVICE_OK;
+			 if (EMSwitch == "On" && EMSwitch_)
+				return DEVICE_OK;
+		  }
 
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
-  
-         if (sequenceRunning_)
-            return ERR_BUSY_ACQUIRING;
 
-         //added to use RTA
-         if(!(iCurrentTriggerMode_ == SOFTWARE))
-            SetToIdle();
+		 {
+			 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
-         unsigned ret = DRV_SUCCESS;
-         if (EMSwitch == "On") {
-            ret = SetEMCCDGain((int)currentGain_);
-            // Don't change EMGain property limits here -- causes errors.
-            EMSwitch_ = true;
-         } else {
-            ret = SetEMCCDGain(0);
-            // Don't change EMGain property limits here -- causes errors.
-            EMSwitch_ = false;
+			 if (sequenceRunning_)
+				return ERR_BUSY_ACQUIRING;
 
-         }
+			 //added to use RTA
+			 if(!(iCurrentTriggerMode_ == SOFTWARE))
+				SetToIdle();
 
-         //if (initialized_) {
-          //  OnPropertiesChanged();
-         //}
+			 unsigned ret = DRV_SUCCESS;
+			 if (EMSwitch == "On") {
+				ret = SetEMCCDGain((int)currentGain_);
+				// Don't change EMGain property limits here -- causes errors.
+				EMSwitch_ = true;
+			 } else {
+				ret = SetEMCCDGain(0);
+				// Don't change EMGain property limits here -- causes errors.
+				EMSwitch_ = false;
 
-         if (DRV_SUCCESS != ret)
-            return (int)ret;
+			 }
 
-         if (acquiring)
-            StartSequenceAcquisition(sequenceLength_ - imageCounter_, intervalMs_, stopOnOverflow_);
+			 //if (initialized_) {
+			  //  OnPropertiesChanged();
+			 //}
 
-         PrepareSnap();
+			 if (DRV_SUCCESS != ret)
+				return (int)ret;
 
+			 if (acquiring)
+				StartSequenceAcquisition(sequenceLength_ - imageCounter_, intervalMs_, stopOnOverflow_);
+
+			 PrepareSnap();
+		 }
       }
       else if (eAct == MM::BeforeGet)
       {
@@ -2108,12 +2100,14 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnSelectTrigger(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -2158,6 +2152,7 @@ int AndorCamera::GetListOfAvailableCameras()
       }
       else if (eAct == MM::BeforeGet)
       {
+		  DriverGuard dg(this); 
          pProp->Set(strCurrentTriggerMode_.c_str());
       }
       return DEVICE_OK;
@@ -2169,12 +2164,14 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnPreAmpGain(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -2197,6 +2194,7 @@ int AndorCamera::GetListOfAvailableCameras()
                      StartSequenceAcquisition(sequenceLength_ - imageCounter_, intervalMs_, stopOnOverflow_);
                   PrepareSnap();
                   PreAmpGain_=PreAmpGain;
+                  PreAmpGainIdx_ = i;
                   return DEVICE_OK;
                }
             }
@@ -2205,6 +2203,7 @@ int AndorCamera::GetListOfAvailableCameras()
       }
       else if (eAct == MM::BeforeGet)
       {
+		  DriverGuard dg(this); 
          pProp->Set(PreAmpGain_.c_str());
       }
       return DEVICE_OK;
@@ -2216,12 +2215,14 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnVCVoltage(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -2252,6 +2253,7 @@ int AndorCamera::GetListOfAvailableCameras()
       }
       else if (eAct == MM::BeforeGet)
       {
+		  DriverGuard dg(this);
          pProp->Set(VCVoltage_.c_str());
       }
       return DEVICE_OK;
@@ -2262,12 +2264,14 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnBaselineClamp(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -2303,6 +2307,7 @@ int AndorCamera::GetListOfAvailableCameras()
       }
       else if (eAct == MM::BeforeGet)
       {
+		  DriverGuard dg(this); 
          pProp->Set(BaselineClampValue_.c_str());
       }
       return DEVICE_OK;
@@ -2314,12 +2319,14 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnVSpeed(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+     
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -2351,6 +2358,7 @@ int AndorCamera::GetListOfAvailableCameras()
       }
       else if (eAct == MM::BeforeGet)
       {
+		  DriverGuard dg(this);
          pProp->Set(VSpeed_.c_str());
       }
       return DEVICE_OK;
@@ -2403,12 +2411,13 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnTemperatureSetPoint(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -2439,6 +2448,7 @@ int AndorCamera::GetListOfAvailableCameras()
       }
       else if (eAct == MM::BeforeGet)
       {
+		  DriverGuard dg(this); 
          pProp->Set(TemperatureSetPoint_.c_str());
       }
       return DEVICE_OK;
@@ -2452,12 +2462,14 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnCooler(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+    
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -2503,12 +2515,14 @@ int AndorCamera::GetListOfAvailableCameras()
    */
    int AndorCamera::OnFanMode(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+     
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -2551,12 +2565,14 @@ int AndorCamera::GetListOfAvailableCameras()
 
    int AndorCamera::OnInternalShutter(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		 DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -2726,6 +2742,8 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -3068,13 +3086,15 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
    */
    int AndorCamera::OnFrameTransfer(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring) {
             StopSequenceAcquisition(true);
          }
+
+		  DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_) {
             return ERR_BUSY_ACQUIRING;
@@ -3157,6 +3177,9 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
                   }
                }
                UpdateHSSpeeds();
+               ret = UpdatePreampGains();
+               if(DRV_SUCCESS!=ret)
+                  return ret;
             }
 
             if (acquiring)
@@ -3233,12 +3256,14 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
    */
    int AndorCamera::OnOutputAmplifier(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
+
+		  DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
 
          if (sequenceRunning_)
             return ERR_BUSY_ACQUIRING;
@@ -3258,6 +3283,9 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
             }
 
             UpdateHSSpeeds();
+            int retCode = UpdatePreampGains();
+            if(DRV_SUCCESS!=retCode)
+               return retCode;
 
             if (initialized_) {
                OnPropertiesChanged();
@@ -3318,47 +3346,8 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
                return (int)ret;
             }
 
-            int numPreAmpGain;
-            ret = GetNumberPreAmpGains(&numPreAmpGain);
-            if (ret != DRV_SUCCESS) {
-               return ret;
-            }
-            char PreAmpGainBuf[10];
-            PreAmpGains_.clear();
-            for (int i=0; i<numPreAmpGain; i++)
+            if(HasProperty(g_OutputAmplifier)) 
             {
-               float pag;
-               ret = GetPreAmpGain(i, &pag); 
-               if (ret != DRV_SUCCESS) {
-                  return ret;
-               }
-               sprintf(PreAmpGainBuf, "%.2f", pag);
-               PreAmpGains_.push_back(PreAmpGainBuf);
-            }
-            std::vector<std::string>::iterator pagIter, pagIterLast;
-            pagIterLast = PreAmpGains_.end();
-            bool resetGain(true);
-            for(pagIter = PreAmpGains_.begin(); pagIter != pagIterLast; ++pagIter) {
-               if(PreAmpGain_.compare(*pagIter) == 0) {
-                  resetGain = false;
-                  break;
-               }
-            }
-            if(resetGain && PreAmpGains_.size() > 0) {
-               ret = SetPreAmpGain(0);
-               if (ret != DRV_SUCCESS) {
-                  return ret;
-               }
-               PreAmpGain_ = PreAmpGains_[0];
-            }
-            if(HasProperty("Pre-Amp-Gain")) {
-               int rc = SetAllowedValues("Pre-Amp-Gain",PreAmpGains_);
-               if (rc != DEVICE_OK) {
-                  return ret;
-               }
-            }
-
-            if(HasProperty(g_OutputAmplifier)) {
                bool changeAmp(false);
                if(ui_swVersion > 283) {
                   std::map<std::string, int>::iterator iter, iterLast;
@@ -3395,8 +3384,13 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
                   }
                }
                UpdateHSSpeeds();
-            }
 
+               
+            }
+            ret = UpdatePreampGains();
+            if(DRV_SUCCESS != ret)
+               return ret;
+            
             if (initialized_) {
                OnPropertiesChanged();
             }
@@ -3447,6 +3441,126 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
 
    }
 
+   /*
+      Updates the PreAmpGains List with the allowed preamp gains for the current settings, 
+      if an invalid PAG is selected a valid preamp gain is selected.  
+   */
+   int AndorCamera::UpdatePreampGains()
+   {
+         int ret, nRet;
+         int numPreAmpGain;
+         int gainAvailable;
+         int numAvailGains;
+
+         bool acquiring = IsAcquiring();
+         if(acquiring) 
+            SetToIdle();
+
+         ret = GetNumberPreAmpGains(&numPreAmpGain);
+         if (ret != DRV_SUCCESS)
+            return ret; 
+         
+         if (numPreAmpGain > 0 ) 
+         {
+            //Repopulate List
+            char PreAmpGainBuf[30];
+            PreAmpGains_.clear();
+            numAvailGains = 0;
+        
+            for (int i=0; i<numPreAmpGain; i++)
+            {
+               int gainAvailable;
+               ret = IsPreAmpGainAvailable(ADChannelIndex_, OutputAmplifierIndex_, HSSpeedIdx_, i, &gainAvailable);
+               if(DRV_SUCCESS != ret)
+                  return ret;
+
+               if(1 == gainAvailable)
+               {
+                  numAvailGains++;
+                  GetPreAmpGainString(i,PreAmpGainBuf);
+                  PreAmpGains_.push_back(PreAmpGainBuf);
+               }
+            }
+            if (PreAmpGains_.empty())
+               return ERR_INVALID_PREAMPGAIN;
+
+            if(!HasProperty("Pre-Amp-Gain"))
+            {
+               CPropertyAction *pAct = new CPropertyAction (this, &AndorCamera::OnPreAmpGain);
+               if(numPreAmpGain>1)
+                     nRet = CreateProperty("Pre-Amp-Gain", PreAmpGains_[numAvailGains-1].c_str(), MM::String, false, pAct);
+               else
+                     nRet = CreateProperty("Pre-Amp-Gain", PreAmpGains_[numAvailGains-1].c_str(), MM::String, true, pAct);
+               assert(nRet == DEVICE_OK);
+            }
+            nRet = SetAllowedValues("Pre-Amp-Gain", PreAmpGains_);
+            if(DRV_SUCCESS != ret)
+               return ret;
+
+
+            //Check PAG index is valid selection
+            ret = IsPreAmpGainAvailable(ADChannelIndex_, OutputAmplifierIndex_, HSSpeedIdx_, PreAmpGainIdx_, &gainAvailable);
+            if(DRV_P4INVALID == ret) //index out of range
+               gainAvailable = 0;
+            else if(DRV_SUCCESS!=ret)
+               return ret;
+
+            //also check to see that the value of the PAG is still the original value
+            GetPreAmpGainString(PreAmpGainIdx_,PreAmpGainBuf);
+            if(0!=PreAmpGain_.compare( PreAmpGainBuf)) 
+               gainAvailable = 0;
+
+            if(0 == gainAvailable) 
+            {
+               for(int i=numPreAmpGain-1; i>=0; i--) //find a valid PAG
+               {
+                  ret = IsPreAmpGainAvailable(ADChannelIndex_, OutputAmplifierIndex_, HSSpeedIdx_, i, &gainAvailable);
+                  if(1 == gainAvailable)
+                  {
+                     PreAmpGainIdx_ = i;
+
+                     GetPreAmpGainString(i,PreAmpGainBuf);
+                     PreAmpGain_ = PreAmpGainBuf;
+
+                     SetProperty("Pre-Amp-Gain",PreAmpGain_.c_str());
+                     SetPreAmpGain(PreAmpGainIdx_);
+                     break;
+                  }
+               }
+            }
+         }
+          if(acquiring) 
+            PrepareSnap();
+      return DRV_SUCCESS;
+   }
+
+   int AndorCamera::GetPreAmpGainString(int PreAmpGainIdx, char * PreAmpGainString )
+   {
+      bool useText = ui_swVersion >= 292;
+      int ret;
+      
+
+      if(useText) 
+      {
+         ret = GetPreAmpGainText(PreAmpGainIdx, PreAmpGainString, sizeof(PreAmpGainString));
+         if(DRV_NOT_SUPPORTED == ret)
+            useText = false;
+      }
+                  
+      if(!useText) 
+      {
+         float pag;
+         ret = GetPreAmpGain(PreAmpGainIdx, &pag); 
+         sprintf(PreAmpGainString, "%.2f", pag);
+      }
+      if (ret != DRV_SUCCESS)
+         return ret;
+
+      return DRV_SUCCESS;
+   }
+
+   
+
 
 
    ///////////////////////////////////////////////////////////////////////////////
@@ -3469,6 +3583,7 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
 
       long timePrev = GetTickCount();
       long imageWait = 0;
+
 		std::ostringstream os;
 
       {
@@ -3531,17 +3646,15 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
       os.str("");
 
       at_32 seriesPrev = 0;
-      at_32 frmcnt = 0;
 
       do
       {
-
          {
             DriverGuard dg(camera_);
-            //GetStatus(&status);
             ret = GetAcquisitionProgress(&acc, &series);
          }
-
+		
+		
          if (ret == DRV_SUCCESS)
          {
             if (series > seriesPrev)
@@ -3559,15 +3672,18 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
 
                // report time elapsed since previous frame
                //printf("Frame %d captured at %ld ms!\n", ++frameCounter, GetTickCount() - timePrev);
+			   
+
+			   //camera_->LogMessage("Aquire Thread: Aquired Frame!", true);
                seriesPrev = series;
-               frmcnt++;
                timePrev = GetTickCount();
                // kdb 7/30/2009  
             } else 
             {
                imageWait = GetTickCount() - timePrev;
                if (imageWait > imageTimeOut_) {
-                  os << "Time out reached at frame " << frmcnt;
+                  os << "Time out reached at frame " << camera_->imageCounter_;
+                  camera_->LogMessage("Time out reached", true);
                   printf("%s\n", os.str().c_str());
                   os.str("");
                   camera_->StopCameraAcquisition();
@@ -3578,9 +3694,13 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
             CDeviceUtils::SleepMs(waitTime_);
 
          }
+
+
       }
 
-      while (ret == DRV_SUCCESS && frmcnt < numImages_ && !stop_);
+      while (ret == DRV_SUCCESS && camera_->imageCounter_ < numImages_ && !stop_);
+      
+	   
 
       if (ret != DRV_SUCCESS && series != 0)
       {
@@ -3589,6 +3709,7 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
          os << "Error: " << ret;
          printf("%s\n", os.str().c_str());
          os.str("");
+		
          return ret;
       }
 
@@ -3607,6 +3728,7 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
 
       os << "series: " << series << " seriesInit: " << seriesInit << " numImages: "<< numImages_;
       printf("%s\n", os.str().c_str());
+	  camera_->LogMessage("Aquire Thread: We can get here if we are not fast enough", true);
       camera_->StopCameraAcquisition();
       return 3; // we can get here if we are not fast enough.  Report?  
    }
@@ -3617,6 +3739,7 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
    int AndorCamera::StartSequenceAcquisition(long numImages, double interval_ms, bool stopOnOverflow)
    {
       DriverGuard dg(this);
+
       if (sequenceRunning_)
          return ERR_BUSY_ACQUIRING;
 
@@ -3629,6 +3752,13 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
       {
          SetToIdle();
       }
+ 
+      // Limit number of images per DMA to sequence length in-case we're using external trig
+      int ret = SetDMAParameters(numImages, 0.001f);
+      if (DRV_SUCCESS != ret)
+         return (int)ret;
+      
+
       LogMessage("Setting Trigger Mode", true);
       int ret0;
       if (iCurrentTriggerMode_ == SOFTWARE)
@@ -3639,7 +3769,7 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
       LogMessage(os.str().c_str());
 
       // prepare the camera
-      int ret = SetAcquisitionMode(5); // run till abort
+      ret = SetAcquisitionMode(5); // run till abort
       if (ret != DRV_SUCCESS)
          return ret;
       LogMessage("Set acquisition mode to 5", true);
@@ -3689,7 +3819,8 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
 
       // re-apply the frame transfer mode setting
       char ftMode[MM::MaxStrLength];
-      if(HasProperty(m_str_frameTransferProp.c_str())){
+      if(HasProperty(m_str_frameTransferProp.c_str()))
+      {
          ret = GetProperty(m_str_frameTransferProp.c_str(), ftMode);
          assert(ret == DEVICE_OK);
          int modeIdx = 0;
@@ -3741,7 +3872,6 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
          SetAcquisitionMode(1);
          return ret;
       }
-
       LogMessage("Starting acquisition in the camera", true);
       startTime_ = GetCurrentMMTime();
       ret = ::StartAcquisition();
@@ -3769,10 +3899,11 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
    int AndorCamera::StopCameraAcquisition()
    {
       {
+		 
          DriverGuard dg(this);
          if (!sequenceRunning_)
             return DEVICE_OK;
-
+		 
          LogMessage("Stopped sequence acquisition");
          AbortAcquisition();
          int status = DRV_ACQUIRING;
@@ -3785,6 +3916,7 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
 
          UpdateSnapTriggerMode();
       }
+	  
 
       MM::Core* cb = GetCoreCallback();
       if (cb)
@@ -3833,82 +3965,120 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
       unsigned int width;
       unsigned int height;
       unsigned int bytesPerPixel;
-       
+      unsigned long imagesPerDMA;
+      long validFirst, validLast;
+      
       {
          DriverGuard dg(this);
          unsigned ret;
-         // get the top most image from the driver
-         if (stopOnOverflow_)
-            ret = GetOldestImage16((WORD*)fullFrameBuffer_, roi_.xSize/binSize_ * roi_.ySize/binSize_);
-         else
-            ret = GetMostRecentImage16((WORD*)fullFrameBuffer_, roi_.xSize/binSize_ * roi_.ySize/binSize_);
-         if (ret != DRV_SUCCESS)
-            return (int)ret;
-
+         long imageCountFirst, imageCountLast; 
+         
          width =  GetImageWidth();
          height = GetImageHeight();
          bytesPerPixel = GetImageBytesPerPixel();
+
+         ret = GetNumberNewImages(&imageCountFirst, &imageCountLast);
+         if (ret != DRV_SUCCESS)
+            return (int)ret;
+
+         ret = GetImagesPerDMA (&imagesPerDMA);
+         if (ret != DRV_SUCCESS)
+            return (int)ret;
+
+         long imagesAvailable = imageCountLast - imageCountFirst;
+
+         if(imagesAvailable >= imagesPerDMA)
+         {
+            imagesAvailable = imagesPerDMA-1;
+         }
+
+         if(stopOnOverflow_)
+         {
+            imageCountLast = imageCountFirst+imagesAvailable; //get oldest images
+         }
+         else
+         {
+            imageCountFirst = imageCountLast-imagesAvailable; //get newest images
+         }
+
+         
+
+         ret = GetImages16(imageCountFirst,imageCountLast, (WORD*) fullFrameBuffer_, imagesPerDMA*width*height, &validFirst, &validLast);
+         if (ret != DRV_SUCCESS)
+            return (int)ret;
 
       }
 
       // process image
       // imageprocesssor now called from core
 
-      // create metadata
-      char label[MM::MaxStrLength];
-      this->GetLabel(label);
+     if(validLast > sequenceLength_) 
+            validLast = sequenceLength_; //don't push more images at the circular buffer than are in the sequence.  
+
+      int retCode;
+      short*  imagePtr = fullFrameBuffer_;
+      for(int i=validFirst; i<=validLast; i++)
+      {
+
+         // create metadata
+         char label[MM::MaxStrLength];
+         this->GetLabel(label);
 
 
-      MM::MMTime timestamp = this->GetCurrentMMTime();
-      Metadata md;
-      // Copy the metadata inserted by other processes:
-      std::vector<std::string> keys = metadata_.GetKeys();
-      for (unsigned int i= 0; i < keys.size(); i++) {
-         md.put(keys[i], metadata_.GetSingleTag(keys[i].c_str()).GetValue().c_str());
+         MM::MMTime timestamp = this->GetCurrentMMTime();
+         Metadata md;
+         // Copy the metadata inserted by other processes:
+         std::vector<std::string> keys = metadata_.GetKeys();
+         for (unsigned int i= 0; i < keys.size(); i++) {
+            md.put(keys[i], metadata_.GetSingleTag(keys[i].c_str()).GetValue().c_str());
+         }
+
+         md.put("Camera", label);
+         md.put(MM::g_Keyword_Metadata_StartTime, CDeviceUtils::ConvertToString(startTime_.getMsec()));
+         md.put(MM::g_Keyword_Elapsed_Time_ms, CDeviceUtils::ConvertToString((timestamp - startTime_).getMsec()));
+         md.put(MM::g_Keyword_Metadata_ImageNumber, CDeviceUtils::ConvertToString(imageCounter_));
+         md.put(MM::g_Keyword_Binning, binSize_);
+
+         MetadataSingleTag mstStartTime(MM::g_Keyword_Metadata_StartTime, label, true);
+         mstStartTime.SetValue(CDeviceUtils::ConvertToString(startTime_.getMsec()));
+         md.SetTag(mstStartTime);
+
+         MetadataSingleTag mst(MM::g_Keyword_Elapsed_Time_ms, label, true);
+         mst.SetValue(CDeviceUtils::ConvertToString(timestamp.getMsec()));
+         md.SetTag(mst);
+
+         MetadataSingleTag mstCount(MM::g_Keyword_Metadata_ImageNumber, label, true);
+         mstCount.SetValue(CDeviceUtils::ConvertToString(imageCounter_));      
+         md.SetTag(mstCount);
+
+         MetadataSingleTag mstB(MM::g_Keyword_Binning, label, true);
+         mstB.SetValue(CDeviceUtils::ConvertToString(binSize_));      
+         md.SetTag(mstB);
+         
+         imageCounter_++;
+
+         // This method inserts new image in the circular buffer (residing in MMCore)
+         retCode = GetCoreCallback()->InsertImage(this, (unsigned char*) imagePtr,
+            width,
+            height,
+            bytesPerPixel,
+            md.Serialize().c_str());
+
+         if (!stopOnOverflow_ && DEVICE_BUFFER_OVERFLOW == retCode)
+         {
+            // do not stop on overflow - just reset the buffer
+            GetCoreCallback()->ClearImageBuffer(this);
+            GetCoreCallback()->InsertImage(this, (unsigned char*) imagePtr,
+               width,
+               height,
+               bytesPerPixel,
+               md.Serialize().c_str());
+         }
+
+         imagePtr += width*height;
       }
 
-      md.put("Camera", label);   
-      md.put(MM::g_Keyword_Metadata_StartTime, CDeviceUtils::ConvertToString(startTime_.getMsec()));
-      md.put(MM::g_Keyword_Elapsed_Time_ms, CDeviceUtils::ConvertToString((timestamp - startTime_).getMsec()));
-      md.put(MM::g_Keyword_Metadata_ImageNumber, CDeviceUtils::ConvertToString(imageCounter_));
-      md.put(MM::g_Keyword_Binning, binSize_);
-
-      MetadataSingleTag mstStartTime(MM::g_Keyword_Metadata_StartTime, label, true);
-      mstStartTime.SetValue(CDeviceUtils::ConvertToString(startTime_.getMsec()));
-      md.SetTag(mstStartTime);
-
-      MetadataSingleTag mst(MM::g_Keyword_Elapsed_Time_ms, label, true);
-      mst.SetValue(CDeviceUtils::ConvertToString(timestamp.getMsec()));
-      md.SetTag(mst);
-
-      MetadataSingleTag mstCount(MM::g_Keyword_Metadata_ImageNumber, label, true);
-      mstCount.SetValue(CDeviceUtils::ConvertToString(imageCounter_));      
-      md.SetTag(mstCount);
-
-      MetadataSingleTag mstB(MM::g_Keyword_Binning, label, true);
-      mstB.SetValue(CDeviceUtils::ConvertToString(binSize_));      
-      md.SetTag(mstB);
-
-      imageCounter_++;
-
-      // This method inserts new image in the circular buffer (residing in MMCore)
-      int retCode = GetCoreCallback()->InsertImage(this, (unsigned char*) fullFrameBuffer_,
-         width,
-         height,
-         bytesPerPixel,
-         md.Serialize().c_str());
-
-      if (!stopOnOverflow_ && retCode == DEVICE_BUFFER_OVERFLOW)
-      {
-         // do not stop on overflow - just reset the buffer
-         GetCoreCallback()->ClearImageBuffer(this);
-         return GetCoreCallback()->InsertImage(this, (unsigned char*) fullFrameBuffer_,
-            GetImageWidth(),
-            GetImageHeight(),
-            GetImageBytesPerPixel(),
-            md.Serialize().c_str());
-      } else
-         return DEVICE_OK;
+      return DEVICE_OK;
    }
 
    std::string AndorCamera::getCameraType() {
@@ -4058,72 +4228,78 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
    */
    int AndorCamera::OnCropModeSwitch(MM::PropertyBase* pProp, MM::ActionType eAct)
    {
-      DriverGuard dg(this);
+      
       if (eAct == MM::AfterSet)
       {
          std::string Switch;
-         pProp->Get(Switch);
-         if (Switch == "Off" && !cropModeSwitch_)
-            return DEVICE_OK;
-         if (Switch == "On" && cropModeSwitch_)
-            return DEVICE_OK;
 
+		 {
+			  DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
+			 pProp->Get(Switch);
+			 if (Switch == "Off" && !cropModeSwitch_)
+				return DEVICE_OK;
+			 if (Switch == "On" && cropModeSwitch_)
+				return DEVICE_OK;
+		 }
          bool acquiring = sequenceRunning_;
          if (acquiring)
             StopSequenceAcquisition(true);
 
-         if (sequenceRunning_)
-            return ERR_BUSY_ACQUIRING;
+		 {
+			DriverGuard dg(this); //moved driver guard to here to allow AcqSequenceThread to terminate properly
+			if (sequenceRunning_)
+			return ERR_BUSY_ACQUIRING;
 
-         if (Switch == "On"){
-           SetProperty("FrameTransfer", "On");           
-         } 
+			if (Switch == "On"){
+			SetProperty("FrameTransfer", "On");           
+			} 
 
-         //added to use RTA
-         SetToIdle();
+			//added to use RTA
+			SetToIdle();
 
-         unsigned ret = DRV_SUCCESS;
-         if (Switch == "On") {
-            SetAcquisitionMode(5);
-            SetFrameTransferMode(1);
-            ret = SetIsolatedCropMode(1, currentCropHeight_, currentCropWidth_, 1, 1);
-            SetAcquisitionMode(1);
-            fullFrameX_ = currentCropWidth_;
-            fullFrameY_ = currentCropHeight_;
-            cropModeSwitch_ = true;
-         } 
-         else {
-            fullFrameX_ = tempFrameX_;
-            fullFrameY_ = tempFrameY_;
-            ret = SetIsolatedCropMode(0, currentCropHeight_, currentCropWidth_, 1, 1);
-            cropModeSwitch_ = false;
-         }
+			unsigned ret = DRV_SUCCESS;
+			if (Switch == "On") {
+			SetAcquisitionMode(5);
+			SetFrameTransferMode(1);
+			ret = SetIsolatedCropMode(1, currentCropHeight_, currentCropWidth_, 1, 1);
+			SetAcquisitionMode(1);
+			fullFrameX_ = currentCropWidth_;
+			fullFrameY_ = currentCropHeight_;
+			cropModeSwitch_ = true;
+			} 
+			else {
+			fullFrameX_ = tempFrameX_;
+			fullFrameY_ = tempFrameY_;
+			ret = SetIsolatedCropMode(0, currentCropHeight_, currentCropWidth_, 1, 1);
+			cropModeSwitch_ = false;
+			}
 
-         if (initialized_) {
-            OnPropertiesChanged();
-         }
+			if (initialized_) {
+			OnPropertiesChanged();
+			}
 
-         if (DRV_SUCCESS != ret)
-            return (int)ret;
+			if (DRV_SUCCESS != ret)
+			return (int)ret;
 
-         ROI oldRoi = roi_;
-         roi_.xSize = fullFrameX_;
-         roi_.ySize = fullFrameY_;
-         roi_.x = 0;
-         roi_.y = 0;
+			ROI oldRoi = roi_;
+			roi_.xSize = fullFrameX_;
+			roi_.ySize = fullFrameY_;
+			roi_.x = 0;
+			roi_.y = 0;
 
-         // adjust image extent to conform to the bin size
-         roi_.xSize -= roi_.xSize % binSize_;
-         roi_.ySize -= roi_.ySize % binSize_;
+			// adjust image extent to conform to the bin size
+			roi_.xSize -= roi_.xSize % binSize_;
+			roi_.ySize -= roi_.ySize % binSize_;
 
-         /* unsigned aret = */ SetImage(binSize_, binSize_, roi_.x+1, roi_.x+roi_.xSize,
-            roi_.y+1, roi_.y+roi_.ySize);
+			/* unsigned aret = */ SetImage(binSize_, binSize_, roi_.x+1, roi_.x+roi_.xSize,
+			roi_.y+1, roi_.y+roi_.ySize);
 
-         GetReadoutTime();
+			GetReadoutTime();
 
-         ResizeImageBuffer();
+			ResizeImageBuffer();
 
-         PrepareSnap();
+			PrepareSnap();
+		 }
       }
       else if (eAct == MM::BeforeGet)
       {
@@ -4175,13 +4351,18 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
             SetFrameTransferMode(1);
             ret = SetIsolatedCropMode(1, currentCropHeight_, cropWidth, 1, 1);
             SetAcquisitionMode(1);
-            fullFrameX_ = currentCropWidth_;
+            fullFrameX_ = cropWidth; 
 
             if (DRV_SUCCESS != ret)
               return (int)ret;
 
             currentCropWidth_ = cropWidth;            
          }
+
+         if (initialized_) {
+			OnPropertiesChanged();
+			}
+
 
          ROI oldRoi = roi_;
          roi_.xSize = fullFrameX_;
@@ -4248,13 +4429,17 @@ int AndorCamera::OnSpuriousNoiseFilter(MM::PropertyBase* pProp, MM::ActionType e
             SetFrameTransferMode(1);
             ret = SetIsolatedCropMode(1, cropHeight, currentCropWidth_, 1, 1);
             SetAcquisitionMode(1);
-            fullFrameY_ = currentCropHeight_;
+            fullFrameY_ = cropHeight;
 
             if (DRV_SUCCESS != ret)
               return (int)ret;
 
             currentCropHeight_ = cropHeight;  
          }
+
+         if (initialized_) {
+			OnPropertiesChanged();
+			}
 
          ROI oldRoi = roi_;
          roi_.xSize = fullFrameX_;
@@ -4414,6 +4599,7 @@ unsigned int AndorCamera::createIsolatedCropModeProperty(AndorCapabilities * cap
 
    DriverGuard::DriverGuard(const AndorCamera * cam)
    {
+	    
       g_AndorDriverLock.Lock();
       if (cam != 0 && cam->GetNumberOfWorkableCameras() > 1)
       {
@@ -4425,7 +4611,9 @@ unsigned int AndorCamera::createIsolatedCropModeProperty(AndorCapabilities * cap
          {
             int ret = SetCurrentCamera(cam->GetMyCameraID());
             if (ret != DRV_SUCCESS)
+			{
                printf("Error switching active camera");
+			}
          }
       }
    }

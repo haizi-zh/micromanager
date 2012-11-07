@@ -18,7 +18,6 @@
 //               IN NO EVENT SHALL THE COPYRIGHT OWNER OR
 //               CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
 //               INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES.
-
 package org.micromanager.newimageflipper;
 
 import ij.ImagePlus;
@@ -26,6 +25,7 @@ import ij.process.ImageProcessor;
 import mmcorej.TaggedImage;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.micromanager.acquisition.TaggedImageQueue;
 import org.micromanager.api.DataProcessor;
 import org.micromanager.utils.ImageUtils;
 import org.micromanager.utils.MDUtils;
@@ -34,8 +34,10 @@ import org.micromanager.utils.ReportingUtils;
 
 public class NewImageFlippingProcessor extends DataProcessor<TaggedImage> {
 
-   static public enum Rotation {R0, R90, R180, R270}
-   
+   static public enum Rotation {
+
+      R0, R90, R180, R270
+   }
    NewImageFlipperControls controls_;
 
    public NewImageFlippingProcessor(NewImageFlipperControls controls) {
@@ -51,31 +53,36 @@ public class NewImageFlippingProcessor extends DataProcessor<TaggedImage> {
    public void process() {
       try {
          TaggedImage nextImage = poll();
-         try {
-            String camera = nextImage.tags.getString("Core-Camera");
-            if (!camera.equals(controls_.getCamera())) {
-               if (nextImage.tags.has("CameraChannelIndex")) {
-                  camera = MDUtils.getChannelName(nextImage.tags);
+         if (nextImage != TaggedImageQueue.POISON) {
+            try {
+               String camera = nextImage.tags.getString("Core-Camera");
+               if (!camera.equals(controls_.getCamera())) {
+                  if (nextImage.tags.has("Camera")) {
+                     camera = nextImage.tags.getString("Camera");
+                  }
                }
-            }
-            if (!camera.equals(controls_.getCamera())) {
+               if (!camera.equals(controls_.getCamera())) {
+                  produce(nextImage);
+                  return;
+
+               }
+
+               produce(proccessTaggedImage(nextImage, controls_.getMirror(),
+                       controls_.getRotate()));
+
+            } catch (Exception ex) {
                produce(nextImage);
-               return;
-
+               ReportingUtils.logError(ex);
             }
-            
-            produce(proccessTaggedImage(nextImage, controls_.getMirror(), 
-                    controls_.getRotate()));
-
-         } catch (Exception ex) {
+         } else {
+            //Must produce Poison image so LiveAcq Thread terminates properly
             produce(nextImage);
-            ReportingUtils.logError(ex);
          }
       } catch (Exception ex) {
          ReportingUtils.logError(ex);
       }
    }
-   
+
    /**
     * Executes image transformation
     * First mirror the image if requested, than rotate as requested
@@ -87,7 +94,7 @@ public class NewImageFlippingProcessor extends DataProcessor<TaggedImage> {
     * @throws JSONException
     * @throws MMScriptException 
     */
-   public static TaggedImage proccessTaggedImage(TaggedImage nextImage, 
+   public static TaggedImage proccessTaggedImage(TaggedImage nextImage,
            boolean mirror, Rotation rotation) throws JSONException, MMScriptException {
 
       int width = MDUtils.getWidth(nextImage.tags);
@@ -116,8 +123,7 @@ public class NewImageFlippingProcessor extends DataProcessor<TaggedImage> {
       JSONObject newTags = nextImage.tags;
       MDUtils.setWidth(newTags, proc.getWidth());
       MDUtils.setHeight(newTags, proc.getHeight());
-      
+
       return new TaggedImage(proc.getPixels(), newTags);
    }
-
 }

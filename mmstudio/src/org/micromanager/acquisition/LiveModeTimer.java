@@ -22,8 +22,16 @@
 package org.micromanager.acquisition;
 
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import mmcorej.CMMCore;
 import mmcorej.TaggedImage;
 import org.json.JSONException;
@@ -45,7 +53,7 @@ public class LiveModeTimer {
    private VirtualAcquisitionDisplay win_;
    private CMMCore core_;
    private MMStudioMainFrame gui_;
-   private long multiChannelCameraNrCh_;
+   private int multiChannelCameraNrCh_;
    private long fpsTimer_;
    private long fpsCounter_;
    private long imageNumber_;
@@ -56,13 +64,25 @@ public class LiveModeTimer {
    private boolean running_ = false;
    private Timer timer_;
    private TimerTask task_;
+   private MMStudioMainFrame.DisplayImageRoutine displayImageRoutine_;
+    private LinkedBlockingQueue imageQueue_;
    
-
    public LiveModeTimer() {
       gui_ = MMStudioMainFrame.getInstance();
       core_ = gui_.getCore();
       format_ = NumberFormat.getInstance();
       format_.setMaximumFractionDigits(0x1);
+      displayImageRoutine_ = new MMStudioMainFrame.DisplayImageRoutine() {
+         public void show(final TaggedImage ti) {
+            try {
+               gui_.normalizeTags(ti);
+               gui_.addImage(ACQ_NAME, ti, true, true);
+               gui_.updateLineProfile();
+            } catch (Exception e) {
+               ReportingUtils.logError(e);
+            }
+         }
+      };
    }
 
    /**
@@ -87,7 +107,7 @@ public class LiveModeTimer {
     * Determines whether we are dealing with multiple cameras
     */
    private void setType() {
-      multiChannelCameraNrCh_ = core_.getNumberOfCameraChannels();
+      multiChannelCameraNrCh_ = (int) core_.getNumberOfCameraChannels();
       if (multiChannelCameraNrCh_ == 1) {
          task_ = singleCameraLiveTask();
       } else {
@@ -135,11 +155,13 @@ public class LiveModeTimer {
          lastImageNumber_ = imageNumber_ - 1;
          oldImageNumber_ = imageNumber_;
 
+         imageQueue_ = new LinkedBlockingQueue();
          timer_.schedule(task_, 0, delay);
          win_.liveModeEnabled(true);
          
          win_.getImagePlus().getWindow().toFront();
          running_ = true;
+         gui_.runDisplayThread(imageQueue_, displayImageRoutine_);
    }
 
    
@@ -148,7 +170,12 @@ public class LiveModeTimer {
    }
    
    private void stop(boolean firstAttempt) {
-     
+        try {
+           if (imageQueue_ != null)
+               imageQueue_.put(TaggedImageQueue.POISON);
+        } catch (InterruptedException ex) {
+           ReportingUtils.logError(ex);
+        }
       if (timer_ != null) {
          timer_.cancel();
       }
@@ -235,33 +262,23 @@ public class LiveModeTimer {
                gui_.enableLiveMode(false);
             } else {
                try {
+
+                  
                   TaggedImage ti = core_.getLastTaggedImage();
                   // if we have already shown this image, do not do it again.
-                  long imageNumber = ti.tags.getLong("ImageNumber");
-                  if (imageNumber == lastImageNumber_)
-                     return;
-                  lastImageNumber_ = imageNumber;
-                  
-                  addTags(ti, 0);
                   setImageNumber(ti.tags.getLong("ImageNumber"));
-                  gui_.addImage(ACQ_NAME, ti, true, true);
-                  gui_.updateLineProfile();
-
-               } catch (MMScriptException ex) {
+                  imageQueue_.put(ti);
+               } catch (Exception ex) {
+                  ReportingUtils.logMessage("Stopping live mode because of error...");
+                  gui_.enableLiveMode(false);
                   ReportingUtils.showError(ex);
-                  gui_.enableLiveMode(false);
-               } catch (JSONException exc) {
-                  ReportingUtils.showError(exc, "Problem with image tags");
-                  gui_.enableLiveMode(false);
-               } catch (Exception excp) {
-                  ReportingUtils.showError("Couldn't get tagged image from core");
-                  gui_.enableLiveMode(false);
                }
             }
          }
       };
    }
 
+   
    private TimerTask multiCamLiveTask() {
       return new TimerTask() {
          @Override
@@ -273,63 +290,32 @@ public class LiveModeTimer {
                gui_.enableLiveMode(false);  //disable live if user closed window
             } else {
                try {
-                  TaggedImage[] images = new TaggedImage[(int) multiChannelCameraNrCh_];
-                  
                   String camera = core_.getCameraDevice();
-
-                  TaggedImage ti = core_.getLastTaggedImage();
-
-                  long imageNumber = ti.tags.getLong("ImageNumber");
-                  if (imageNumber == lastImageNumber_)
-                     return;
-                  lastImageNumber_ = imageNumber;
-                  
-                  int channel = ti.tags.getInt(camera + "-" + CCHANNELINDEX);
-                  images[channel] = ti;
-                  int numFound = 1;
-                  int index = 1;
-                  while (numFound < images.length && index <= 2 * images.length) {      //play with this number
-                     try {
-                        ti = core_.getNBeforeLastTaggedImage(index);
-                        // If we only just started live mode, this tag may not
-                        // be available, so throw an error and exit loop.
-                        channel = ti.tags.getInt(camera + "-" + CCHANNELINDEX);
-                     } catch (Exception ex) {
-                        break;
+                  Set<String> cameraChannelsAcquired = new HashSet<String>();
+                  for (int i = 0; i < 2 * multiChannelCameraNrCh_; ++i) {
+                     TaggedImage ti = core_.getNBeforeLastTaggedImage(i);
+                     if (i == 0) {
+                        setImageNumber(ti.tags.getLong("ImageNumber"));
                      }
-                     if (images[channel] == null) {
-                        numFound++;
-                     }
-                     images[channel] = ti;
-                     index++;
-                  }
-
-                  if (numFound == images.length) {
-                     for (channel = 0; channel < images.length; channel++) {
-                        ti = images[channel];
-                        ti.tags.put("Channel", core_.getCameraChannelName(channel));
-                        addTags(ti, channel);
-                     }
-                     int lastChannelToAdd = win_.getHyperImage().getChannel() - 1;
-                     for (int i = 0; i < images.length; i++) {
-                        if (i != lastChannelToAdd) {
-                           gui_.addImage(MMStudioMainFrame.SIMPLE_ACQ, images[i], false, true);
+                     String channelName;
+                     if (ti.tags.has(camera + "-CameraChannelName")) {
+                        channelName = ti.tags.getString(camera + "-CameraChannelName");
+                        if (!cameraChannelsAcquired.contains(channelName)) {
+                           ti.tags.put("Channel", channelName);
+                           ti.tags.put("ChannelIndex", ti.tags.getInt(camera + "-CameraChannelIndex"));
+                           imageQueue_.put(ti);
+                           cameraChannelsAcquired.add(channelName);
+                        }
+                        if (cameraChannelsAcquired.size() == multiChannelCameraNrCh_) {
+                           break;
                         }
                      }
-                     setImageNumber(ti.tags.getLong("ImageNumber"));
-                     gui_.addImage(MMStudioMainFrame.SIMPLE_ACQ, images[lastChannelToAdd], true, true);
-                     gui_.updateLineProfile();
                   }
-
-               } catch (MMScriptException ex) {
-                  gui_.enableLiveMode(false);
-                  ReportingUtils.showError(ex);
-               } catch (JSONException exc) {
-                  gui_.enableLiveMode(false);
-                  ReportingUtils.showError(exc, "Problem with image tags");
                } catch (Exception exc) {
+                  ReportingUtils.logMessage("Stopping live mode because of error...");
                   gui_.enableLiveMode(false);
-                  ReportingUtils.showError("Couldn't get tagged image from core");
+                  ReportingUtils.showError(exc);
+
                }
             }
          }

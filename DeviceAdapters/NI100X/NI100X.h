@@ -62,12 +62,12 @@ public:
    int GetLimits(double& minVolts, double& maxVolts) {minVolts = minV_; maxVolts = maxV_; return DEVICE_OK;}
    int IsDASequenceable(bool& isSequenceable) const {isSequenceable = false; return DEVICE_OK;}
    int GetDASequenceMaxLength(long& nrEvents) const {return 0;}
-   int StartDASequence() const {return DEVICE_UNSUPPORTED_COMMAND;}
-   int StopDASequence() const {return DEVICE_OK;}
+   int StartDASequence() {return DEVICE_UNSUPPORTED_COMMAND;}
+   int StopDASequence() {return DEVICE_OK;}
    int LoadDASequence(std::vector<double> voltages) const {return DEVICE_UNSUPPORTED_COMMAND;}
    int ClearDASequence(){return DEVICE_UNSUPPORTED_COMMAND;}
    int AddToDASequence(double voltage) {return DEVICE_UNSUPPORTED_COMMAND;}
-   int SendDASequence() const {return DEVICE_UNSUPPORTED_COMMAND;}
+   int SendDASequence() {return DEVICE_UNSUPPORTED_COMMAND;}
 
    // action interface
    // ----------------
@@ -167,12 +167,12 @@ public:
   int GetLimits(double& min, double& max);
   int IsStageSequenceable(bool& isSequenceable) const {isSequenceable = false; return DEVICE_OK;}
   int GetStageSequenceMaxLength(long& nrEvents) const {nrEvents = 0; return DEVICE_OK;}
-  int StartStageSequence() const {return DEVICE_UNSUPPORTED_COMMAND;}
-  int StopStageSequence() const {return DEVICE_UNSUPPORTED_COMMAND;}
+  int StartStageSequence() {return DEVICE_UNSUPPORTED_COMMAND;}
+  int StopStageSequence() {return DEVICE_UNSUPPORTED_COMMAND;}
   int LoadStageSequence(std::vector<double> positions) const {return DEVICE_UNSUPPORTED_COMMAND;}
   int ClearStageSequence() {return DEVICE_UNSUPPORTED_COMMAND;}
   int AddToStageSequence(double position) {return DEVICE_UNSUPPORTED_COMMAND;}
-  int SendStageSequence() const {return DEVICE_UNSUPPORTED_COMMAND;}
+  int SendStageSequence() {return DEVICE_UNSUPPORTED_COMMAND;}
   bool IsContinuousFocusDrive() const {return false;}
 
    // action interface

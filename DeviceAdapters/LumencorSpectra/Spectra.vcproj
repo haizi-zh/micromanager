@@ -69,10 +69,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)/mmgr_dal_LumencorSpectra.dll"
+				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/Nikon.pdb"
+				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -98,7 +98,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\bin"
+				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\bin_$(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -152,10 +152,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)/mmgr_dal_LumencorSpectra.dll"
+				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/Nikon.pdb"
+				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
@@ -181,7 +181,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\bin"
+				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\bin_$(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -209,7 +209,6 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;MODULE_EXPORTS"
 				ExceptionHandling="2"
 				RuntimeLibrary="0"
@@ -290,7 +289,6 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="../../MMDevice"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;MODULE_EXPORTS"
 				ExceptionHandling="2"
 				RuntimeLibrary="0"
@@ -359,6 +357,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\MMDevice\ImgBuffer.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\MMDevice\ModuleInterface.cpp"
 				>
 			</File>
@@ -377,23 +379,23 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath="..\..\..\MMDevice\DeviceBase.h"
+				RelativePath="..\..\MMDevice\DeviceBase.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\MMDevice\DeviceThreads.h"
+				RelativePath="..\..\MMDevice\DeviceThreads.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\MMDevice\DeviceUtils.h"
+				RelativePath="..\..\MMDevice\DeviceUtils.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\MMDevice\ImageMetadata.h"
+				RelativePath="..\..\MMDevice\ImageMetadata.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\MMDevice\ImgBuffer.h"
+				RelativePath="..\..\MMDevice\ImgBuffer.h"
 				>
 			</File>
 			<File
@@ -401,15 +403,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\MMDevice\MMDeviceConstants.h"
+				RelativePath="..\..\MMDevice\MMDeviceConstants.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\MMDevice\ModuleInterface.h"
+				RelativePath="..\..\MMDevice\ModuleInterface.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\MMDevice\Property.h"
+				RelativePath="..\..\MMDevice\Property.h"
 				>
 			</File>
 			<File

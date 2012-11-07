@@ -24,12 +24,12 @@ License along with this software.  If not, see
 #include "ScopeLEDBasicIlluminator.h"
 
 #define SCOPELED_ILLUMINATOR_CHANNELS_MAX 4
-class ScopeLEDMicroscopeIlluminator : public ScopeLEDBasicIlluminator<ScopeLEDMicroscopeIlluminator>
+class ScopeLEDMSBMicroscopeIlluminator : public ScopeLEDBasicIlluminator<ScopeLEDMSBMicroscopeIlluminator>
 {
     bool m_state;
 public:
-    ScopeLEDMicroscopeIlluminator(); 
-    ~ScopeLEDMicroscopeIlluminator();
+    ScopeLEDMSBMicroscopeIlluminator(); 
+    ~ScopeLEDMSBMicroscopeIlluminator();
 
     int Initialize();
 
@@ -48,9 +48,55 @@ public:
     
     static const char* DeviceName;
     static const char* DeviceDescription;
-
+protected:
+    void ClearOpticalState();
+    
 private:
     double brightness[SCOPELED_ILLUMINATOR_CHANNELS_MAX];
+};
+
+class ScopeLEDMSMMicroscopeIlluminator : public ScopeLEDBasicIlluminator<ScopeLEDMSMMicroscopeIlluminator>
+{    
+public:
+    ScopeLEDMSMMicroscopeIlluminator(); 
+    ~ScopeLEDMSMMicroscopeIlluminator();
+
+    int Initialize();
+
+    void GetName (char* pszName) const;
+
+// Shutter API
+    int SetOpen (bool open = true);
+    int GetOpen(bool& open);
+
+// action interface
+    int OnChannelBrightness(int index, MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnChannel1Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnChannel2Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnChannel3Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnChannel4Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+
+    int OnPresetModeBrightness(int index, MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnPresetMode1Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnPresetMode2Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnPresetMode3Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnPresetMode4Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnPresetMode5Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnPresetMode6Brightness(MM::PropertyBase* pProp, MM::ActionType eAct);
+
+    static const char* DeviceName;
+    static const char* DeviceDescription;
+protected:
+    void ClearOpticalState();
+
+private:
+    double brightnessRawChannel[SCOPELED_ILLUMINATOR_CHANNELS_MAX];
+    double activePresetModeBrightness;
+    int activePresetModeIndex;
+
+    int SetColor(bool on);
+    //int GetPresetMode(unsigned char mode);
+    int PlayPresetMode(int mode, double brightness);
 };
 
 #define MAX_FMI_LED_GROUPS 9
@@ -96,10 +142,7 @@ public:
     int OnChannel1Wavelength(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnChannel2Wavelength(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnChannel3Wavelength(MM::PropertyBase* pProp, MM::ActionType eAct);
-    int OnChannel4Wavelength(MM::PropertyBase* pProp, MM::ActionType eAct);    
-
-    int OnControlMode(MM::PropertyBase* pProp, MM::ActionType eAct);
-    int OnControlModeString(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnChannel4Wavelength(MM::PropertyBase* pProp, MM::ActionType eAct);
 
     int OnActiveChannelString(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnActiveWavelengthString(MM::PropertyBase* pProp, MM::ActionType eAct);
@@ -118,6 +161,9 @@ public:
         long led_group;
         std::string info;
     } m_ActiveWavelengths, m_ActiveChannels;
+
+protected:
+    void ClearOpticalState();
     
 private:
 
@@ -133,9 +179,6 @@ private:
     int GetLEDGroupChannels(int group, long& channels);
     int OnLEDGroupChannels(int group, MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnChannelWavelength(int index, MM::PropertyBase* pProp, MM::ActionType eAct);
-
-    int SetControlMode(long mode);
-    int GetControlMode(long& mode);
 
     int UpdateActiveChannelString();
     int UpdateActiveWavelengthString();

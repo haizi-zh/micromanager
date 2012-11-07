@@ -244,11 +244,11 @@ public:
    // Sequence functions
    int IsStageSequenceable(bool& isSequenceable) const;
    int GetStageSequenceMaxLength(long& nrEvents) const;
-   int StartStageSequence() const;
-   int StopStageSequence() const;
+   int StartStageSequence();
+   int StopStageSequence();
    int ClearStageSequence();
    int AddToStageSequence(double position);
-   int SendStageSequence() const;
+   int SendStageSequence();
 
 private:
    std::vector<std::string> availableDAs_;
@@ -306,11 +306,11 @@ public:
    int IsXYStageSequenceable(bool& isSequenceable) const;
    
    int GetXYStageSequenceMaxLength(long& nrEvents) const;
-   int StartXYStageSequence() const;
-   int StopXYStageSequence() const;
+   int StartXYStageSequence();
+   int StopXYStageSequence();
    int ClearXYStageSequence();
    int AddToXYStageSequence(double positionX, double positionY);
-   int SendXYStageSequence() const;
+   int SendXYStageSequence();
    
    // action interface
    // ----------------

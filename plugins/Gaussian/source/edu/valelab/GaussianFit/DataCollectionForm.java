@@ -94,6 +94,11 @@ public class DataCollectionForm extends javax.swing.JFrame {
    private static final String COL3Width = "Col3Width";
    private static final String COL4Width = "Col4Width";
    private static final String COL5Width = "Col5Width";
+   
+   private static final int OK = 0;
+   private static final int FAILEDDONOTINFORM = 1;
+   private static final int FAILEDDOINFORM = 2;
+   
    private Preferences prefs_;
    
    
@@ -572,8 +577,8 @@ public class DataCollectionForm extends javax.swing.JFrame {
         plotComboBox_.setFont(new java.awt.Font("Lucida Grande", 0, 10));
         plotComboBox_.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "t-X", "t-Y", "X-Y", "t-Int.", " " }));
 
-        visualizationMagnification_.setFont(new java.awt.Font("Lucida Grande", 0, 10));
-        visualizationMagnification_.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1x", "2x", "4x", "8x" }));
+        visualizationMagnification_.setFont(new java.awt.Font("Lucida Grande", 0, 10)); // NOI18N
+        visualizationMagnification_.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1x", "2x", "4x", "8x", "16x", "32x", "64x", "128x" }));
 
         visualizationModel_.setFont(new java.awt.Font("Lucida Grande", 0, 10));
         visualizationModel_.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Gaussian" }));
@@ -729,7 +734,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
             }
         });
 
-        pairsMaxDistanceField_.setFont(new java.awt.Font("Lucida Grande", 0, 11)); // NOI18N
+        pairsMaxDistanceField_.setFont(new java.awt.Font("Lucida Grande", 0, 11));
         pairsMaxDistanceField_.setText("500");
 
         SigmaLabel3.setFont(new java.awt.Font("Lucida Grande", 0, 11));
@@ -1587,6 +1592,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
                         Point2D.Double pCh2 = np.findKDWSE(pCh1);
                         if (pCh2 != null) {
                            rt.incrementCounter();
+                           rt.addValue("Frame", frame); 
                            rt.addValue("X1", pCh1.getX());
                            rt.addValue("Y1", pCh1.getY());
                            rt.addValue("X2", pCh2.getX());
@@ -1650,17 +1656,19 @@ public class DataCollectionForm extends javax.swing.JFrame {
                if (rowData_.get(row).timePoints_ != null) {
                   yAxis = "Time (s)";
                }
-               GaussianUtils.plotData2("Error", xData, yData, yAxis, "Error(nm)", 0, 400);
+               GaussianUtils.plotData2("Error in " + rowData_.get(row).name_, xData, yData, yAxis, "Error(nm)", 0, 400);
 
                ij.IJ.showStatus("");
 
                sp.setOpenAsHyperStack(true);
                sp.setStack(stack, 1, 1, rowData_.get(row).nrFrames_);
                sp.setDisplayRange(0, 20);
+               sp.setTitle(rowData_.get(row).title_);
                //sp.setSlice(1);
                //sp.resetStack();
 
                ImageWindow w = new StackWindow(sp);
+               w.setTitle("Error in " + rowData_.get(row).name_);
 
                w.setImage(sp);
                w.setVisible(true);
@@ -2250,8 +2258,12 @@ public class DataCollectionForm extends javax.swing.JFrame {
          JOptionPane.showMessageDialog(getInstance(), 
                  "Please select one datasets for Z Calibration");
       } else {
-         zCalibrate(rows[0]);
-         zCalibrationLabel_.setText("Calibrated");
+         int result = zCalibrate(rows[0]);
+         if (result == OK ) {
+            zCalibrationLabel_.setText("Calibrated");
+         } else if (result == FAILEDDOINFORM) {
+            ReportingUtils.showError("Z-Calibration failed");
+         }
       }
    }//GEN-LAST:event_zCalibrateButton_ActionPerformed
 
@@ -3367,10 +3379,17 @@ public class DataCollectionForm extends javax.swing.JFrame {
 
    }
    
-   public void zCalibrate(int rowNr) {
+   /**
+    * Performs Z-calibration
+    * 
+    * 
+    * @param rowNr
+    * @return 0 indicates success, 1 indicates failure and calling code should inform user, 2 indicates failure but calling code should not inform user
+    */
+   public int zCalibrate(int rowNr) {
       final double widthCutoff = 1000.0;
       final double maxVariance = 20000.0;
-      final int minNrSpots = 5;
+      final int minNrSpots = 1;
       
       
       zc_.clearDataPoints();
@@ -3378,7 +3397,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
       MyRowData rd = rowData_.get(rowNr);
       if (rd.shape_ < 2) {
          JOptionPane.showMessageDialog(getInstance(), "Use Fit Parameters Dimension 2 or 3 for Z-calibration");
-         return;
+         return FAILEDDONOTINFORM;
       }
 
       
@@ -3432,11 +3451,21 @@ public class DataCollectionForm extends javax.swing.JFrame {
          }
          frameNr++;
       }
+      if (zc_.nrDataPoints() < 6) {
+         ReportingUtils.showError("Not enough particles found for 3D calibration");
+         return FAILEDDONOTINFORM;
+      }
       
       zc_.plotDataPoints();
       
-      zc_.fitFunction();
+      try {
+         zc_.fitFunction();
+      } catch (Exception ex) {
+         ReportingUtils.showError("Error while fitting data");
+         return FAILEDDONOTINFORM;
+      }
 
+      return OK;
       
    }
 
