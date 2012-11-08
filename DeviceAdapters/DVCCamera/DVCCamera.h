@@ -4,16 +4,11 @@
 // that uses this DLL. This way any other project whose source files include this file see 
 // DVCCAMERA_API functions as being imported from a DLL, whereas this DLL sees symbols
 // defined with this macro as being exported.
-#ifdef DVCCAMERA_EXPORTS
-#define DVCCAMERA_API __declspec(dllexport)
-#else
-#define DVCCAMERA_API __declspec(dllimport)
-#endif
-
 #include <map>
-#include "../../MMDevice/DeviceBase.h"
-#include "../../MMDevice/ImgBuffer.h"
-#include "../../MMDevice/DeviceThreads.h"
+#include <vector>
+#include "DeviceBase.h"
+#include "ImgBuffer.h"
+#include "DeviceThreads.h"
 #include "dvcAPI.h"
 
 // error codes
