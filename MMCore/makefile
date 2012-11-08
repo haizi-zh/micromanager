@@ -1,87 +1,70 @@
-#space := 
-#space += 
-#WIN_SDK := $(subst \,\\\\,$(WIN_SDK))
-#WIN_SDK := $(subst $(space),\\ ,$(WIN_SDK))
-#VC_SDK := $(subst $(space),\ ,$(VC_SDK))
-WIN_SDK := $(subst /,\,$(WIN_SDK))
-VC_SDK := $(subst /,\,$(VC_SDK))
-
 PROJ_NAME := MMCore
 PREFIX := 
 POSTFIX := 
 EXTENSION := .lib
 TARGET_NAME := $(PREFIX)$(PROJ_NAME)$(POSTFIX)$(EXTENSION)
-ifeq ($(DEBUG), 1)
-	CONFIG := Debug
-	PF := d
-else
-	CONFIG := Release
-	PF := r
-endif
-TARGET_PATH := $(CONFIG)
-TARGET := $(TARGET_PATH)/$(TARGET_NAME)
-
+CONFIG := Release
+PF := r
+PFD := d
+TARGET = $(CONFIG)/$(TARGET_NAME)
 OBJ_FILES := $(patsubst %.cpp,%.o,$(wildcard *.cpp))
-MM_OBJ_FILES:=DeviceUtils.o ImgBuffer.o
-
+MM_OBJ_FILES := DeviceUtils.o ImgBuffer.o
+DEPENDENCY := $(patsubst %.o,%.d,$(OBJ_FILES) $(MM_OBJ_FILES))
 MM_ROOT := ../..
 THIRD_PARTY := $(MM_ROOT)/3rdpartypublic
 
-#IDIR := $(subst /,\,$(THIRD_PARTY)/boost $(THIRD_PARTY)/zlib)
-IDIR := $(subst /,\,c:/boost_1_51_0 $(THIRD_PARTY)/zlib)
-IFLAGS := $(patsubst %,-I"%",$(IDIR)) -I"$(WIN_SDK)\Include" -I"$(VC_SDK)\VC\include"
-GCC_IFLAGS := $(patsubst %,-I%,$(subst \,/,$(IDIR)))
+INCLUDE := $(BOOST) $(THIRD_PARTY)/zlib
+IFLAGS := $(patsubst %,-I"%",$(INCLUDE)) -I"$(WIN_SDK)/Include" -I"$(VC_SDK)/include"
+GCC_IFLAGS := $(patsubst %,-I%,$(INCLUDE))
 PREPROCS := _WINDOWS _USRDLL _WINDLL _MBCS WIN32 _LIB MODULE_EXPORTS
-ifeq ($(DEBUG), 1)
-	PREPROCS += _DEBUG
-	CFLAGS :=-c -ZI -nologo -W4 -WX- -Od -Oy- -Gm -EHa -RTC1 -MDd -GS -fp:precise -Zc:wchar_t -Zc:forScope -GR -Gd -wd"4290" -analyze- -errorReport:queue
-else
-	PREPROCS += NDEBUG
-	CFLAGS :=-c -Zi -nologo -W4 -WX- -O2 -Oy- -Gm- -EHa -MD -GS -fp:precise -Zc:wchar_t -Zc:forScope -GR -Gd -wd"4290" -analyze- -errorReport:queue
-endif
-PREPROC_FLAGS := $(patsubst %,-D%,$(PREPROCS))
-
-LINK_FLAGS := -NOLOGO
-LIBPATH := $(subst /,\,$(THIRD_PARTY)/boost/stage/lib $(THIRD_PARTY)/zlib/bin_Win32)
-LIB_FLAGS := $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)\Lib" 
+PREPROC_FLAGS = $(patsubst %,-D%,$(PREPROCS))
+CFLAGS := -c -nologo -W4 -WX- -Oy- -Gm -EHa -GS -fp:precise -Zc:wchar_t -Zc:forScope -GR -Gd -wd"4290" -analyze- -errorReport:queue
+LINK_FLAGS = -NOLOGO
+LIBPATH := $(BOOST)/stage/lib $(THIRD_PARTY)/zlib/bin_Win32
+LIB_FLAGS := $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)/Lib" -LIBPATH:"$(VC_SDK)/lib" 
 LIBS := zlib.lib
 
 .PHONY: all clean pre-build main-build post-build
+
+all: CFLAGS += -Zi -O2 -MD
 all: pre-build main-build post-build
+
+debug: CONFIG := Debug
+debug: PREPROCS += _DEBUG
+debug: CFLAGS += -ZI -Od -RTC1 -MDd
+debug: pre-build main-build post-build
 
 -include $(OBJ_FILES:.o=.d)
 -include $(MM_OBJ_FILES:.o=.d)
 
 pre-build:
-	@echo.
-	@echo MMCore: pre-building...
-	$(if $(wildcard $(TARGET_PATH)),,@mkdir $(TARGET_PATH))
-	$(if $(wildcard $(TARGET_PATH)/*.o),-@mv -f $(TARGET_PATH)/*.o .,)
-	$(if $(wildcard $(TARGET_PATH)/*.d),-@mv -f $(TARGET_PATH)/*.d .,)
+	@echo
+	@echo Building $(PROJ_NAME): pre-building, configuration: $(CONFIG)
+	@test -d $(CONFIG) || mkdir $(CONFIG)
+	$(if $(wildcard $(CONFIG)/*.o),-@mv -f $(CONFIG)/*.o .,)
+	$(if $(wildcard $(CONFIG)/*.pdb),-@mv -f $(CONFIG)/*.pdb .,)
 	@echo Pre-building done.
 	@echo.
 
 main-build: $(TARGET)
 
 $(TARGET): $(OBJ_FILES) $(MM_OBJ_FILES)
-	@pwd
 	@echo Building target: $@, configuration: $(CONFIG).
 	@echo Invoking: Linker \(link\)
 	lib $(LINK_FLAGS) -OUT:$(TARGET) $^ $(LIBS) $(LIB_FLAGS)
 	@echo Finished building target: $@
 	@echo.
-
-
+	
 $(OBJ_FILES): %.o: %.cpp
 	@echo Building file: $<
-	@echo Invoking: C++ Compiler \(cl\)	
+	@echo Output file: $@
+	@echo Invoking: C++ Compiler \(cl\)
 	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
-	gcc -MM $(GCC_IFLAGS) $< > $(patsubst %.o,%.d,$@)
+	gcc -D_GLIBCXX_HAS_GTHREADS -MM $(GCC_IFLAGS) $< > $(patsubst %.o,%.d,$@)
 	@echo Finished building: $<, out: $@
 	@echo.
 
-#	gcc -MM $(GCC_IFLAGS) $< > $(patsubst %.o,%.d,$@)
-$(MM_OBJ_FILES): %.o: ../MMDevice/%.cpp
+$(MM_OBJ_FILES): %.o: $(MM_ROOT)/trunk/MMDevice/%.cpp
 	@echo Building file: $<
 	@echo Invoking: C++ Compiler \(cl\)
 	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
@@ -91,15 +74,16 @@ $(MM_OBJ_FILES): %.o: ../MMDevice/%.cpp
 	
 post-build:
 	@echo MMCore: post-build:
-	-mv -f *.o $(TARGET_PATH)
-	-cp -f *.d $(TARGET_PATH)
-	-cp $(TARGET) $(MM_ROOT)/trunk/lib_Win32
-	-cp $(TARGET) $(MM_ROOT)/trunk/lib_Win32/$(basename $(TARGET_NAME))$(PF)$(suffix $(TARGET_NAME))
+	-@mv -f *.o $(CONFIG)
+	-@mv -f *.pdb $(CONFIG)
+	-@cp $(TARGET) $(MM_ROOT)/trunk/lib_Win32
+	-@cp $(TARGET) $(MM_ROOT)/trunk/lib_Win32/$(basename $(TARGET_NAME))$(PF)$(suffix $(TARGET_NAME))
 	@echo.
 	
 clean:
 	@echo Cleaning project...
-	$(if $(wildcard $(TARGET_PATH)), -rm -rf $(TARGET_PATH),)
-	$(if $(wildcard *.d), -rm *.d,)
-	@echo Cleaned.
+	@-rm -rf Debug Release
+	@-rm -f $(DEPENDENCY)
+	@-rm -f *.o
+	@-rm -f *.pdb *.idb
 	@echo.

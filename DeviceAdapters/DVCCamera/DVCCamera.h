@@ -6,9 +6,10 @@
 // defined with this macro as being exported.
 #include <map>
 #include <vector>
-#include "DeviceBase.h"
-#include "ImgBuffer.h"
-#include "DeviceThreads.h"
+#include "../../MMDevice/MMDevice.h"
+#include "../../MMDevice/DeviceBase.h"
+#include "../../MMDevice/ImgBuffer.h"
+#include "../../MMDevice/DeviceThreads.h"
 #include "dvcAPI.h"
 
 // error codes

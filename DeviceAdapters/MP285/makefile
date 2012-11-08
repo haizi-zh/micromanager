@@ -10,18 +10,19 @@ TARGET = $(CONFIG)/$(TARGET_NAME)
 OBJ_FILES := $(patsubst %.cpp,%.o,$(wildcard *.cpp))
 MM_OBJ_FILES := DeviceUtils.o ImgBuffer.o ModuleInterface.o Property.o
 DEPENDENCY := $(patsubst %.o,%.d,$(OBJ_FILES) $(MM_OBJ_FILES))
-THIRD_PARTY := ../../../3rdpartypublic
-MMDEVICE := ../../MMDevice
-INCLUDE := $(THIRD_PARTY)/boost $(THIRD_PARTY)/zlib $(THIRD_PARTY)/DVCCo/include $(MMDEVICE)
+MM_ROOT := ../../..
+THIRD_PARTY := $(MM_ROOT)/3rdpartypublic
+MMDEVICE := $(MM_ROOT)/trunk/MMDevice
+INCLUDE := $(BOOST) $(THIRD_PARTY)/zlib
 IFLAGS := $(patsubst %,-I"%",$(INCLUDE)) -I"$(WIN_SDK)/Include" -I"$(VC_SDK)/include"
 GCC_IFLAGS := $(patsubst %,-I%,$(INCLUDE))
-PREPROCS := _WINDOWS _USRDLL _WINDLL _MBCS WIN32 _LIB MODULE_EXPORTS DVCCAMERA_EXPORTS
+PREPROCS := _WINDOWS _USRDLL _WINDLL _MBCS WIN32 _LIB MODULE_EXPORTS
 PREPROC_FLAGS = $(patsubst %,-D%,$(PREPROCS))
 CFLAGS := -c -nologo -W4 -WX- -Oy- -Gm -EHa -GS -fp:precise -Zc:wchar_t -Zc:forScope -GR -Gd -wd"4290" -analyze- -errorReport:queue
 LINK_FLAGS = -INCREMENTAL -NOLOGO -DLL -DEBUG -SUBSYSTEM:WINDOWS -DYNAMICBASE:NO -IMPLIB:"$(CONFIG)/$(PROJ_NAME).lib" -MACHINE:X86 -ERRORREPORT:QUEUE
-LIBPATH := $(THIRD_PARTY)/DVCCo/lib
+LIBPATH := 
 LIB_FLAGS := $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)/Lib" -LIBPATH:"$(VC_SDK)/lib" 
-LIBS := dvcAPI.lib
+LIBS := 
 
 .PHONY: all clean pre-build main-build post-build
 all: CFLAGS += -Zi -O2 -MD
@@ -64,7 +65,7 @@ $(OBJ_FILES): %.o: %.cpp
 	@echo Finished building: $<, out: $@
 	@echo.
 
-$(MM_OBJ_FILES): %.o: ../../MMDevice/%.cpp
+$(MM_OBJ_FILES): %.o: $(MM_ROOT)/trunk/MMDevice/%.cpp
 	@echo Building file: $<
 	@echo Invoking: C++ Compiler \(cl\)
 	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
@@ -76,7 +77,7 @@ post-build:
 	@echo MMCore: post-build:
 	-@mv -f *.o $(CONFIG)
 	-@mv -f *.pdb $(CONFIG)
-	-@cp $(TARGET) ../../bin_Win32
+	-@cp $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@echo.
 	
 clean:

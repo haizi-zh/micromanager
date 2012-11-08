@@ -10,9 +10,10 @@ TARGET = $(CONFIG)/$(TARGET_NAME)
 OBJ_FILES := $(patsubst %.cpp,%.o,$(wildcard *.cpp))
 MM_OBJ_FILES := DeviceUtils.o ImgBuffer.o ModuleInterface.o Property.o
 DEPENDENCY := $(patsubst %.o,%.d,$(OBJ_FILES) $(MM_OBJ_FILES))
-THIRD_PARTY := ../../../3rdpartypublic
-MMDEVICE := ../../MMDevice
-INCLUDE := $(THIRD_PARTY)/boost $(THIRD_PARTY)/zlib $(THIRD_PARTY)/DVCCo/include $(MMDEVICE)
+MM_ROOT := ../../..
+THIRD_PARTY := $(MM_ROOT)/3rdpartypublic
+MMDEVICE := $(MM_ROOT)/trunk/MMDevice
+INCLUDE := $(BOOST) $(THIRD_PARTY)/zlib $(THIRD_PARTY)/DVCCo/include
 IFLAGS := $(patsubst %,-I"%",$(INCLUDE)) -I"$(WIN_SDK)/Include" -I"$(VC_SDK)/include"
 GCC_IFLAGS := $(patsubst %,-I%,$(INCLUDE))
 PREPROCS := _WINDOWS _USRDLL _WINDLL _MBCS WIN32 _LIB MODULE_EXPORTS
@@ -64,7 +65,7 @@ $(OBJ_FILES): %.o: %.cpp
 	@echo Finished building: $<, out: $@
 	@echo.
 
-$(MM_OBJ_FILES): %.o: ../../MMDevice/%.cpp
+$(MM_OBJ_FILES): %.o: $(MM_ROOT)/trunk/MMDevice/%.cpp
 	@echo Building file: $<
 	@echo Invoking: C++ Compiler \(cl\)
 	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
@@ -76,7 +77,7 @@ post-build:
 	@echo MMCore: post-build:
 	-@mv -f *.o $(CONFIG)
 	-@mv -f *.pdb $(CONFIG)
-	-@cp $(TARGET) ../../bin_Win32
+	-@cp $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@echo.
 	
 clean:
