@@ -71,11 +71,13 @@ $(MM_OBJ_FILES): %.o: $(MM_ROOT)/trunk/MMDevice/%.cpp
 	gcc -MM $(GCC_IFLAGS) $< > $(patsubst %.o,%.d,$@)
 	@echo Finished building: $<, out: $@
 	@echo. 
-	
+
 post-build:
 	@echo MMCore: post-build:
 	-@mv -f *.o $(CONFIG)
 	-@mv -f *.pdb $(CONFIG)
+	-@mv -f *.idb $(CONFIG)
+	-@mv -f *.d $(CONFIG)
 	-@cp $(TARGET) $(MM_ROOT)/trunk/lib_Win32
 	-@cp $(TARGET) $(MM_ROOT)/trunk/lib_Win32/$(basename $(TARGET_NAME))$(PF)$(suffix $(TARGET_NAME))
 	@echo.
@@ -84,6 +86,5 @@ clean:
 	@echo Cleaning project...
 	@-rm -rf Debug Release
 	@-rm -f $(DEPENDENCY)
-	@-rm -f *.o
-	@-rm -f *.pdb *.idb
+	@-rm -f *.o *.pdb *.idb *.d
 	@echo.

@@ -1,28 +1,24 @@
-PROJ_NAME := MP285
-PREFIX := mmgr_dal_
+PROJ_NAME := MMCoreJ_wrap
+PREFIX := 
 POSTFIX := 
 EXTENSION := .dll
+JAR_FILE := MMCoreJ.jar
 TARGET_NAME := $(PREFIX)$(PROJ_NAME)$(POSTFIX)$(EXTENSION)
 CONFIG := Release
-PF := r
-PFD := d
 TARGET = $(CONFIG)/$(TARGET_NAME)
-OBJ_FILES := $(patsubst %.cpp,%.o,$(wildcard *.cpp))
-MM_OBJ_FILES := DeviceUtils.o ImgBuffer.o ModuleInterface.o Property.o
-DEPENDENCY := $(patsubst %.o,%.d,$(OBJ_FILES) $(MM_OBJ_FILES))
-MM_ROOT := ../../..
+OBJ_FILES := MMCoreJ_wrap.o
+MM_ROOT := ../..
 THIRD_PARTY := $(MM_ROOT)/3rdpartypublic
-MMDEVICE := $(MM_ROOT)/trunk/MMDevice
-INCLUDE := $(BOOST) $(THIRD_PARTY)/zlib
-IFLAGS := $(patsubst %,-I"%",$(INCLUDE)) -I"$(WIN_SDK)/Include" -I"$(VC_SDK)/include"
-GCC_IFLAGS := $(patsubst %,-I%,$(INCLUDE))
-PREPROCS := _WINDOWS _USRDLL _WINDLL _MBCS WIN32 _LIB MODULE_EXPORTS
-PREPROC_FLAGS = $(patsubst %,-D%,$(PREPROCS))
+IFLAGS := -I"$(WIN_SDK)/Include" -I"$(VC_SDK)/include" -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/win32"
+PREPROCS := WIN32 _WINDOWS _USRDLL _WINDLL _MBCS WIN32 _LIB MODULE_EXPORTS
+PREPROC_FLAGS := $(patsubst %,-D%,$(PREPROCS))
 CFLAGS := -c -nologo -W4 -WX- -Oy- -Gm -EHa -GS -fp:precise -Zc:wchar_t -Zc:forScope -GR -Gd -wd"4290" -analyze- -errorReport:queue
 LINK_FLAGS = -INCREMENTAL -NOLOGO -DLL -DEBUG -SUBSYSTEM:WINDOWS -DYNAMICBASE:NO -IMPLIB:"$(CONFIG)/$(PROJ_NAME).lib" -MACHINE:X86 -ERRORREPORT:QUEUE
-LIBPATH := 
+MM_LIB := mmcorer.lib
+CXX := cl
+LIBPATH := $(BOOST)/stage/lib $(MM_ROOT)/trunk/lib_Win32
 LIB_FLAGS := $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)/Lib" -LIBPATH:"$(VC_SDK)/lib" 
-LIBS := 
+LIBS = $(MM_LIB) IPHlpApi.lib
 
 .PHONY: all clean pre-build main-build post-build
 all: CFLAGS += -Zi -O2 -MD
@@ -33,58 +29,59 @@ debug: CONFIG := Debug
 debug: PREPROCS += _DEBUG
 debug: CFLAGS += -ZI -Od -RTC1 -MDd
 debug: LINK_FLAGS += -TLBID:1
+debug: MM_LIB := mmcored.lib
 debug: pre-build main-build post-build
 
--include $(OBJ_FILES:.o=.d)
--include $(MM_OBJ_FILES:.o=.d)
-
 pre-build: 
-	@echo
 	@echo Building $(PROJ_NAME): pre-building, configuration: $(CONFIG)
 	@test -d $(CONFIG) || mkdir $(CONFIG)
 	$(if $(wildcard $(CONFIG)/*.o),-@mv -f $(CONFIG)/*.o .,)
 	$(if $(wildcard $(CONFIG)/*.pdb),-@mv -f $(CONFIG)/*.pdb .,)
 	@echo Pre-building done.
+	@echo Target: $(TARGET)
+	@echo.
+	
+main-build: $(TARGET) $(JAR_FILE) 
+
+MMCoreJ_wrap.cxx MMCoreJ_wrap.h: MMCoreJ.i TaggedImage.java
+	@echo swig processing...
+	-rm -f mmcorej/*.java
+	swig -c++ -java -package mmcorej -outdir mmcorej -module MMCoreJ MMCoreJ.i
 	@echo.
 
-main-build: $(TARGET)
+$(JAR_FILE):
+	@echo Maker .jar files...
+	cp -v -f TaggedImage.java mmcorej
+	-rm -f mmcorej/*.class
+	javac -source 5 -target 1.6 mmcorej/*.java ../mmstudio/src/org/json/*.java
+	jar cvf $(JAR_FILE) mmcorej/*.class
+	@echo.
 
-$(TARGET): $(OBJ_FILES) $(MM_OBJ_FILES)
+$(TARGET): $(OBJ_FILES)
 	@echo Building target: $@, configuration: $(CONFIG).
 	@echo Invoking: Linker \(link\)
-	"$(VC_SDK)/bin/link" $(LINK_FLAGS) -OUT:$(TARGET) $^ $(LIBS) $(LIB_FLAGS)
+	"$(VC_SDK)/bin/link" $(LINK_FLAGS) -OUT:$(TARGET) $< $(LIBS) $(LIB_FLAGS)
 	@echo Finished building target: $@
 	@echo.
-
-$(OBJ_FILES): %.o: %.cpp
+	
+$(OBJ_FILES): MMCoreJ_wrap.cxx MMCoreJ_wrap.h
 	@echo Building file: $<
-	@echo Output file: $@
 	@echo Invoking: C++ Compiler \(cl\)
 	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
-	gcc -MM $(GCC_IFLAGS) $< > $(patsubst %.o,%.d,$@)
 	@echo Finished building: $<, out: $@
 	@echo.
-
-$(MM_OBJ_FILES): %.o: $(MM_ROOT)/trunk/MMDevice/%.cpp
-	@echo Building file: $<
-	@echo Invoking: C++ Compiler \(cl\)
-	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
-	gcc -MM $(GCC_IFLAGS) $< > $(patsubst %.o,%.d,$@)
-	@echo Finished building: $<, out: $@
-	@echo. 
 	
 post-build:
 	@echo $(PROJ_NAME): post-build:
 	-@mv -f *.o $(CONFIG)
 	-@mv -f *.pdb $(CONFIG)
-	-@mv -f *.idb $(CONFIG)
-	-@mv -f *.d $(CONFIG)
-	-@cp $(TARGET) $(MM_ROOT)/trunk/bin_Win32
+	-@cp -v -f $(JAR_FILE) $(MM_ROOT)/trunk/bin_Win32
+	-@cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@echo.
 	
 clean:
 	@echo Cleaning project...
 	@-rm -rf Debug Release
-	@-rm -f $(DEPENDENCY)
-	@-rm -f *.o *.pdb *.idb *.d
+	@-rm -f *.o *.pdb *.idb MMCoreJ_wrap.cxx MMCoreJ_wrap.h $(JAR_FILE) mmcorej/*.java mmcorej/*.class
+	@echo Cleaned.
 	@echo.

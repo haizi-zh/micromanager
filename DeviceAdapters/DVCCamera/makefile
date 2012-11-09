@@ -52,7 +52,7 @@ main-build: $(TARGET)
 $(TARGET): $(OBJ_FILES) $(MM_OBJ_FILES)
 	@echo Building target: $@, configuration: $(CONFIG).
 	@echo Invoking: Linker \(link\)
-	vclink $(LINK_FLAGS) -OUT:$(TARGET) $^ $(LIBS) $(LIB_FLAGS)
+	"$(VC_SDK)/bin/link" $(LINK_FLAGS) -OUT:$(TARGET) $^ $(LIBS) $(LIB_FLAGS)
 	@echo Finished building target: $@
 	@echo.
 
@@ -72,11 +72,13 @@ $(MM_OBJ_FILES): %.o: $(MM_ROOT)/trunk/MMDevice/%.cpp
 	gcc -MM $(GCC_IFLAGS) $< > $(patsubst %.o,%.d,$@)
 	@echo Finished building: $<, out: $@
 	@echo. 
-	
+
 post-build:
-	@echo MMCore: post-build:
+	@echo DVCCamera: post-build:
 	-@mv -f *.o $(CONFIG)
 	-@mv -f *.pdb $(CONFIG)
+	-@mv -f *.idb $(CONFIG)
+	-@mv -f *.d $(CONFIG)
 	-@cp $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@echo.
 	
@@ -84,6 +86,5 @@ clean:
 	@echo Cleaning project...
 	@-rm -rf Debug Release
 	@-rm -f $(DEPENDENCY)
-	@-rm -f *.o
-	@-rm -f *.pdb *.idb
+	@-rm -f *.pdb *.idb *.d *.o 
 	@echo.

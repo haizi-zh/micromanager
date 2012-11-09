@@ -1,4 +1,4 @@
-PROJ_NAME := MP285
+PROJ_NAME := AAAOTF
 PREFIX := mmgr_dal_
 POSTFIX := 
 EXTENSION := .dll
@@ -12,17 +12,16 @@ MM_OBJ_FILES := DeviceUtils.o ImgBuffer.o ModuleInterface.o Property.o
 DEPENDENCY := $(patsubst %.o,%.d,$(OBJ_FILES) $(MM_OBJ_FILES))
 MM_ROOT := ../../..
 THIRD_PARTY := $(MM_ROOT)/3rdpartypublic
-MMDEVICE := $(MM_ROOT)/trunk/MMDevice
-INCLUDE := $(BOOST) $(THIRD_PARTY)/zlib
+INCLUDE := $(BOOST) $(THIRD_PARTY)/zlib $(THIRD_PARTY)/AVTCamera/FireGrab
 IFLAGS := $(patsubst %,-I"%",$(INCLUDE)) -I"$(WIN_SDK)/Include" -I"$(VC_SDK)/include"
 GCC_IFLAGS := $(patsubst %,-I%,$(INCLUDE))
 PREPROCS := _WINDOWS _USRDLL _WINDLL _MBCS WIN32 _LIB MODULE_EXPORTS
 PREPROC_FLAGS = $(patsubst %,-D%,$(PREPROCS))
 CFLAGS := -c -nologo -W4 -WX- -Oy- -Gm -EHa -GS -fp:precise -Zc:wchar_t -Zc:forScope -GR -Gd -wd"4290" -analyze- -errorReport:queue
 LINK_FLAGS = -INCREMENTAL -NOLOGO -DLL -DEBUG -SUBSYSTEM:WINDOWS -DYNAMICBASE:NO -IMPLIB:"$(CONFIG)/$(PROJ_NAME).lib" -MACHINE:X86 -ERRORREPORT:QUEUE
-LIBPATH := 
+LIBPATH := $(THIRD_PARTY)/AVTCamera/FireGrab
 LIB_FLAGS := $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)/Lib" -LIBPATH:"$(VC_SDK)/lib" 
-LIBS := 
+LIBS := FGCamera.lib
 
 .PHONY: all clean pre-build main-build post-build
 all: CFLAGS += -Zi -O2 -MD

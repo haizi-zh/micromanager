@@ -16,7 +16,6 @@ PREPROC_FLAGS := $(patsubst %,-D%,$(PREPROCS))
 
 CFLAGS := -c -nologo -W4 -WX- -Oy- -Gm -EHa -GS -fp:precise -Zc:wchar_t -Zc:forScope -GR -Gd -wd"4290" -analyze- -errorReport:queue
 LINK_FLAGS = -INCREMENTAL -NOLOGO -DLL -DEBUG -SUBSYSTEM:WINDOWS -DYNAMICBASE:NO -IMPLIB:"$(CONFIG)/$(PROJ_NAME).lib" -MACHINE:X86 -ERRORREPORT:QUEUE
-#LINK_FLAGS = -NOLOGO
 MM_LIB := mmcorer.lib
 CXX := cl
 LIBPATH := $(BOOST)/stage/lib $(MM_ROOT)/trunk/lib_Win32 $(PYTHON27_HOME)/libs $(PYTHON27_HOME)/DLLs
@@ -69,8 +68,8 @@ post-build:
 	@echo $(PROJ_NAME): post-build:
 	-@mv -f *.o $(CONFIG)
 	-@mv -f *.pdb $(CONFIG)
-	-cp -v -f $(PY_FILE) $(MM_ROOT)/trunk/bin_Win32
-	-cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
+	-@cp -v -f $(PY_FILE) $(MM_ROOT)/trunk/bin_Win32
+	-@cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@echo.
 	
 clean:
