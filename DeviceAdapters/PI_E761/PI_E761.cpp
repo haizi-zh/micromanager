@@ -1,10 +1,11 @@
 // PI_E761.cpp : Defines the exported functions for the DLL application.
 //
 
-#include "stdafx.h"
+#include <Windows.h>
+#include <stdio.h>
 #include "PI_E761.h"
 #include "E7XX_GCS_DLL.h"
-#include "boost/lexical_cast.hpp"
+//#include "boost/lexical_cast.hpp"
 
 /////////////////////////// START HERE /////////////////////////////////
 
@@ -30,38 +31,6 @@ CPI_E761_XYStage* g_pXYStage = NULL;
 
 // All the PI stage error codes will be returned plus this.
 const int g_Err_Offset = 10000;
-
-///////////////////////////////////////////////////////////////////////////////
-// Exported MMDevice API
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * List all suppoerted hardware devices here
- * Do not discover devices at runtime.  To avoid warnings about missing DLLs, Micro-Manager
- * maintains a list of supported device (MMDeviceList.txt).  This list is generated using 
- * information supplied by this function, so runtime discovery will create problems.
- */PI_E761_API void InitializeModuleData() {
-	AddAvailableDeviceName(g_StageDeviceName, "PI E761 z-axis piezo stage");
-	AddAvailableDeviceName(g_XYStageDeviceName, "PI E761 xy-axis piezo stage");
-}
-
-PI_E761_API MM::Device* CreateDevice(const char* deviceName) {
-	if (deviceName == 0)
-		return 0;
-
-	if (strcmp(deviceName, g_StageDeviceName) == 0)
-		return new CPI_E761_ZStage();
-	else if (strcmp(deviceName, g_XYStageDeviceName) == 0)
-		return new CPI_E761_XYStage();
-	//return 0;
-
-	// ...supplied name not recognized
-	return 0;
-}
-
-PI_E761_API void DeleteDevice(MM::Device* pDevice) {
-	delete pDevice;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // CPI_E761_ZStage implementation
@@ -430,20 +399,20 @@ int CPI_E761_ZStage::OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		int ret = GetPositionUm(pos);
 		if (ret == DEVICE_OK) {
 			pProp->Set(pos);
-			LogMessage(
-					"Get position: "
-							+ boost::lexical_cast<std::string, float>(
-									(float) pos) + "\tZephyre");
+//			LogMessage(
+//					"Get position: "
+//							+ boost::lexical_cast<std::string, float>(
+//									(float) pos) + "\tZephyre");
 		}
 		return ret;
 	} else if (eAct == MM::AfterSet) {
 		double pos;
 		pProp->Get(pos);
 		int ret = SetPositionUm(pos);
-		LogMessage(
-				"Set position: "
-						+ boost::lexical_cast<std::string, float>((float) pos)
-						+ "\tZephyre");
+//		LogMessage(
+//				"Set position: "
+//						+ boost::lexical_cast<std::string, float>((float) pos)
+//						+ "\tZephyre");
 		OnStagePositionChanged(pos);
 		return ret;
 	}
@@ -835,7 +804,7 @@ int CPI_E761_XYStage::OnTravelRange(MM::PropertyBase* pProp,
 			return processErr();
 
 		char str[1024];
-		snprintf(str, 1024, "Travel range: axis 1: %g~%gum / axis 2: %g~%gum",
+		_snprintf(str, 1024, "Travel range: axis 1: %g~%gum / axis 2: %g~%gum",
 				lowArray[0], highArray[0], lowArray[1], highArray[1]);
 		pProp->Set(str);
 	}

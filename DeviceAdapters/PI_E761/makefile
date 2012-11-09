@@ -12,7 +12,8 @@ MM_OBJ_FILES := DeviceUtils.o ImgBuffer.o ModuleInterface.o Property.o
 DEPENDENCY := $(patsubst %.o,%.d,$(OBJ_FILES) $(MM_OBJ_FILES))
 MM_ROOT := ../../..
 THIRD_PARTY := $(MM_ROOT)/3rdpartypublic
-INCLUDE := $(BOOST) $(THIRD_PARTY)/zlib $(THIRD_PARTY)/PI_E761
+BOOST_HOME := /c/boost_1_51_0/
+INCLUDE := $(BOOST_HOME) $(THIRD_PARTY)/zlib $(THIRD_PARTY)/PI_E761
 IFLAGS := $(patsubst %,-I"%",$(INCLUDE)) -I"$(WIN_SDK)/Include" -I"$(VC_SDK)/include"
 GCC_IFLAGS := $(patsubst %,-I%,$(INCLUDE))
 PREPROCS := _WINDOWS _USRDLL _WINDLL _MBCS WIN32 _LIB MODULE_EXPORTS
@@ -43,6 +44,7 @@ pre-build:
 	@test -d $(CONFIG) || mkdir $(CONFIG)
 	$(if $(wildcard $(CONFIG)/*.o),-@mv -f $(CONFIG)/*.o .,)
 	$(if $(wildcard $(CONFIG)/*.pdb),-@mv -f $(CONFIG)/*.pdb .,)
+	$(if $(wildcard $(CONFIG)/*.d),-@mv -f $(CONFIG)/*.d .,)
 	@echo Pre-building done.
 	@echo.
 
@@ -77,7 +79,7 @@ post-build:
 	-@mv -f *.o $(CONFIG)
 	-@mv -f *.pdb $(CONFIG)
 	-@mv -f *.idb $(CONFIG)
-	-@mv -f *.d $(CONFIG)
+#	-@mv -f *.d $(CONFIG)
 	-@cp $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@echo.
 	

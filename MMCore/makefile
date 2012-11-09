@@ -2,10 +2,8 @@ PROJ_NAME := MMCore
 PREFIX := 
 POSTFIX := 
 EXTENSION := .lib
-TARGET_NAME := $(PREFIX)$(PROJ_NAME)$(POSTFIX)$(EXTENSION)
+TARGET_NAME = $(PREFIX)$(PROJ_NAME)$(POSTFIX)$(EXTENSION)
 CONFIG := Release
-PF := r
-PFD := d
 TARGET = $(CONFIG)/$(TARGET_NAME)
 OBJ_FILES := $(patsubst %.cpp,%.o,$(wildcard *.cpp))
 MM_OBJ_FILES := DeviceUtils.o ImgBuffer.o
@@ -27,11 +25,13 @@ LIBS := zlib.lib
 .PHONY: all clean pre-build main-build post-build
 
 all: CFLAGS += -Zi -O2 -MD
+all: POSTFIX := r
 all: pre-build main-build post-build
 
 debug: CONFIG := Debug
 debug: PREPROCS += _DEBUG
 debug: CFLAGS += -ZI -Od -RTC1 -MDd
+debug: POSTFIX := d
 debug: pre-build main-build post-build
 
 -include $(OBJ_FILES:.o=.d)
@@ -79,7 +79,7 @@ post-build:
 	-@mv -f *.idb $(CONFIG)
 	-@mv -f *.d $(CONFIG)
 	-@cp $(TARGET) $(MM_ROOT)/trunk/lib_Win32
-	-@cp $(TARGET) $(MM_ROOT)/trunk/lib_Win32/$(basename $(TARGET_NAME))$(PF)$(suffix $(TARGET_NAME))
+	-@cp $(TARGET) $(MM_ROOT)/trunk/lib_Win32/$(PREFIX)$(PROJ_NAME)$(EXTENSION)
 	@echo.
 	
 clean:
