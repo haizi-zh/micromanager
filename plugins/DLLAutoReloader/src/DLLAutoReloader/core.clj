@@ -16,8 +16,7 @@
 (ns DLLAutoReloader.core
   (:use [clojure.java.io :only (file copy)]
         [clojure.data :only (diff)]
-        [org.micromanager.mm :only (edt load-mm mmc core gui)]
-        [clojure.pprint :only (pprint)])
+        [org.micromanager.mm :only (edt load-mm mmc core gui)])
   (:import (javax.swing JButton JFrame JLabel JWindow)
            (java.awt Color)
            (java.awt.event ActionListener)
@@ -72,7 +71,6 @@
   "Takes list of state labels for a state device
    and applies these labels."
   [dev labels]
-  ;(println dev labels)
   (dotimes [i (count labels)]
       (core defineStateLabel dev i (get labels i))))
 
@@ -83,6 +81,8 @@
     (core getProperty dev "Port")))
 
 (defn read-device-startup-settings
+  "Read all settings that will be necessary for restarting
+   a device."
   [dev]
   {:library-location (device-library-location dev)
    :pre-init-settings (pre-init-property-settings dev)
@@ -211,6 +211,8 @@
       (.enableLiveMode gui true))))
 
 (defn new-dll-name
+  "Get the name of the new dll file that will be created in the
+   MM application directory."
   [dll]
   (let [name (.getName dll)]
     (if (JavaUtils/isWindows)
@@ -259,56 +261,79 @@
 
 (def dll-directory-type (FileDialogs$FileType. "DLL Directory" "New DLL location" "" false nil))
 
-(defn choose-dll-dir
+(defn dll-dir-dialog
+  "Presents user with a dialog for choosing the directory from which DLLs will be reloaded."
   []
   (FileDialogs/openDir nil "Please choose a directory where new DLLs will appear"
                        dll-directory-type))
+
+(defn choose-dll-dir
+  "Allows user to choose a directory, and activates that directory
+   for DLL reloading."
+  [path-button]
+  (when-let [dir (file (dll-dir-dialog))]
+         (let [path (.getAbsolutePath dir)]
+           (.setText path-button path)
+           (activate path)
+           (.put prefs "dir" path))))
 
 (def prefs (.. Preferences userRoot (node "DLLAutoReloader")))
 
 (def control-frame (atom nil))
 
+(defn on-button-click
+  "When button is clicked, the no-arg callback-fn will be called. This function
+   returns a function that will remove the button click listener."
+  [^JButton button callback-fn]
+  (let [listener
+        (proxy [ActionListener] []
+          (actionPerformed [e] (callback-fn)))]
+    (.addActionListener button listener)
+    (fn [] (.removeListener listener))))   
+
+(defn setup-frame
+  "Control frame for the plugin."
+  []
+  (doto (proxy [JFrame] [])
+    (.setBounds 100 100 600 50)
+    (.setResizable false)
+    (GUIUtils/recallPosition)
+    (.setTitle "DLL Auto Reloading")))
+
 (defn startup
   "Create the control frame and activate directory watching."
   []
-  (let [frame (proxy [JFrame] []) ; use proxy to get unique JFrame class
+  (let [frame (setup-frame)
         path (.get prefs "dir" nil)
         path-button (JButton. (or path "(choose path)"))]
     (when path
       (activate path))
-    (doto frame
-      (.setBounds 100 100 600 50)
-      (.setResizable false)
-      (GUIUtils/recallPosition)
-      (.setTitle "DLL Auto Reloading"))
-    (.addActionListener
-      path-button
-      (proxy [ActionListener] []
-        (actionPerformed
-          [e]
-          (when-let [dir (file (choose-dll-dir))]
-            (let [path (.getAbsolutePath dir)]
-              (.setText path-button path)
-              (activate path)
-              (.put prefs "dir" path))))))
+    (on-button-click path-button #(choose-dll-dir path-button))
     (doto (.getContentPane frame)
       (.add path-button))
     frame))
 
-(defn show-plugin [app]
+(defn show-plugin
+  "Show the plugin at a given location."
+  [app]
   (load-mm app)
   (when-not @control-frame
     (reset! control-frame (startup)))
   (.show @control-frame))
 
-(defn handle-exit []
+(defn handle-exit
+  "Runs when application exits."
+  []
   (stop))
 
 ;; testing
 
-(defn test-lib [] (first (keys (devices-in-each-module))))
+(defn test-lib
+  "Get the first module with loaded devices."
+  []
+  (first (keys (devices-in-each-module))))
 
-(defn test-unload []
+(defn test-unload
+  "Attemt to unload a the test library."
+  []
   (core unloadLibrary (test-lib)))
-
-;(def test-file (file default-directory "mmgr_dal_DemoCamera.dll"))
