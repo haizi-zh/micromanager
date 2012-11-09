@@ -931,6 +931,15 @@ void CPluginManager::CreateModuleLocks()
    }
 }
 
+void CPluginManager::CreateModuleLock(const char* device) {
+	char moduleName[MM::MaxStrLength];
+	GetDevice(device)->GetModuleName(moduleName);
+	CModuleLockMap::iterator it2 = moduleLocks_.find(moduleName);
+	if (it2 == moduleLocks_.end()) {
+		moduleLocks_[moduleName] = new MMThreadLock;
+	}
+}
+
 /**
  * Deletes all module locks.
  * Should be called only on exit, when all devices are inactive

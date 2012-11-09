@@ -921,6 +921,7 @@ void CMMCore::initializeDevice(const char* label ///< the device to initialize
    
    updateCoreProperties();
 
+   pluginManager_.CreateModuleLock(label);
    CORE_LOG1("Device %s initialized.\n", label);
 }
 
