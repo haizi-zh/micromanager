@@ -670,7 +670,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
     */
     public void runDisplayThread(BlockingQueue rawImageQueue, final DisplayImageRoutine displayImageRoutine) {
         final BlockingQueue processedImageQueue = ProcessorStack.run(rawImageQueue, getAcquisitionEngine().getImageProcessors());
-        new Thread("Display thread") {
+        Thread displayThread = new Thread("Display thread") {
          @Override
             public void run() {
                 try {
@@ -685,7 +685,9 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
                     ReportingUtils.logError(ex);
                 }
             }
-        }.start();
+        };
+        displayThread.setDaemon(true);
+        displayThread.start();
     }
 
    public interface DisplayImageRoutine {

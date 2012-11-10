@@ -50,6 +50,7 @@ public class ProcessorStack<E> {
                ReportingUtils.showError("Processor: " + processor.getName()
                        + " is no longer running. Remove and re-insert to get it to go again");
             } else {
+            	processor.setDaemon(true);
                processor.start();
             }
          }

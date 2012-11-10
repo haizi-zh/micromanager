@@ -19,12 +19,13 @@ public abstract class TaggedImageAnalyzer extends DataProcessor<TaggedImage> {
     * at a time, pass it on to the output queue, and then call analyze
     * on the image.
     */
-   @Override
-   protected void process() {
-      final TaggedImage taggedImage = poll();
-      produce(taggedImage);
-      analyze(taggedImage);
-   }
+	@Override
+	protected void process() throws InterruptedException {
+		TaggedImage taggedImage;
+		taggedImage = poll();
+		produce(taggedImage);
+		analyze(taggedImage);
+	}
 
    /*
     * Override this method to analyze images as they arrive.

@@ -47,11 +47,11 @@ public class NewImageFlippingProcessor extends DataProcessor<TaggedImage> {
    /**
     * Polls for tagged images, and processes them if they are from the selected 
     * camera.
+ * @throws InterruptedException 
     * 
     */
    @Override
-   public void process() {
-      try {
+   public void process() throws InterruptedException {
          TaggedImage nextImage = poll();
          if (nextImage != TaggedImageQueue.POISON) {
             try {
@@ -78,9 +78,6 @@ public class NewImageFlippingProcessor extends DataProcessor<TaggedImage> {
             //Must produce Poison image so LiveAcq Thread terminates properly
             produce(nextImage);
          }
-      } catch (Exception ex) {
-         ReportingUtils.logError(ex);
-      }
    }
 
    /**
