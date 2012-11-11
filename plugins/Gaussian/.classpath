@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="source"/>
+	<classpathentry kind="lib" path="Gaussian.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/MMJ"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/ij.jar"/>
+	<classpathentry kind="lib" path="/MMCoreJ_wrap/MMCoreJ.jar"/>
+	<classpathentry kind="output" path="build"/>
+</classpath>
