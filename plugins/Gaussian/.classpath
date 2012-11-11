@@ -6,5 +6,28 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/MMJ"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/ij.jar"/>
 	<classpathentry kind="lib" path="/MMCoreJ_wrap/MMCoreJ.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/commons-math-2.2.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/AbsoluteLayout.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/bsh-2.0b4.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/clojure.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/clooj.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/core.cache.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/core.memoize.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/data.json.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/gproto.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/jcommon-1.0.17.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/jfreechart-1.0.14.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/loci-common.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/lwm.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/lwm-0.0.2.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/ome-xml.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/scifio.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/slf4j-api-1.7.1.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/substance.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/swing-layout-1.0.4.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/swingx-0.9.5.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/trident.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/TSFProto.jar"/>
+	<classpathentry kind="lib" path="classes"/>
 	<classpathentry kind="output" path="build"/>
 </classpath>
