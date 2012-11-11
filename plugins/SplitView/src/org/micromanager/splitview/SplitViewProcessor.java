@@ -68,7 +68,7 @@ public class SplitViewProcessor extends DataProcessor<TaggedImage> {
    }
 
    @Override
-   public void process() {
+   public void process() throws InterruptedException {
 
       
       TaggedImage taggedImage = poll();

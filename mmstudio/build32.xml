@@ -53,15 +53,17 @@
 		</copy>
 	</target>
 
-	<target name="build" description="Build MMJ_.jar">
+	<target name="build" depends="compile" description="Build MMJ_.jar">
 
 		<copy file="./bin/plugins_mmstudio.config" tofile="./build/plugins.config" overwrite="true" verbose="true" />
 		<jar jarfile="MMJ_.jar" basedir="build" manifest="./src/MANIFEST.MF" />
+		<!--
 		<copy todir="${MMPluginDir-inst}">
 			<fileset dir="../../3rdpartypublic/classext/" casesensitive="no">
 				<include name="*.jar" />
 			</fileset>
 		</copy>
+		-->
 	</target>
 
 
@@ -77,7 +79,7 @@
 	</target>
 
 
-	<target name="install" description="Create installation image">
+	<target name="install" depends="build" description="Create installation image">
 		<!-- always clean the device adapters from install image -->
 		<delete>
 			<fileset dir="${InstallRoot}">

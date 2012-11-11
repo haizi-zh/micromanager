@@ -36,9 +36,9 @@ public class AcqNameTagger extends TaggedImageAnalyzer {
 
 		try {
 			taggedImage.tags.put("AcqName", acqName_);
-			IJ.log(String.format("AcqAnalyzer: %d | Thread: %s / %d | AcqName: %s", cnt_,
-					Thread.currentThread().getName(), Thread.currentThread()
-							.getId(), acqName_));
+//			IJ.log(String.format("AcqAnalyzer: %d | Thread: %s / %d | AcqName: %s", cnt_,
+//					Thread.currentThread().getName(), Thread.currentThread()
+//							.getId(), acqName_));
 			cnt_++;
 		} catch (JSONException e) {
 			e.printStackTrace();

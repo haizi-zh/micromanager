@@ -60,7 +60,7 @@ $(OBJ_FILES): %.o: %.cpp
 	@echo Output file: $@
 	@echo Invoking: C++ Compiler \(cl\)
 	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
-	gcc -D_GLIBCXX_HAS_GTHREADS -MM $(GCC_IFLAGS) $< > $(patsubst %.o,%.d,$@)
+	gcc -MM $(GCC_IFLAGS) $< > $(patsubst %.o,%.d,$@)
 	@echo Finished building: $<, out: $@
 	@echo.
 
