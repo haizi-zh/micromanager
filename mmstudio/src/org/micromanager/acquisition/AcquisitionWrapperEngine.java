@@ -9,6 +9,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
@@ -33,6 +34,7 @@ import org.micromanager.utils.ContrastSettings;
 import org.micromanager.utils.MMException;
 import org.micromanager.utils.NumberUtils;
 import org.micromanager.utils.ReportingUtils;
+import org.zephyre.micromanager.AcqNameTagger;
 
 /**
  *

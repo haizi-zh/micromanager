@@ -46,6 +46,7 @@ import java.io.File;
 import java.io.IOException;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.prefs.Preferences;
 
@@ -78,6 +79,7 @@ import org.json.JSONObject;
 import org.micromanager.acquisition.AcquisitionManager;
 import org.micromanager.api.AcquisitionEngine;
 import org.micromanager.api.Autofocus;
+import org.micromanager.api.DataProcessor;
 import org.micromanager.api.MMPlugin;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.api.MMListenerInterface;
@@ -148,6 +150,7 @@ import org.micromanager.utils.MDUtils;
 import org.micromanager.utils.MMKeyDispatcher;
 import org.micromanager.utils.ReportingUtils;
 import org.micromanager.utils.SnapLiveContrastSettings;
+import org.zephyre.micromanager.AcqNameTagger;
 
 
 
@@ -175,7 +178,6 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    private static final String MOUSE_MOVES_STAGE = "mouse_moves_stage";
    private static final int TOOLTIP_DISPLAY_DURATION_MILLISECONDS = 15000;
    private static final int TOOLTIP_DISPLAY_INITIAL_DELAY_MILLISECONDS = 2000;
-
 
    // cfg file saving
    private static final String CFGFILE_ENTRY_BASE = "CFGFileEntry"; // + {0, 1, 2, 3, 4}
@@ -662,33 +664,53 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       return getAcquisition(acquisitionName).getImageCache();
    }
 
-   
-   /*
-    * Shows images as they appear in the default display window. Uses
-    * the default processor stack to process images as they arrive on
-    * the rawImageQueue.
-    */
-    public void runDisplayThread(BlockingQueue rawImageQueue, final DisplayImageRoutine displayImageRoutine) {
-        final BlockingQueue processedImageQueue = ProcessorStack.run(rawImageQueue, getAcquisitionEngine().getImageProcessors());
-        Thread displayThread = new Thread("Display thread") {
-         @Override
-            public void run() {
-                try {
-                    TaggedImage image = null;
-                    do {
-                        image = (TaggedImage) processedImageQueue.take();
-                        if (image != TaggedImageQueue.POISON) {
-                            displayImageRoutine.show(image);
-                        }
-                    } while (image != TaggedImageQueue.POISON);
-                } catch (InterruptedException ex) {
-                    ReportingUtils.logError(ex);
-                }
-            }
-        };
-        displayThread.setDaemon(true);
-        displayThread.start();
-    }
+	public void runDisplayThread(
+			BlockingQueue<DataProcessor<TaggedImage>> rawImageQueue,
+			final DisplayImageRoutine displayImageRoutine) {
+		runDisplayThread(rawImageQueue, displayImageRoutine, null);
+	}
+
+	/*
+	 * Shows images as they appear in the default display window. Uses the
+	 * default processor stack to process images as they arrive on the
+	 * rawImageQueue.
+	 */
+	public void runDisplayThread(BlockingQueue rawImageQueue,
+			final DisplayImageRoutine displayImageRoutine, String acqName) {
+		List<DataProcessor<TaggedImage>> processors;
+		if (acqName == null || acqName.equals("")) {
+			processors = getAcquisitionEngine().getImageProcessors();
+		} else {
+			// Acquisition name tagger
+			processors = new ArrayList<DataProcessor<TaggedImage>>();
+			processors.add(AcqNameTagger.getInstance(acqName));
+			Iterator<DataProcessor<TaggedImage>> it = getAcquisitionEngine()
+					.getImageProcessors().iterator();
+			while (it.hasNext()) {
+				processors.add(it.next());
+			}
+		}
+		final BlockingQueue processedImageQueue = ProcessorStack.run(
+				rawImageQueue, processors);
+		Thread displayThread = new Thread("Display thread") {
+			@Override
+			public void run() {
+				try {
+					TaggedImage image = null;
+					do {
+						image = (TaggedImage) processedImageQueue.take();
+						if (image != TaggedImageQueue.POISON) {
+							displayImageRoutine.show(image);
+						}
+					} while (image != TaggedImageQueue.POISON);
+				} catch (InterruptedException ex) {
+					ReportingUtils.logError(ex);
+				}
+			}
+		};
+		displayThread.setDaemon(true);
+		displayThread.start();
+	}
 
    public interface DisplayImageRoutine {
       public void show(TaggedImage image);
@@ -3044,54 +3066,55 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       doSnap(false);
    }
 
-   public void doSnap(final boolean album) {
-      if (core_.getCameraDevice().length() == 0) {
-         ReportingUtils.showError("No camera configured");
-         return;
-      }
+	public void doSnap(final boolean album) {
+		if (core_.getCameraDevice().length() == 0) {
+			ReportingUtils.showError("No camera configured");
+			return;
+		}
 
-      BlockingQueue snapImageQueue = new LinkedBlockingQueue();
-      
-      try {
-         core_.snapImage();
-         long c = core_.getNumberOfCameraChannels();
-         runDisplayThread(snapImageQueue, new DisplayImageRoutine() {
-            public void show(final TaggedImage image) {
-                normalizeTags(image);
-                  if (album) {
-                     try {
-                        addToAlbum(image);
-                     } catch (MMScriptException ex) {
-                        ReportingUtils.showError(ex);
-                     }
-                  } else {
-                     displayImage(image);
-                  }
-            }
+		BlockingQueue snapImageQueue = new LinkedBlockingQueue();
 
-         });
-         
-         for (int i = 0; i < c; ++i) {
-            TaggedImage img = core_.getTaggedImage(i);
-            img.tags.put("Channels", c);
-            snapImageQueue.put(img);
-         }
-         
-         snapImageQueue.put(TaggedImageQueue.POISON);
+		try {
+			core_.snapImage();
+			long c = core_.getNumberOfCameraChannels();
+			String acqName = album ? null : SIMPLE_ACQ;
+			runDisplayThread(snapImageQueue, new DisplayImageRoutine() {
+				public void show(final TaggedImage image) {
+					normalizeTags(image);
+					if (album) {
+						try {
+							addToAlbum(image);
+						} catch (MMScriptException ex) {
+							ReportingUtils.showError(ex);
+						}
+					} else {
+						displayImage(image);
+					}
+				}
 
-         if (simpleDisplay_ != null) {
-            ImagePlus imgp = simpleDisplay_.getImagePlus();
-            if (imgp != null) {
-               ImageWindow win = imgp.getWindow();
-               if (win != null) {
-                  win.toFront();
-               }
-            }
-         }
-      } catch (Exception ex) {
-         ReportingUtils.showError(ex);
-      }
-   }
+			}, acqName);
+
+			for (int i = 0; i < c; ++i) {
+				TaggedImage img = core_.getTaggedImage(i);
+				img.tags.put("Channels", c);
+				snapImageQueue.put(img);
+			}
+
+			snapImageQueue.put(TaggedImageQueue.POISON);
+
+			if (simpleDisplay_ != null) {
+				ImagePlus imgp = simpleDisplay_.getImagePlus();
+				if (imgp != null) {
+					ImageWindow win = imgp.getWindow();
+					if (win != null) {
+						win.toFront();
+					}
+				}
+			}
+		} catch (Exception ex) {
+			ReportingUtils.showError(ex);
+		}
+	}
 
    public void normalizeTags(TaggedImage ti) {
       if (ti != TaggedImageQueue.POISON) {

@@ -119,50 +119,53 @@ public class LiveModeTimer {
       return running_;
    }
 
-   public void begin() throws Exception {
-         if(running_) {
-            return;
-         }
-         timer_ = new Timer("Live mode timer");
-         
-         core_.clearCircularBuffer();
-            
-         core_.startContinuousSequenceAcquisition(0);
-         setType();
-         long delay = getInterval();
+	public void begin() throws Exception {
+		if (running_) {
+			return;
+		}
+		timer_ = new Timer("Live mode timer");
 
-         // Wait for first image to create ImageWindow, so that we can be sure about image size
-         long start = System.currentTimeMillis();
-         long now = start;
-         long timeout = Math.min(10000, delay * 150);
-         while (core_.getRemainingImageCount() == 0 && (now - start < timeout) ) {
-            now = System.currentTimeMillis();
-            Thread.sleep(5);
-         }
-         if (now - start >= timeout) {
-            throw new Exception("Camera did not send image within a reasonable time");
-         }
-                    
-         TaggedImage timg = core_.getLastTaggedImage();
+		core_.clearCircularBuffer();
 
-         // With first image acquired, create the display
-         gui_.checkSimpleAcquisition();
-         win_ = MMStudioMainFrame.getSimpleDisplay();
-         
-         fpsCounter_ = 0;
-         fpsTimer_ = System.currentTimeMillis();
-         imageNumber_ = timg.tags.getLong("ImageNumber");
-         lastImageNumber_ = imageNumber_ - 1;
-         oldImageNumber_ = imageNumber_;
+		core_.startContinuousSequenceAcquisition(0);
+		setType();
+		long delay = getInterval();
 
-         imageQueue_ = new LinkedBlockingQueue();
-         timer_.schedule(task_, 0, delay);
-         win_.liveModeEnabled(true);
-         
-         win_.getImagePlus().getWindow().toFront();
-         running_ = true;
-         gui_.runDisplayThread(imageQueue_, displayImageRoutine_);
-   }
+		// Wait for first image to create ImageWindow, so that we can be sure
+		// about image size
+		long start = System.currentTimeMillis();
+		long now = start;
+		long timeout = Math.min(10000, delay * 150);
+		while (core_.getRemainingImageCount() == 0 && (now - start < timeout)) {
+			now = System.currentTimeMillis();
+			Thread.sleep(5);
+		}
+		if (now - start >= timeout) {
+			throw new Exception(
+					"Camera did not send image within a reasonable time");
+		}
+
+		TaggedImage timg = core_.getLastTaggedImage();
+
+		// With first image acquired, create the display
+		gui_.checkSimpleAcquisition();
+		win_ = MMStudioMainFrame.getSimpleDisplay();
+
+		fpsCounter_ = 0;
+		fpsTimer_ = System.currentTimeMillis();
+		imageNumber_ = timg.tags.getLong("ImageNumber");
+		lastImageNumber_ = imageNumber_ - 1;
+		oldImageNumber_ = imageNumber_;
+
+		imageQueue_ = new LinkedBlockingQueue();
+		timer_.schedule(task_, 0, delay);
+		win_.liveModeEnabled(true);
+
+		win_.getImagePlus().getWindow().toFront();
+		running_ = true;
+		gui_.runDisplayThread(imageQueue_, displayImageRoutine_,
+				MMStudioMainFrame.SIMPLE_ACQ);
+	}
 
    
    public void stop() {

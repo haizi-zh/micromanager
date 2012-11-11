@@ -1,5 +1,7 @@
 package org.micromanager.acquisition;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import mmcorej.TaggedImage;
@@ -9,6 +11,7 @@ import org.micromanager.api.IAcquisitionEngine2010;
 import org.micromanager.api.ImageCache;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.utils.MMScriptException;
+import org.zephyre.micromanager.AcqNameTagger;
 
 /**
  * This is the default setup for the acquisition engine pipeline.
@@ -42,11 +45,20 @@ public class DefaultTaggedImagePipeline {
       BlockingQueue<TaggedImage> taggedImageQueue = acqEngine.run(sequenceSettings);
       summaryMetadata_ = acqEngine.getSummaryMetadata();
 
-      // Set up the DataProcessor<TaggedImage> sequence
-      BlockingQueue<TaggedImage> taggedImageQueue2 = ProcessorStack.run(taggedImageQueue, imageProcessors);
-
       // Create the default display
       acqName_ = gui.createAcquisition(summaryMetadata_, diskCached);
+      
+      // Acquisition name tagger
+      List<DataProcessor<TaggedImage>> processors =new ArrayList<DataProcessor<TaggedImage>>();
+      processors.add(AcqNameTagger.getInstance(acqName_));
+      Iterator<DataProcessor<TaggedImage>> it = imageProcessors.iterator();
+      while(it.hasNext()){
+    	  processors.add(it.next());
+      }
+      
+      // Set up the DataProcessor<TaggedImage> sequence
+      BlockingQueue<TaggedImage> taggedImageQueue2 = ProcessorStack.run(taggedImageQueue, processors);
+      
       MMAcquisition acq = gui.getAcquisition(acqName_);
       display_ = acq.getAcquisitionWindow();
       imageCache_ = acq.getImageCache();

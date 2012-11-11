@@ -23,8 +23,8 @@ public abstract class TaggedImageAnalyzer extends DataProcessor<TaggedImage> {
 	protected void process() throws InterruptedException {
 		TaggedImage taggedImage;
 		taggedImage = poll();
-		produce(taggedImage);
 		analyze(taggedImage);
+		produce(taggedImage);
 	}
 
    /*
