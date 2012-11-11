@@ -110,7 +110,18 @@ std::string CDeviceUtils::HexRep(std::vector<unsigned char>  values)
 
 }
 
-
+std::string CDeviceUtils::trim(const std::string str) {
+	// trim
+	std::string::size_type pos = str.find_first_not_of(' ');
+	std::string::size_type pos2 = str.find_last_not_of(' ');
+	if (pos == std::string::npos) {
+		return str;
+	}
+	if (pos2 != std::string::npos) {
+		return str.substr(pos, pos2 - pos + 1);
+	}
+	return str.substr(pos);
+}
 
 /**
  * Parse the string and return an array of tokens.
@@ -128,7 +139,7 @@ void CDeviceUtils::Tokenize(const std::string& str, std::vector<std::string>& to
    while (std::string::npos != pos || std::string::npos != lastPos)
     {
         // Found a token, add it to the vector.
-        tokens.push_back(str.substr(lastPos, pos - lastPos));
+        tokens.push_back(CDeviceUtils::trim(str.substr(lastPos, pos - lastPos)));
         // Skip delimiters.  Note the "not_of"
         lastPos = str.find_first_not_of(delimiters, pos);
         // Find next "non-delimiter"

@@ -10,6 +10,7 @@ MM_OBJ_FILES := DeviceUtils.o ImgBuffer.o
 DEPENDENCY := $(patsubst %.o,%.d,$(OBJ_FILES) $(MM_OBJ_FILES))
 MM_ROOT := ../..
 THIRD_PARTY := $(MM_ROOT)/3rdpartypublic
+BOOST := /c/boost_1_52_0
 
 INCLUDE := $(BOOST) $(THIRD_PARTY)/zlib
 IFLAGS := $(patsubst %,-I"%",$(INCLUDE)) -I"$(WIN_SDK)/Include" -I"$(VC_SDK)/include"

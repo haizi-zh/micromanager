@@ -65,6 +65,8 @@ public:
    static bool CheckEnvironment(std::string environment);
 private:
    static char m_pszBuffer[MM::MaxStrLength];
+   // string trim
+   static std::string trim(const std::string str);
 };
 
 #endif //_DEVICEUTILS_H_
