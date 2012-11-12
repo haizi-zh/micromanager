@@ -12,6 +12,7 @@ import javax.swing.JPanel;
 
 import mmcorej.TaggedImage;
 
+import org.micromanager.MMStudioMainFrame;
 import org.micromanager.api.DataProcessor;
 import org.micromanager.api.ScriptInterface;
 

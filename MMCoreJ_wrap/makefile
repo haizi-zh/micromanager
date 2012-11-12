@@ -37,6 +37,7 @@ pre-build:
 	@test -d $(CONFIG) || mkdir $(CONFIG)
 	$(if $(wildcard $(CONFIG)/*.o),-@mv -f $(CONFIG)/*.o .,)
 	$(if $(wildcard $(CONFIG)/*.pdb),-@mv -f $(CONFIG)/*.pdb .,)
+	$(if $(wildcard $(CONFIG)/*.idb),-@mv -f $(CONFIG)/*.idb .,)
 	@echo Pre-building done.
 	@echo Target: $(TARGET)
 	@echo.
@@ -72,16 +73,25 @@ $(OBJ_FILES): MMCoreJ_wrap.cxx MMCoreJ_wrap.h
 	@echo.
 	
 post-build:
-	@echo $(PROJ_NAME): post-build:
+	@echo $(PROJ_NAME): post-build:	
 	-@mv -f *.o $(CONFIG)
 	-@mv -f *.pdb $(CONFIG)
-	-@cp -v -f $(JAR_FILE) $(MM_ROOT)/trunk/bin_Win32
-	-@cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
+	-@mv -f *.idb $(CONFIG)
+	@cp -v -f $(JAR_FILE) $(MM_ROOT)/trunk/bin_Win32
+	@cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@echo.
 	
 clean:
 	@echo Cleaning project...
 	@-rm -rf Debug Release
-	@-rm -f *.o *.pdb *.idb MMCoreJ_wrap.cxx MMCoreJ_wrap.h $(JAR_FILE) mmcorej/*.java mmcorej/*.class
-	@echo Cleaned.
-	@echo.
+	@-rm -rf $(DEPENDENCY)
+	$(if $(wildcard *.o),-@rm -f *.o,)
+	$(if $(wildcard *.pdb),-@rm -f *.pdb,)
+	$(if $(wildcard *.idb),-@rm -f *.idb,)
+	$(if $(wildcard *.d),-@rm -f *.d,)
+	$(if $(wildcard MMCoreJ_wrap.cxx),-@rm -f MMCoreJ_wrap.cxx,)
+	$(if $(wildcard MMCoreJ_wrap.h),-@rm -f MMCoreJ_wrap.h,)
+	$(if $(wildcard $(JAR_FILE)),-@rm -f $(JAR_FILE),)
+	$(if $(wildcard mmcorej/*.java),-@rm -f mmcorej/*.java,)
+	$(if $(wildcard mmcorej/*.class),-@rm -f mmcorej/*.class,)
+	@echo.	

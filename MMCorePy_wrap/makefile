@@ -39,6 +39,7 @@ pre-build:
 	@test -d $(CONFIG) || mkdir $(CONFIG)
 	$(if $(wildcard $(CONFIG)/*.o),-@mv -f $(CONFIG)/*.o .,)
 	$(if $(wildcard $(CONFIG)/*.pdb),-@mv -f $(CONFIG)/*.pdb .,)
+	$(if $(wildcard $(CONFIG)/*.idb),-@mv -f $(CONFIG)/*.idb .,)
 	@echo Pre-building done.
 	@echo Target: $(TARGET)
 	@echo.
@@ -68,13 +69,21 @@ post-build:
 	@echo $(PROJ_NAME): post-build:
 	-@mv -f *.o $(CONFIG)
 	-@mv -f *.pdb $(CONFIG)
-	-@cp -v -f $(PY_FILE) $(MM_ROOT)/trunk/bin_Win32
-	-@cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
+	-@mv -f *.idb $(CONFIG)
+	@cp -v -f $(PY_FILE) $(MM_ROOT)/trunk/bin_Win32
+	@cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@echo.
 	
 clean:
 	@echo Cleaning project...
 	@-rm -rf Debug Release
-	@-rm -f *.o *.pdb *.idb MMCorePy_wrap.cxx MMCorePy_wrap.h $(PY_FILE)
+	@-rm -rf $(DEPENDENCY)
+	$(if $(wildcard *.o),-@rm -f *.o,)
+	$(if $(wildcard *.pdb),-@rm -f *.pdb,)
+	$(if $(wildcard *.idb),-@rm -f *.idb,)
+	$(if $(wildcard *.d),-@rm -f *.d,)
+	$(if $(wildcard MMCorePy_wrap.cxx),-@rm -f MMCorePy_wrap.cxx,)
+	$(if $(wildcard MMCorePy_wrap.h),-@rm -f MMCorePy_wrap.h,)
+	$(if $(wildcard $(PY_FILE)),-@rm -f $(PY_FILE),)
 	@echo Cleaned.
 	@echo.	
