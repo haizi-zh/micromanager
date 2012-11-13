@@ -394,6 +394,11 @@ public:
    void home(const char* deviceLabel) throw (CMMError);
    void setOriginXY(const char* deviceLabel) throw (CMMError);
    void setAdapterOriginXY(const char* deviceName, double x, double y) throw (CMMError);
+
+   // go home for focus stage
+   void homeFocus(const char* deviceLabel) throw (CMMError);
+   // go home for xy stage
+   void homeXY(const char* deviceLabel) throw (CMMError);
    //@ }
 
    /** @name Stage sequencing

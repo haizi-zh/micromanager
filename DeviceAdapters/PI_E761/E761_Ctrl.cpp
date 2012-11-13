@@ -29,6 +29,8 @@ int E761_Ctrl::initConstStrings() {
 	m_strMap[STR_PROP_YPOSITION] = "Y Position";
 	m_strMap[STR_PROP_POSITION] = "Position";
 	m_strMap[STR_PROP_TRVRANGE] = "Travel Range(um)";
+	m_strMap[STR_PROP_XSERVO] = "X Servo Mode";
+	m_strMap[STR_PROP_YSERVO] = "Y Servo Mode";
 	m_strMap[STR_PROP_LASTERR] = "Last Error";
 	m_strMap[STR_CtrlDesc] =
 			"Physik Instrumente(PI) E761 Piezo Stage Controller";
@@ -70,6 +72,8 @@ E761_Ctrl::E761_Ctrl() :
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getConstString(STR_PROP_REBOOT).c_str());
 	ret = CreateProperty(propName, "False", MM::String, false, pActReboot);
+	AddAllowedValue(propName, "True");
+	AddAllowedValue(propName, "False");
 
 	m_pInstance = this;
 }
@@ -345,7 +349,6 @@ E761_XYStage::E761_XYStage() :
 	InitializeDefaultErrorMessages();
 	int ret;
 	char propName[MM::MaxStrLength];
-	char msg[MM::MaxStrLength];
 
 	// Name
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
@@ -353,14 +356,6 @@ E761_XYStage::E761_XYStage() :
 	ret = CreateProperty(propName,
 			E761_Ctrl::getInstance()->getConstString(
 					E761_Ctrl::STR_XYStageDevName).c_str(), MM::String, true);
-	if (E761_Ctrl::getInstance()->debugLogFlag()) {
-		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
-				"<E761_XYStage::> CreateProperty(%s  %s), ReturnCode = %d\n",
-				propName,
-				E761_Ctrl::getInstance()->getConstString(
-						E761_Ctrl::STR_XYStageDevName).c_str(), ret);
-		this->LogMessage(msg);
-	}
 
 	// Description
 	_snprintf(propName, MM::MaxStrLength,
@@ -370,14 +365,14 @@ E761_XYStage::E761_XYStage() :
 					E761_Ctrl::getInstance()->getConstString(
 							E761_Ctrl::STR_XYStageDesc).c_str(), MM::String,
 					true);
-	if (E761_Ctrl::getInstance()->debugLogFlag()) {
-		_snprintf(msg, MM::MaxStrLength,
-				"<E761_XYStage::> CreateProperty(%s  %s), ReturnCode = %d\n",
-				propName,
-				E761_Ctrl::getInstance()->getConstString(
-						E761_Ctrl::STR_XYStageDesc).c_str(), ret);
-		this->LogMessage(msg);
-	}
+}
+
+int E761_XYStage::Home() {
+	char axis[3] = { 0, 0, 0 };
+	E761_Ctrl::getInstance()->getAxisName(axis, axis + 1, NULL);
+	if (!E7XX_GOH(E761_Ctrl::getInstance()->getDeviceId(), axis))
+		return DEVICE_ERR;
+	return DEVICE_OK;
 }
 
 int E761_XYStage::Initialize() {
@@ -390,26 +385,34 @@ int E761_XYStage::Initialize() {
 
 	int ret;
 	char propName[MM::MaxStrLength];
-	char msg[MM::MaxStrLength];
 
 	// Position
-	double x, y;
-	GetPositionUm(x, y);
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getInstance()->getConstString(
 					E761_Ctrl::STR_PROP_XPOSITION).c_str());
 	CPropertyAction* pActXPosition = new CPropertyAction(this,
 			&E761_XYStage::OnXPosition);
-	_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE, "%f", x);
-	ret = CreateProperty(propName, msg, MM::Float, false, pActXPosition);
+	ret = CreateProperty(propName, "", MM::Float, false, pActXPosition);
 
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getInstance()->getConstString(
 					E761_Ctrl::STR_PROP_YPOSITION).c_str());
 	CPropertyAction* pActYPosition = new CPropertyAction(this,
 			&E761_XYStage::OnYPosition);
-	_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE, "%f", y);
-	ret = CreateProperty(propName, msg, MM::Float, false, pActYPosition);
+	ret = CreateProperty(propName, "", MM::Float, false, pActYPosition);
+
+	// Servo
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_XSERVO).c_str());
+	CPropertyAction* pActXServo = new CPropertyAction(this,
+			&E761_XYStage::OnXServoMode);
+	ret = CreateProperty(propName, "", MM::String, false, pActXServo);
+
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_YSERVO).c_str());
+	CPropertyAction* pActYServo = new CPropertyAction(this,
+			&E761_XYStage::OnYServoMode);
+	ret = CreateProperty(propName, "", MM::String, false, pActYServo);
 
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK)
@@ -420,11 +423,9 @@ int E761_XYStage::Initialize() {
 }
 
 int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	std::ostringstream osMessage;
 	int ret = DEVICE_OK;
 
-	osMessage.str("");
-	double x, y;
+	double x = 0, y = 0;
 	if (eAct == MM::BeforeGet) {
 		GetPositionUm(x, y);
 		pProp->Set(x);
@@ -437,12 +438,41 @@ int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	return ret;
 }
 
+int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	char axis[2] = { 0, 0 };
+	E761_Ctrl::getInstance()->getAxisName(axis, NULL, NULL);
+	return OnServoMode(pProp, eAct, axis);
+}
+
+int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct,
+		const char* axis) {
+	if (eAct == MM::BeforeGet) {
+		BOOL val[1];
+		if (!E7XX_qSVO(E761_Ctrl::getInstance()->getDeviceId(), axis, val))
+			return DEVICE_ERR;
+		pProp->Set(val[0] ? "True" : "False");
+	} else if (eAct == MM::AfterSet) {
+		string str;
+		pProp->Get(str);
+		BOOL val[1] = { (str.compare("True") == 0) ? TRUE : FALSE };
+		if (!E7XX_SVO(E761_Ctrl::getInstance()->getDeviceId(), axis, val))
+			return DEVICE_ERR;
+	}
+	return DEVICE_OK;
+}
+
+int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	char axis[2] = { 0, 0 };
+	E761_Ctrl::getInstance()->getAxisName(NULL, axis, NULL);
+	return OnServoMode(pProp, eAct, axis);
+}
+
 int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	std::ostringstream osMessage;
 	int ret = DEVICE_OK;
 
 	osMessage.str("");
-	double x, y;
+	double x = 0, y = 0;
 	if (eAct == MM::BeforeGet) {
 		GetPositionUm(x, y);
 		pProp->Set(y);
@@ -517,7 +547,6 @@ E761_ZStage::E761_ZStage() :
 	InitializeDefaultErrorMessages();
 	int ret;
 	char propName[MM::MaxStrLength];
-	char msg[MM::MaxStrLength];
 
 	// Name
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
@@ -565,7 +594,8 @@ int E761_ZStage::Initialize() {
 	char msg[MM::MaxStrLength];
 	CPropertyAction* pActOnServoMode = new CPropertyAction(this,
 			&E761_ZStage::OnServoMode);
-	// Name
+
+	// Servo mode
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_SERVO).c_str());
 	ret = CreateProperty(propName, "True", MM::String, false, pActOnServoMode);
@@ -592,10 +622,18 @@ int E761_ZStage::Initialize() {
 	return ret;
 }
 
+int E761_ZStage::Home() {
+	char axis[2] = { 0, 0 };
+	E761_Ctrl::getInstance()->getAxisName(NULL, NULL, axis);
+	if (!E7XX_GOH(E761_Ctrl::getInstance()->getDeviceId(), axis))
+		return DEVICE_ERR;
+	return DEVICE_OK;
+}
+
 int E761_ZStage::OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	int ret = DEVICE_OK;
 
-	double pos;
+	double pos = 0;
 	if (eAct == MM::BeforeGet) {
 		GetPositionUm(pos);
 		pProp->Set(pos);

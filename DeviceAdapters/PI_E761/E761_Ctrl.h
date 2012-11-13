@@ -31,6 +31,8 @@ public:
 		STR_PROP_YPOSITION,
 		STR_PROP_POSITION,
 		STR_PROP_TRVRANGE,
+		STR_PROP_XSERVO,
+		STR_PROP_YSERVO,
 		STR_XYStageDesc,
 		STR_ZStageDesc,
 		STR_CtrlDesc,
@@ -97,9 +99,7 @@ public:
 	}
 	int Shutdown();
 	void GetName(char* name) const;
-	int Home() {
-		return DEVICE_OK;
-	}
+	int Home();
 	int SetOrigin() {
 		return DEVICE_OK;
 	}
@@ -132,8 +132,9 @@ public:
 
 	int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
-//	int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
-//	int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct, const char* axis);
 
 protected:
 	~E761_XYStage();
@@ -160,6 +161,7 @@ public:
 	int GetPositionUm(double& pos);
 	int SetPositionSteps(long steps);
 	int GetPositionSteps(long& steps);
+	int Home();
 	int SetOrigin() {
 		return DEVICE_OK;
 	}
