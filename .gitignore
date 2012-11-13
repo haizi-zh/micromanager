@@ -1,0 +1,51 @@
+# C/C++
+*.obj
+*.o
+*.d
+*.idb
+*.pdb
+*.vcxproj.user
+*.vcxproj.filters
+*.vcxproj
+*.sln
+*.suo
+Debug/
+Release/
+bin_Win32/
+build/
+bin/
+
+# Java
+*.class
+*.jar
+
+# Python
+*.pyc
+*.pyd
+
+# Swig
+*_wrap.cxx
+
+# Binaries
+*.lib
+*.dll
+*.exe
+
+# Misc
+.metadata/
+*.settings/
+*.swp
+*~
+micromanager/MMCoreJ_wrap/mmcorej/*.java
+Install_Win32/
+Install_x64/
+IJ_Prefs.txt
+MMCorePy_wrap/MMCorePy.py
+MMCorePy_wrap/MMCorePy_wrap.cxx
+MMCorePy_wrap/MMCorePy_wrap.h
+MMCoreJ_wrap/mmcorej
+MMCoreJ_wrap/MMCoreJ_wrap.h
+MMCoreJ_wrap/MMCoreJ_wrap.cxx
+acqEngine/classes/
+plugins/DLLAutoReloader/classes/
+plugins/DataBrowser/classes/
