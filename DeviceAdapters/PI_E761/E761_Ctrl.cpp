@@ -27,6 +27,7 @@ int E761_Ctrl::initConstStrings() {
 	m_strMap[STR_PROP_XPOSITION] = "X Position";
 	m_strMap[STR_PROP_YPOSITION] = "Y Position";
 	m_strMap[STR_PROP_POSITION] = "Position";
+	m_strMap[STR_PROP_TRVRANGE] = "Travel Range(um)";
 	m_strMap[STR_CtrlDesc] =
 			"Physik Instrumente(PI) E761 Piezo Stage Controller";
 	m_strMap[STR_XYStageDesc] =
@@ -79,31 +80,29 @@ E761_Ctrl::~E761_Ctrl() {
 	Shutdown();
 }
 
-int E761_Ctrl::OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	std::ostringstream osMessage;
-	int ret = DEVICE_OK;
+int E761_Ctrl::OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	if (eAct == MM::BeforeGet) {
+		double tmin[3];
+		double tmax[3];
+		if (!E7XX_qTMN(m_boardId, m_axisNames, tmin))
+			return getErrorMsg();
+		if (!E7XX_qTMX(m_boardId, m_axisNames, tmax))
+			return getErrorMsg();
+		char msg[MM::MaxStrLength];
+		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
+				"X:[%f~%f], Y:[%f~%f], Z:[%f~%f]", tmin[0], tmax[0], tmin[1],
+				tmax[1], tmin[2], tmax[2]);
+		pProp->Set(msg);
+	}
+	return DEVICE_OK;
+}
 
-	osMessage.str("");
+int E761_Ctrl::OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	int ret = DEVICE_OK;
 	if (eAct == MM::BeforeGet) {
 		pProp->Set(m_boardId);
-		if (m_pInstance->debugLogFlag()) {
-			osMessage.str("");
-			osMessage << "<E761_Ctrl::OnBoardId> BeforeGet("
-					<< getInstance()->getConstString(STR_PROP_BOARDID).c_str()
-					<< " = " << m_boardId << "), ReturnCode = " << ret;
-			this->LogMessage(osMessage.str().c_str());
-		}
-
 	} else if (eAct == MM::AfterSet) {
 		pProp->Get(m_boardId);
-
-		if (m_pInstance->debugLogFlag()) {
-			osMessage.str("");
-			osMessage << "<E761_Ctrl::OnBoardId> AfterSet("
-					<< getInstance()->getConstString(STR_PROP_BOARDID).c_str()
-					<< " = " << m_boardId << "), ReturnCode = " << ret;
-			this->LogMessage(osMessage.str().c_str());
-		}
 	}
 	return ret;
 }
@@ -177,7 +176,7 @@ int E761_Ctrl::Initialize() {
 
 	char propName[MM::MaxStrLength];
 
-// Board Id
+	// Board Id
 	sprintf(propName, getInstance()->getConstString(STR_PROP_BOARDID).c_str());
 	char strBoardId[32];
 	sprintf(strBoardId, "%d", m_boardId);
@@ -191,6 +190,13 @@ int E761_Ctrl::Initialize() {
 				propName, m_boardId, ret);
 		this->LogMessage(msg);
 	}
+
+	// Travel range
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getInstance()->getConstString(STR_PROP_TRVRANGE).c_str());
+	CPropertyAction* pActOnTravelRange = new CPropertyAction(this,
+			&E761_Ctrl::OnTravelRange);
+	ret = CreateProperty(propName, "", MM::String, true, pActOnTravelRange);
 
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK)

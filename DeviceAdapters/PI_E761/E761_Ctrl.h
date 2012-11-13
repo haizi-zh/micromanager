@@ -28,6 +28,7 @@ public:
 		STR_PROP_XPOSITION,
 		STR_PROP_YPOSITION,
 		STR_PROP_POSITION,
+		STR_PROP_TRVRANGE,
 		STR_XYStageDesc,
 		STR_ZStageDesc,
 		STR_CtrlDesc,
@@ -52,6 +53,7 @@ public:
 	int Shutdown();
 
 	int OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 	static int initConstStrings();
 	int getDeviceId() {
