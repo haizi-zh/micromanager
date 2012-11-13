@@ -20,10 +20,12 @@ LIBPATH := $(BOOST)/stage/lib $(MM_ROOT)/trunk/lib_Win32
 LIB_FLAGS := $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)/Lib" -LIBPATH:"$(VC_SDK)/lib" 
 LIBS = $(MM_LIB) IPHlpApi.lib
 
-.PHONY: all clean pre-build main-build post-build
+.PHONY: all full clean pre-build main-build post-build
 all: CFLAGS += -Zi -O2 -MD
 all: LINK_FLAGS += -OPT:REF -OPT:ICF -TLBID:1 
 all: pre-build main-build post-build
+
+full: clean all
 
 debug: CONFIG := Debug
 debug: PREPROCS += _DEBUG

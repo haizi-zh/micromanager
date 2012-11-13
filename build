@@ -1,0 +1,72 @@
+#!/bin/bash 
+
+BUILDMODE=$1
+
+echo Building Micro-Manger, mode: $BUILDMODE
+echo.
+
+echo Building MMCore:
+pushd MMCore
+make $BUILDMODE
+popd
+
+echo Building DeviceAdapters:
+echo.
+pushd DeviceAdapters
+
+echo Building AAAOTF:
+pushd AAAOTF
+make $BUILDMODE
+popd
+
+echo Building AVTCamera:
+pushd AVTCamera
+make $BUILDMODE
+popd
+
+echo Building Andor:
+pushd Andor
+make $BUILDMODE
+popd
+
+echo Building DVCCamera:
+pushd DVCCamera
+make $BUILDMODE
+popd
+
+echo Building DemoCamera:
+pushd DemoCamera
+make $BUILDMODE
+popd
+
+echo Building MP285:
+pushd MP285
+make $BUILDMODE
+popd
+
+echo Building PI-E761:
+pushd PI_E761
+make $BUILDMODE
+popd
+
+echo Building SerialManager:
+pushd SerialManager
+make $BUILDMODE
+popd
+
+popd
+
+echo Building MMCoreJ_wrap:
+pushd MMCoreJ_wrap
+make $BUILDMODE
+popd
+
+echo Building MMCorePy_wrap:
+pushd MMCorePy_wrap
+make $BUILDMODE
+popd
+
+echo Building Micro-Manger Studio:
+pushd mmstudio
+ant -buildfile build32.xml clean install
+popd

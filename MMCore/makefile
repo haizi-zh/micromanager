@@ -23,11 +23,13 @@ LIBPATH := $(BOOST)/stage/lib $(THIRD_PARTY)/zlib/bin_Win32
 LIB_FLAGS := $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)/Lib" -LIBPATH:"$(VC_SDK)/lib" 
 LIBS := zlib.lib
 
-.PHONY: all clean pre-build main-build post-build
+.PHONY: all full clean pre-build main-build post-build
 
 all: CFLAGS += -Zi -O2 -MD
 all: POSTFIX := r
 all: pre-build main-build post-build
+
+full: clean all
 
 debug: CONFIG := Debug
 debug: PREPROCS += _DEBUG
