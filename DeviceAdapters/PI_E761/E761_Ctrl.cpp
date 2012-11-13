@@ -23,6 +23,7 @@ int E761_Ctrl::initConstStrings() {
 	m_strMap[STR_ZStageDevName] = "PI-E761 Z Stage";
 	m_strMap[STR_PROP_NAME] = "Name";
 	m_strMap[STR_PROP_DESC] = "Description";
+	m_strMap[STR_PROP_REBOOT] = "Reboot on Initialization";
 	m_strMap[STR_PROP_BOARDID] = "Board Id";
 	m_strMap[STR_PROP_XPOSITION] = "X Position";
 	m_strMap[STR_PROP_YPOSITION] = "Y Position";
@@ -39,7 +40,8 @@ int E761_Ctrl::initConstStrings() {
 }
 
 E761_Ctrl::E761_Ctrl() :
-		m_initialized(false), m_boardId(1), m_debugLogFlag(false) {
+		m_initialized(false), m_boardId(1), m_debugLogFlag(false), m_reboot(
+				false) {
 	InitializeDefaultErrorMessages();
 	// The custom PI-E761 error messages are kept here.
 	SetErrorText(PI_E761_ERROR_CODE, errorMsg);
@@ -54,25 +56,20 @@ E761_Ctrl::E761_Ctrl() :
 	ret = CreateProperty(propName,
 			E761_Ctrl::getConstString(STR_CtrlDevName).c_str(), MM::String,
 			true);
-	if (m_debugLogFlag) {
-		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
-				"<E761_Ctrl::Initialize> CreateProperty(%s = %s), ReturnCode = %d",
-				propName, E761_Ctrl::getConstString(STR_CtrlDevName).c_str(),
-				ret);
-		this->LogMessage(msg);
-	}
 
 	// Description
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getConstString(STR_PROP_DESC).c_str());
 	ret = CreateProperty(propName,
 			E761_Ctrl::getConstString(STR_CtrlDesc).c_str(), MM::String, true);
-	if (m_debugLogFlag) {
-		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
-				"<E761_Ctrl::Initialize> CreateProperty(%s = %s), ReturnCode = %d",
-				propName, E761_Ctrl::getConstString(STR_CtrlDesc).c_str(), ret);
-		this->LogMessage(msg);
-	}
+
+	// Reboot
+	CPropertyAction* pActReboot = new CPropertyAction(this,
+			&E761_Ctrl::OnBoardId);
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getConstString(STR_PROP_REBOOT).c_str());
+	ret = CreateProperty(propName, "False", MM::String, false, pActReboot);
+
 	m_pInstance = this;
 }
 
@@ -95,6 +92,19 @@ int E761_Ctrl::OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		pProp->Set(msg);
 	}
 	return DEVICE_OK;
+}
+
+int E761_Ctrl::OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	int ret = DEVICE_OK;
+	if (eAct == MM::BeforeGet) {
+		string val = m_reboot ? "True" : "False";
+		pProp->Set(val.c_str());
+	} else if (eAct == MM::AfterSet) {
+		string val;
+		pProp->Get(val);
+		m_reboot = (val.compare("True") == 0);
+	}
+	return ret;
 }
 
 int E761_Ctrl::OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct) {
@@ -141,7 +151,10 @@ int E761_Ctrl::Initialize() {
 	int ret;
 	char msg[MM::MaxStrLength];
 
-	int id = E7XX_ConnectPciBoard(1);
+	int id = -1;
+	if (!m_reboot)
+		id = E7XX_ConnectPciBoard(1);
+	// 如果m_reboot为true或者E7XX_ConnectPciBoard失败了：
 	if (id == -1) {
 		id = E7XX_ConnectPciBoardAndReboot(1);
 		if (id == -1)

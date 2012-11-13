@@ -24,6 +24,7 @@ public:
 		STR_Version,
 		STR_PROP_NAME,
 		STR_PROP_DESC,
+		STR_PROP_REBOOT,
 		STR_PROP_BOARDID,
 		STR_PROP_XPOSITION,
 		STR_PROP_YPOSITION,
@@ -54,6 +55,7 @@ public:
 
 	int OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 	static int initConstStrings();
 	int getDeviceId() {
@@ -70,6 +72,7 @@ protected:
 private:
 	bool m_initialized;			// controller initialized flag
 	bool m_debugLogFlag;			// Whether to log debug information
+	bool m_reboot;
 	long m_boardId;	//	PI_E761 board ID for initialization
 	int m_devId;
 	static E761_Ctrl* m_pInstance;
