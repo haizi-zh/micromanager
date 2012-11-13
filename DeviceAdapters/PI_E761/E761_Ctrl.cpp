@@ -24,6 +24,9 @@ int E761_Ctrl::initConstStrings() {
 	m_strMap[STR_PROP_NAME] = "Name";
 	m_strMap[STR_PROP_DESC] = "Description";
 	m_strMap[STR_PROP_BOARDID] = "Board Id";
+	m_strMap[STR_PROP_XPOSITION] = "X Position";
+	m_strMap[STR_PROP_YPOSITION] = "Y Position";
+	m_strMap[STR_PROP_POSITION] = "Position";
 	m_strMap[STR_CtrlDesc] =
 			"Physik Instrumente(PI) E761 Piezo Stage Controller";
 	m_strMap[STR_XYStageDesc] =
@@ -343,7 +346,7 @@ int E761_XYStage::Initialize() {
 	if (m_initialized)
 		return DEVICE_OK;
 
-	// E761_Ctrl�����ȳ�ʼ��
+	// E761_Ctrl
 	if (!E761_Ctrl::getInstance()->isInitialized())
 		return DEVICE_NOT_CONNECTED;
 
@@ -352,19 +355,23 @@ int E761_XYStage::Initialize() {
 	char msg[MM::MaxStrLength];
 
 	// Position
+	double x, y;
+	GetPositionUm(x, y);
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
-			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_NAME).c_str());
-	ret = CreateProperty(propName,
 			E761_Ctrl::getInstance()->getConstString(
-					E761_Ctrl::STR_XYStageDevName).c_str(), MM::String, true);
-	if (E761_Ctrl::getInstance()->debugLogFlag()) {
-		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
-				"<E761_XYStage::> CreateProperty(%s  %s), ReturnCode = %d\n",
-				propName,
-				E761_Ctrl::getInstance()->getConstString(
-						E761_Ctrl::STR_XYStageDevName).c_str(), ret);
-		this->LogMessage(msg);
-	}
+					E761_Ctrl::STR_PROP_XPOSITION).c_str());
+	CPropertyAction* pActXPosition = new CPropertyAction(this,
+			&E761_XYStage::OnXPosition);
+	_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE, "%f", x);
+	ret = CreateProperty(propName, msg, MM::Float, false, pActXPosition);
+
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getInstance()->getConstString(
+					E761_Ctrl::STR_PROP_YPOSITION).c_str());
+	CPropertyAction* pActYPosition = new CPropertyAction(this,
+			&E761_XYStage::OnYPosition);
+	_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE, "%f", y);
+	ret = CreateProperty(propName, msg, MM::Float, false, pActYPosition);
 
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK)
@@ -372,6 +379,42 @@ int E761_XYStage::Initialize() {
 
 	m_initialized = true;
 	return DEVICE_OK;
+}
+
+int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	std::ostringstream osMessage;
+	int ret = DEVICE_OK;
+
+	osMessage.str("");
+	double x, y;
+	if (eAct == MM::BeforeGet) {
+		GetPositionUm(x, y);
+		pProp->Set(x);
+	} else if (eAct == MM::AfterSet) {
+		GetPositionUm(x, y);
+		pProp->Get(x);
+		SetPositionUm(x, y);
+	}
+	OnXYStagePositionChanged(x, y);
+	return ret;
+}
+
+int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	std::ostringstream osMessage;
+	int ret = DEVICE_OK;
+
+	osMessage.str("");
+	double x, y;
+	if (eAct == MM::BeforeGet) {
+		GetPositionUm(x, y);
+		pProp->Set(y);
+	} else if (eAct == MM::AfterSet) {
+		GetPositionUm(x, y);
+		pProp->Get(y);
+		SetPositionUm(x, y);
+	}
+	OnXYStagePositionChanged(x, y);
+	return ret;
 }
 
 int E761_XYStage::Shutdown() {
@@ -476,7 +519,7 @@ int E761_ZStage::Initialize() {
 		return DEVICE_OK;
 	int ret;
 
-	// E761_Ctrl�����ȳ�ʼ��
+	// E761_Ctrl
 	if (!E761_Ctrl::getInstance()->isInitialized())
 		return DEVICE_NOT_CONNECTED;
 
@@ -492,11 +535,36 @@ int E761_ZStage::Initialize() {
 	if (ret != DEVICE_OK)
 		return ret;
 
+	// Position
+	double pos;
+	GetPositionUm(pos);
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getInstance()->getConstString(
+					E761_Ctrl::STR_PROP_POSITION).c_str());
+	CPropertyAction* pActPosition = new CPropertyAction(this,
+			&E761_ZStage::OnPosition);
+	_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE, "%f", pos);
+	ret = CreateProperty(propName, msg, MM::Float, false, pActPosition);
+
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK)
 		return ret;
 
 	m_initialized = true;
+	return ret;
+}
+
+int E761_ZStage::OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	int ret = DEVICE_OK;
+
+	double pos;
+	if (eAct == MM::BeforeGet) {
+		GetPositionUm(pos);
+		pProp->Set(pos);
+	} else if (eAct == MM::AfterSet) {
+		SetPositionUm(pos);
+	}
+	OnStagePositionChanged(pos);
 	return ret;
 }
 

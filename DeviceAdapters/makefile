@@ -18,7 +18,9 @@ LINK_FLAGS = -INCREMENTAL -NOLOGO -DLL -DEBUG -SUBSYSTEM:WINDOWS -DYNAMICBASE:NO
 LIB_FLAGS = $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)/Lib" -LIBPATH:"$(VC_SDK)/lib" 
 
 .PHONY: all full clean pre-build main-build post-build
-	
+
+full: clean all
+
 all: CFLAGS += -Zi -O2 -MD
 all: LINK_FLAGS += -OPT:REF -OPT:ICF -TLBID:1 
 all: pre-build main-build post-build

@@ -25,6 +25,9 @@ public:
 		STR_PROP_NAME,
 		STR_PROP_DESC,
 		STR_PROP_BOARDID,
+		STR_PROP_XPOSITION,
+		STR_PROP_YPOSITION,
+		STR_PROP_POSITION,
 		STR_XYStageDesc,
 		STR_ZStageDesc,
 		STR_CtrlDesc,
@@ -120,6 +123,11 @@ public:
 	int SetPositionSteps(long lXPosSteps, long lYPosSteps);
 	int GetPositionSteps(long& x, long& y);
 
+	int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+//	int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+//	int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+
 protected:
 	~E761_XYStage();
 
@@ -161,6 +169,7 @@ public:
 		return true;
 	}
 	int OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 protected:
 	~E761_ZStage();
