@@ -53,6 +53,8 @@ public:
 		return m_devId;
 	}
 	void getAxisName(char* px, char* py, char* pz);
+	E761_Ctrl();
+	int getErrorMsg();
 
 protected:
 	virtual ~E761_Ctrl();
@@ -65,8 +67,8 @@ private:
 	static E761_Ctrl* m_pInstance;
 	static std::map<int, std::string> m_strMap;
 	char m_axisNames[32];
-
-	E761_Ctrl();
+	
+	static char errorMsg[MM::MaxStrLength];	
 };
 
 //////
@@ -75,6 +77,7 @@ private:
 class E761_XYStage: public CXYStageBase<E761_XYStage> {
 public:
 	static E761_XYStage* getInstance();
+	E761_XYStage();
 	int Initialize();
 	bool Busy() {
 		return false;
@@ -119,9 +122,7 @@ protected:
 
 private:
 	bool m_initialized;			// controller initialized flag
-	static E761_XYStage* m_pInstance;
-
-	E761_XYStage();
+	static E761_XYStage* m_pInstance;	
 };
 
 //////
@@ -130,6 +131,7 @@ private:
 class E761_ZStage: public CStageBase<E761_ZStage> {
 public:
 	static E761_ZStage* getInstance();
+	E761_ZStage();
 	bool Busy() {
 		return false;
 	}
@@ -164,8 +166,6 @@ private:
 	bool m_initialized;			// controller initialized flag
 	static E761_ZStage* m_pInstance;
 	double stepSizeUm;
-	bool m_servoMode;
-
-	E761_ZStage();
+	bool m_servoMode;	
 };
 #endif /* E761_CTRL_H_ */

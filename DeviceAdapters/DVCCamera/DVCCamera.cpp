@@ -179,8 +179,8 @@ DVCCamera::~DVCCamera() {
 
 		if (initialized_) {
 			Shutdown();
-		}
-		dvcReleaseUserBuffers(&userBuffers_);
+			dvcReleaseUserBuffers(&userBuffers_);
+		}		
 
 		// clear the instance pointer
 		instance_ = NULL;

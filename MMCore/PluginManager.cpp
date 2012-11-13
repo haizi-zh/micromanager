@@ -416,10 +416,10 @@ MM::Device* CPluginManager::LoadDevice(const char* label, const char* moduleName
    hGetDeviceDescription(deviceName, descr, MM::MaxStrLength);
 
    // make sure that each device carries a reference to the module it belongs to!!!
-   pDevice->SetModuleHandle(hLib);
    pDevice->SetLabel(label);
    pDevice->SetModuleName(moduleName);
    pDevice->SetDescription(descr);
+   pDevice->SetModuleHandle(hLib);
 
    // assign label
    devices_[label] = pDevice;
