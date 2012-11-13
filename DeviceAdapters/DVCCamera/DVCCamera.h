@@ -30,6 +30,7 @@ class DVCCamera : public CCameraBase<DVCCamera>
 {
 public:
 	static DVCCamera* GetInstance();
+	DVCCamera();
 	~DVCCamera();
 
 	// MMDevice API
@@ -60,7 +61,6 @@ public:
 	int StopSequenceAcquisition(bool temporary); // temporary=true
 
 private:
-	DVCCamera();
 
 	// custom interface for the thread
 	int PushImage(int userBufferId);
@@ -111,7 +111,7 @@ private:
 	int depth_;
 	std::vector<std::string> scanRates_;
 	ImgBuffer img_;
-	static unsigned int refCount_;
+//	static unsigned int refCount_;
 	static DVCCamera* instance_;
 	bool initialized_;
 	bool busy_;

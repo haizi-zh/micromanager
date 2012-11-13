@@ -20,8 +20,8 @@ const int g_Err_Offset = 10000;
 const char* g_DVCCameraDeviceName = "DVCCamera";
 
 // singleton instance
-DVCCamera* DVCCamera::instance_ = 0;
-unsigned int DVCCamera::refCount_ = 0;
+DVCCamera* DVCCamera::instance_ = NULL;
+//unsigned int DVCCamera::refCount_ = 0;
 
 // Number of user buffers
 const int g_UserBufferNumber = 48;
@@ -63,8 +63,7 @@ const char g_MD_TriggerTimestamp[] = "Trigger Timestamp";
  * Do not discover devices at runtime.  To avoid warnings about missing DLLs, Micro-Manager
  * maintains a list of supported device (MMDeviceList.txt).  This list is generated using 
  * information supplied by this function, so runtime discovery will create problems.
- */
-MODULE_API void InitializeModuleData() {
+ */MODULE_API void InitializeModuleData() {
 	AddAvailableDeviceName(g_DVCCameraDeviceName, "DVC GigE Camera");
 }
 
@@ -159,38 +158,31 @@ DVCCamera::DVCCamera() :
 	camTypeMap_.insert(
 			pair<int, string>(14, "Kodak 340 12 bit monochrome: 340C"));
 
+	instance_ = this;
+
 }
 
 DVCCamera::~DVCCamera() {
 	DriverGuard dg(this);
 
-	refCount_--;
-	if (refCount_ == 0) {
-		// release resources
-		if (initialized_) {
-			//SetToIdle();
-			//int ShutterMode = 2;  //0: auto, 1: open, 2: close
-			//SetShutter(1, ShutterMode, 20,20);//0, 0);
-		}
-
-		//if (initialized_ && mb_canSetTemp) {
-		//   CoolerOFF();  //turn off the cooler at shutdown
-		//}
+//	refCount_--;
+//	if (refCount_ == 0) {
+	// release resources
 
 		if (initialized_) {
 			Shutdown();
 			dvcReleaseUserBuffers(&userBuffers_);
 		}		
 
-		// clear the instance pointer
-		instance_ = NULL;
-	}
+	Shutdown();
+//	}
 }
 
 DVCCamera* DVCCamera::GetInstance() {
-	instance_ = new DVCCamera();
+	if (instance_ == NULL)
+		instance_ = new DVCCamera();
 
-	refCount_++;
+//	refCount_++;
 	return instance_;
 }
 
@@ -208,7 +200,7 @@ int DVCCamera::Initialize() {
 
 	int ret;
 
-	// »ñÈ¡ËùÓÐµÄcameraÁÐ±í
+	// ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ðµï¿½cameraï¿½Ð±ï¿½
 	CameraListArrayStruct cams;
 	if (!dvcGetListOfCameras(&cams))
 		LogMessage("No DVC camera found!");
@@ -216,7 +208,7 @@ int DVCCamera::Initialize() {
 		camMap_.insert(pair<int, HANDLE>(i + 1, (HANDLE) NULL));
 	}
 
-	// ×ÜÊÇ´ò¿ªµÚÒ»¸öÏà»ú
+	// ï¿½ï¿½ï¿½Ç´ò¿ªµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½
 	currentCam_ = 1;
 	const HANDLE hCam = dvcOpenCamera(currentCam_);
 	if (hCam == NULL)
@@ -536,9 +528,12 @@ int DVCCamera::Shutdown() {
 		dvcReleaseUserBuffers(&dvcBuf);
 		dvcCloseCamera(hCam);
 		delete fullFrameBuffer_;
+		initialized_ = false;
 	}
-
-	initialized_ = false;
+	camMap_.erase(currentCam_);
+	currentCam_ = 0;
+	// clear the instance pointer
+	instance_ = NULL;
 	return DEVICE_OK;
 }
 
