@@ -24,6 +24,7 @@ int E761_Ctrl::initConstStrings() {
 	m_strMap[STR_PROP_NAME] = "Name";
 	m_strMap[STR_PROP_DESC] = "Description";
 	m_strMap[STR_PROP_REBOOT] = "Reboot on Initialization";
+	m_strMap[STR_PROP_STARTMONITOR] = "Start the position monitor";
 	m_strMap[STR_PROP_BOARDID] = "Board Id";
 	m_strMap[STR_PROP_XPOSITION] = "X Position";
 	m_strMap[STR_PROP_YPOSITION] = "Y Position";
@@ -43,8 +44,9 @@ int E761_Ctrl::initConstStrings() {
 }
 
 E761_Ctrl::E761_Ctrl() :
-		m_initialized(false), m_boardId(1), m_debugLogFlag(false), m_reboot(
-				false) {
+		m_initialized(false), m_boardId(1), m_debugLogFlag(false), m_pXYStage(
+				NULL), m_pZStage(NULL), m_stopMonitorFlag(false), m_monitorIntvMs(
+				500), m_startMonitor(true), m_exitMonitorEvent(NULL) {
 	InitializeDefaultErrorMessages();
 	// The custom PI-E761 error messages are kept here.
 	SetErrorText(PI_E761_ERROR_CODE, errorMsg);
@@ -68,10 +70,21 @@ E761_Ctrl::E761_Ctrl() :
 
 	// Reboot
 	CPropertyAction* pActReboot = new CPropertyAction(this,
-			&E761_Ctrl::OnBoardId);
+			&E761_Ctrl::OnReboot);
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getConstString(STR_PROP_REBOOT).c_str());
-	ret = CreateProperty(propName, "False", MM::String, false, pActReboot);
+	ret = CreateProperty(propName, "False", MM::String, false, pActReboot,
+			true);
+	AddAllowedValue(propName, "True");
+	AddAllowedValue(propName, "False");
+
+	// Monitor
+	CPropertyAction* pActMonitor = new CPropertyAction(this,
+			&E761_Ctrl::OnMonitor);
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getConstString(STR_PROP_STARTMONITOR).c_str());
+	ret = CreateProperty(propName, "True", MM::String, false, pActMonitor,
+			true);
 	AddAllowedValue(propName, "True");
 	AddAllowedValue(propName, "False");
 
@@ -108,6 +121,19 @@ int E761_Ctrl::OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		string val;
 		pProp->Get(val);
 		m_reboot = (val.compare("True") == 0);
+	}
+	return ret;
+}
+
+int E761_Ctrl::OnMonitor(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	int ret = DEVICE_OK;
+	if (eAct == MM::BeforeGet) {
+		string val = m_startMonitor ? "True" : "False";
+		pProp->Set(val.c_str());
+	} else if (eAct == MM::AfterSet) {
+		string val;
+		pProp->Get(val);
+		m_startMonitor = (val.compare("True") == 0);
 	}
 	return ret;
 }
@@ -159,6 +185,27 @@ int E761_Ctrl::OnLastError(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		pProp->Set(msg);
 	}
 	return ret;
+}
+
+DWORD E761_Ctrl::monitorThread(LPVOID param) {
+	E761_Ctrl* pCtrl = E761_Ctrl::getInstance();
+	E761_XYStage* pXY = pCtrl->getXYStage();
+	E761_ZStage* pZ = pCtrl->getZStage();
+	while (!pCtrl->m_stopMonitorFlag) {
+		Sleep(pCtrl->m_monitorIntvMs);
+		if (pXY != NULL && pXY->isIntialized()) {
+			double x = 0, y = 0;
+			pXY->GetPositionUm(x, y);
+			pXY->OnPositionChanged(x, y);
+		}
+		if (pZ != NULL && pZ->isInitialized()) {
+			double pos = 0;
+			pZ->GetPositionUm(pos);
+			pZ->OnPositionChanged(pos);
+		}
+	}
+	SetEvent(pCtrl->m_exitMonitorEvent);
+	return 0;
 }
 
 int E761_Ctrl::Initialize() {
@@ -238,14 +285,20 @@ int E761_Ctrl::Initialize() {
 	if (ret != DEVICE_OK)
 		return ret;
 
+	// Start the monitor thread
+	m_exitMonitorEvent = CreateEventA(NULL, TRUE, FALSE, NULL);
+	CreateThread(NULL, 0, monitorThread, this, 0, NULL);
+
 	m_initialized = true;
 	return ret;
 }
 
 int E761_Ctrl::Shutdown() {
 	if (m_initialized) {
+		m_stopMonitorFlag = true;
 		m_initialized = false;
 		E7XX_CloseConnection(m_devId);
+		WaitForSingleObject(m_exitMonitorEvent, 2 * m_monitorIntvMs);
 	}
 	return DEVICE_OK;
 }
@@ -295,17 +348,13 @@ MODULE_API void InitializeModuleData() {
 
 // windows DLL entry code
 #ifdef WIN32
-BOOL APIENTRY DllMain( HANDLE /*hModule*/,
-		DWORD ul_reason_for_call,
-		LPVOID /*lpReserved*/
-)
-{
-	switch (ul_reason_for_call)
-	{
-		case DLL_PROCESS_ATTACH:
-		case DLL_THREAD_ATTACH:
-		case DLL_THREAD_DETACH:
-		case DLL_PROCESS_DETACH:
+BOOL APIENTRY DllMain(HANDLE /*hModule*/, DWORD ul_reason_for_call, LPVOID /*lpReserved*/
+) {
+	switch (ul_reason_for_call) {
+	case DLL_PROCESS_ATTACH:
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+	case DLL_PROCESS_DETACH:
 		break;
 	}
 	return TRUE;
@@ -365,6 +414,8 @@ E761_XYStage::E761_XYStage() :
 					E761_Ctrl::getInstance()->getConstString(
 							E761_Ctrl::STR_XYStageDesc).c_str(), MM::String,
 					true);
+
+	E761_Ctrl::getInstance()->setXYStage(this);
 }
 
 int E761_XYStage::Home() {
@@ -379,7 +430,6 @@ int E761_XYStage::Initialize() {
 	if (m_initialized)
 		return DEVICE_OK;
 
-	// E761_Ctrl
 	if (!E761_Ctrl::getInstance()->isInitialized())
 		return DEVICE_NOT_CONNECTED;
 
@@ -487,6 +537,7 @@ int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 
 int E761_XYStage::Shutdown() {
 	m_initialized = false;
+	E761_Ctrl::getInstance()->setXYStage(NULL);
 	return DEVICE_OK;
 }
 
@@ -554,14 +605,6 @@ E761_ZStage::E761_ZStage() :
 	ret = CreateProperty(propName,
 			E761_Ctrl::getInstance()->getConstString(
 					E761_Ctrl::STR_ZStageDevName).c_str(), MM::String, true);
-	if (E761_Ctrl::getInstance()->debugLogFlag()) {
-		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
-				"<E761_XYStage::> CreateProperty(%s  %s), ReturnCode = %d\n",
-				propName,
-				E761_Ctrl::getInstance()->getConstString(
-						E761_Ctrl::STR_ZStageDevName).c_str(), ret);
-		this->LogMessage(msg);
-	}
 
 	// Description
 	_snprintf(propName, MM::MaxStrLength,
@@ -571,14 +614,8 @@ E761_ZStage::E761_ZStage() :
 					E761_Ctrl::getInstance()->getConstString(
 							E761_Ctrl::STR_ZStageDesc).c_str(), MM::String,
 					true);
-	if (E761_Ctrl::getInstance()->debugLogFlag()) {
-		_snprintf(msg, MM::MaxStrLength,
-				"<E761_XYStage::> CreateProperty(%s  %s), ReturnCode = %d\n",
-				propName,
-				E761_Ctrl::getInstance()->getConstString(
-						E761_Ctrl::STR_ZStageDesc).c_str(), ret);
-		this->LogMessage(msg);
-	}
+
+	E761_Ctrl::getInstance()->setZStage(this);
 }
 
 int E761_ZStage::Initialize() {
@@ -586,7 +623,6 @@ int E761_ZStage::Initialize() {
 		return DEVICE_OK;
 	int ret;
 
-	// E761_Ctrl
 	if (!E761_Ctrl::getInstance()->isInitialized())
 		return DEVICE_NOT_CONNECTED;
 
@@ -670,6 +706,7 @@ int E761_ZStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
 
 int E761_ZStage::Shutdown() {
 	m_initialized = false;
+	E761_Ctrl::getInstance()->setZStage(NULL);
 	return DEVICE_OK;
 }
 

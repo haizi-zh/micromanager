@@ -8,9 +8,13 @@
 #ifndef E761_CTRL_H_
 #define E761_CTRL_H_
 
+#include <Windows.h>
 #include "../../MMDevice/DeviceBase.h"
 #include "../../MMDevice/ImgBuffer.h"
 #include "../../MMDevice/DeviceThreads.h"
+
+class E761_XYStage;
+class E761_ZStage;
 
 //////
 // PI_E761_Control class
@@ -25,6 +29,7 @@ public:
 		STR_PROP_NAME,
 		STR_PROP_DESC,
 		STR_PROP_REBOOT,
+		STR_PROP_STARTMONITOR,
 		STR_PROP_BOARDID,
 		STR_PROP_LASTERR,
 		STR_PROP_XPOSITION,
@@ -59,6 +64,7 @@ public:
 	int OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnMonitor(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnLastError(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 	static int initConstStrings();
@@ -69,6 +75,20 @@ public:
 	E761_Ctrl();
 	int getErrorMsg();
 	int getErrorMsg(const char* msg);
+	void setXYStage(E761_XYStage* pStage) {
+		m_pXYStage = pStage;
+	}
+	E761_XYStage* getXYStage() {
+		return m_pXYStage;
+	}
+	void setZStage(E761_ZStage* pStage) {
+		m_pZStage = pStage;
+	}
+	E761_ZStage* getZStage() {
+		return m_pZStage;
+	}
+
+	static DWORD WINAPI monitorThread(LPVOID param);
 
 protected:
 	virtual ~E761_Ctrl();
@@ -80,10 +100,19 @@ private:
 	long m_boardId;	//	PI_E761 board ID for initialization
 	int m_devId;
 	static E761_Ctrl* m_pInstance;
+	E761_XYStage* m_pXYStage;
+	E761_ZStage* m_pZStage;
 	static std::map<int, std::string> m_strMap;
 	char m_axisNames[32];
-	
-	static char errorMsg[MM::MaxStrLength];	
+	// A flag to inform the monitor to stop.
+	bool m_stopMonitorFlag;
+	// Whether to start the monitor
+	bool m_startMonitor;
+	// The interval of the position monitor in milliseconds.
+	int m_monitorIntvMs;
+	HANDLE m_exitMonitorEvent;
+
+	static char errorMsg[MM::MaxStrLength];
 };
 
 //////
@@ -94,6 +123,12 @@ public:
 	static E761_XYStage* getInstance();
 	E761_XYStage();
 	int Initialize();
+	bool isIntialized() {
+		return m_initialized;
+	}
+	void OnPositionChanged(double x, double y) {
+		OnXYStagePositionChanged(x, y);
+	}
 	bool Busy() {
 		return false;
 	}
@@ -132,16 +167,19 @@ public:
 
 	int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
-	int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
-	int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
-	int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct, const char* axis);
+	int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp,
+			MM::ActionType eAct);
+	int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp,
+			MM::ActionType eAct);
+	int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct,
+			const char* axis);
 
 protected:
 	~E761_XYStage();
 
 private:
 	bool m_initialized;			// controller initialized flag
-	static E761_XYStage* m_pInstance;	
+	static E761_XYStage* m_pInstance;
 };
 
 //////
@@ -179,6 +217,12 @@ public:
 	}
 	int OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+	bool isInitialized() {
+		return m_initialized;
+	}
+	void OnPositionChanged(double pos) {
+		OnStagePositionChanged(pos);
+	}
 
 protected:
 	~E761_ZStage();
@@ -187,6 +231,6 @@ private:
 	bool m_initialized;			// controller initialized flag
 	static E761_ZStage* m_pInstance;
 	double stepSizeUm;
-	bool m_servoMode;	
+	bool m_servoMode;
 };
 #endif /* E761_CTRL_H_ */
