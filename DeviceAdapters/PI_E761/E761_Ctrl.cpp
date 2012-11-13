@@ -29,6 +29,7 @@ int E761_Ctrl::initConstStrings() {
 	m_strMap[STR_PROP_YPOSITION] = "Y Position";
 	m_strMap[STR_PROP_POSITION] = "Position";
 	m_strMap[STR_PROP_TRVRANGE] = "Travel Range(um)";
+	m_strMap[STR_PROP_LASTERR] = "Last Error";
 	m_strMap[STR_CtrlDesc] =
 			"Physik Instrumente(PI) E761 Piezo Stage Controller";
 	m_strMap[STR_XYStageDesc] =
@@ -145,6 +146,17 @@ int E761_Ctrl::getErrorMsg(const char* msg) {
 	return PI_E761_ERROR_CODE;
 }
 
+int E761_Ctrl::OnLastError(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	int ret = DEVICE_OK;
+	if (eAct == MM::BeforeGet) {
+		int errorNo = E7XX_GetError(m_devId);
+		char msg[MM::MaxStrLength];
+		E7XX_TranslateError(errorNo, msg, MM::MaxStrLength);
+		pProp->Set(msg);
+	}
+	return ret;
+}
+
 int E761_Ctrl::Initialize() {
 	if (m_initialized)
 		return DEVICE_OK;
@@ -210,6 +222,13 @@ int E761_Ctrl::Initialize() {
 	CPropertyAction* pActOnTravelRange = new CPropertyAction(this,
 			&E761_Ctrl::OnTravelRange);
 	ret = CreateProperty(propName, "", MM::String, true, pActOnTravelRange);
+
+	// Last error message
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getInstance()->getConstString(STR_PROP_LASTERR).c_str());
+	CPropertyAction* pActOnLastError = new CPropertyAction(this,
+			&E761_Ctrl::OnLastError);
+	ret = CreateProperty(propName, "", MM::String, true, pActOnLastError);
 
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK)

@@ -26,6 +26,7 @@ public:
 		STR_PROP_DESC,
 		STR_PROP_REBOOT,
 		STR_PROP_BOARDID,
+		STR_PROP_LASTERR,
 		STR_PROP_XPOSITION,
 		STR_PROP_YPOSITION,
 		STR_PROP_POSITION,
@@ -56,6 +57,7 @@ public:
 	int OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnLastError(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 	static int initConstStrings();
 	int getDeviceId() {
