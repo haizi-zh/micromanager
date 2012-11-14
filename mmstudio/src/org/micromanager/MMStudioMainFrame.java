@@ -2652,8 +2652,13 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       if (xyStageLabel_.length() > 0) {
          dimText += ", XY=(" + TextUtils.FMT2.format(staticInfo_.x_) + "," + TextUtils.FMT2.format(staticInfo_.y_) + ")um";
       }
-
-      labelImageDimensions_.setText(dimText);
+      final String text = dimText;
+      SwingUtilities.invokeLater(new Runnable(){
+		@Override
+		public void run() {
+			labelImageDimensions_.setText(text);
+		}
+      });
    }
 
    public void updateXYPos(double x, double y) {
@@ -3488,8 +3493,9 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    public synchronized void closeSequence() {
 
       if (!this.isRunning()) {
-    	  if (core_!=null)
-    		  core_.logMessage("MMStudioMainFrame::closeSequence called while running_ is false");
+         if (core_ != null) {
+            core_.logMessage("MMStudioMainFrame::closeSequence called while running_ is false");
+         }
          return;
       }
       
