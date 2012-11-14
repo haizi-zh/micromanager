@@ -34,11 +34,6 @@ public class CenterAndDragListener implements MouseListener, MouseMotionListener
 	   private boolean transposeXY_;
 	   private boolean correction_;
 	   private int lastX_, lastY_;
-	   
-	   // The timestamp of last mouse-drag event.
-	private long lastMouseDragMs_;
-	// Minimal interval between adjacent mouse-drag events. Default is 30ms.
-	private long mouseDragIntvMs_ = 30;
 
 	   public CenterAndDragListener(CMMCore core, MMStudioMainFrame gui) {
 	      core_ = core;
@@ -194,10 +189,6 @@ public class CenterAndDragListener implements MouseListener, MouseMotionListener
 			if (Toolbar.getToolId() != Toolbar.HAND)
                return;
          }
-	      
-	      long timestamp = System.currentTimeMillis();
-	      if (timestamp-lastMouseDragMs_<mouseDragIntvMs_)
-	    	  return;
 
 	      // Get needed info from core
          // (is it really needed to run this every time?)
@@ -250,8 +241,7 @@ public class CenterAndDragListener implements MouseListener, MouseMotionListener
 	      }
 	      lastX_ = cX;
 	      lastY_ = cY;
-	      lastMouseDragMs_ = System.currentTimeMillis();
-	      
+
          gui_.updateXYPosRelative(mXUm, mYUm);
 
 	   } 
