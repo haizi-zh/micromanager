@@ -37,10 +37,13 @@ int E761_Ctrl::initConstStrings() {
 E761_Ctrl::E761_Ctrl() :
 		m_initialized(false), m_boardId(1), m_debugLogFlag(false) {
 	InitializeDefaultErrorMessages();
+	// The custom PI-E761 error messages are kept here.
+	SetErrorText(PI_E761_ERROR_CODE, errorMsg);
+
 	int ret;
 	char propName[MM::MaxStrLength];
 	char msg[MM::MaxStrLength];
-	
+
 	// Name
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getConstString(STR_PROP_NAME).c_str());
@@ -50,8 +53,8 @@ E761_Ctrl::E761_Ctrl() :
 	if (m_debugLogFlag) {
 		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
 				"<E761_Ctrl::Initialize> CreateProperty(%s = %s), ReturnCode = %d",
-				propName,
-				E761_Ctrl::getConstString(STR_CtrlDevName).c_str(), ret);
+				propName, E761_Ctrl::getConstString(STR_CtrlDevName).c_str(),
+				ret);
 		this->LogMessage(msg);
 	}
 
@@ -59,13 +62,11 @@ E761_Ctrl::E761_Ctrl() :
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getConstString(STR_PROP_DESC).c_str());
 	ret = CreateProperty(propName,
-			E761_Ctrl::getConstString(STR_CtrlDesc).c_str(), MM::String,
-			true);
+			E761_Ctrl::getConstString(STR_CtrlDesc).c_str(), MM::String, true);
 	if (m_debugLogFlag) {
 		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
 				"<E761_Ctrl::Initialize> CreateProperty(%s = %s), ReturnCode = %d",
-				propName, E761_Ctrl::getConstString(STR_CtrlDesc).c_str(),
-				ret);
+				propName, E761_Ctrl::getConstString(STR_CtrlDesc).c_str(), ret);
 		this->LogMessage(msg);
 	}
 	m_pInstance = this;
@@ -113,11 +114,23 @@ void E761_Ctrl::getAxisName(char* px, char* py, char* pz) {
 		*pz = m_axisNames[2];
 }
 
-int E761_Ctrl::getErrorMsg()
-{
+int E761_Ctrl::getErrorMsg() {
+	return getErrorMsg(NULL);
+}
+
+int E761_Ctrl::getErrorMsg(const char* msg) {
 	int errorNo = E7XX_GetError(m_devId);
-	E7XX_TranslateError(errorNo, errorMsg, MM::MaxStrLength);
-	return DEVICE_ERR;
+	char str[MM::MaxStrLength];
+	E7XX_TranslateError(errorNo, str, MM::MaxStrLength);
+
+	if (msg != NULL)
+		::_snprintf_s(errorMsg, MM::MaxStrLength, _TRUNCATE,
+				"PI error code: %d, reason: %s. Custom message: %s", errorNo,
+				str, msg);
+	else
+		::_snprintf_s(errorMsg, MM::MaxStrLength, _TRUNCATE,
+				"PI error code: %d, reason: %s.", errorNo, str);
+	return PI_E761_ERROR_CODE;
 }
 
 int E761_Ctrl::Initialize() {
@@ -127,11 +140,10 @@ int E761_Ctrl::Initialize() {
 	char msg[MM::MaxStrLength];
 
 	int id = E7XX_ConnectPciBoard(1);
-	if (id == -1)
-	{
+	if (id == -1) {
 		id = E7XX_ConnectPciBoardAndReboot(1);
 		if (id == -1)
-			return getErrorMsg();
+			return DEVICE_ERR;
 	}
 	m_devId = id;
 
@@ -149,12 +161,12 @@ int E761_Ctrl::Initialize() {
 
 	ret = E7XX_qSAI(m_devId, m_axisNames, sizeof(m_axisNames));
 	if (!ret)
-		return E761_Ctrl::getErrorMsg();
+		return E761_Ctrl::getErrorMsg("Get axis names.");
 
-	BOOL svoVal[] = {TRUE, TRUE, TRUE};
+	BOOL svoVal[] = { TRUE, TRUE, TRUE };
 	ret = E7XX_SVO(m_devId, m_axisNames, svoVal);
 	if (!ret)
-		return E761_Ctrl::getErrorMsg();
+		return E761_Ctrl::getErrorMsg("Get SVO status.");
 
 	_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
 			"<E761_Ctrl::Initialize> Axis names: %s", m_axisNames);
@@ -186,8 +198,7 @@ int E761_Ctrl::Initialize() {
 }
 
 int E761_Ctrl::Shutdown() {
-	if (m_initialized)
-	{
+	if (m_initialized) {
 		m_initialized = false;
 		E7XX_CloseConnection(m_devId);
 	}
@@ -204,14 +215,14 @@ MODULE_API MM::Device* CreateDevice(const char* deviceName) {
 	if (strcmp(deviceName,
 			E761_Ctrl::getConstString(E761_Ctrl::STR_ZStageDevName).c_str())
 			== 0)
-		return new E761_ZStage();//::getInstance();
+		return new E761_ZStage();	//::getInstance();
 	else if (strcmp(deviceName,
 			E761_Ctrl::getConstString(E761_Ctrl::STR_XYStageDevName).c_str())
 			== 0)
-		return new E761_XYStage();//::getInstance();
+		return new E761_XYStage();	//::getInstance();
 	else if (strcmp(deviceName,
 			E761_Ctrl::getConstString(E761_Ctrl::STR_CtrlDevName).c_str()) == 0)
-			return new E761_Ctrl();
+		return new E761_Ctrl();
 
 	return DEVICE_OK;
 }
@@ -229,7 +240,8 @@ MODULE_API void DeleteDevice(MM::Device* pDevice) {
 MODULE_API void InitializeModuleData() {
 	string strXY = E761_Ctrl::getConstString(E761_Ctrl::STR_XYStageDevName);
 	AddAvailableDeviceName(strXY.c_str(), strXY.c_str());
-	string strZ = E761_Ctrl::getConstString(E761_Ctrl::STR_ZStageDevName).c_str();
+	string strZ =
+			E761_Ctrl::getConstString(E761_Ctrl::STR_ZStageDevName).c_str();
 	AddAvailableDeviceName(strZ.c_str(), strZ.c_str());
 	string strCtrl =
 			E761_Ctrl::getConstString(E761_Ctrl::STR_CtrlDevName).c_str();
@@ -331,7 +343,7 @@ int E761_XYStage::Initialize() {
 	if (m_initialized)
 		return DEVICE_OK;
 
-	// E761_Ctrl±ØÐëÏÈ³õÊ¼»¯
+	// E761_Ctrlï¿½ï¿½ï¿½ï¿½ï¿½È³ï¿½Ê¼ï¿½ï¿½
 	if (!E761_Ctrl::getInstance()->isInitialized())
 		return DEVICE_NOT_CONNECTED;
 
@@ -354,7 +366,7 @@ int E761_XYStage::Initialize() {
 		this->LogMessage(msg);
 	}
 
-	int ret = UpdateStatus();
+	ret = UpdateStatus();
 	if (ret != DEVICE_OK)
 		return ret;
 
@@ -369,8 +381,7 @@ int E761_XYStage::Shutdown() {
 
 void E761_XYStage::GetName(char* name) const {
 	CDeviceUtils::CopyLimitedString(name,
-			E761_Ctrl::getConstString(
-					E761_Ctrl::STR_XYStageDevName).c_str());
+			E761_Ctrl::getConstString(E761_Ctrl::STR_XYStageDevName).c_str());
 }
 
 int E761_XYStage::SetPositionSteps(long lXPosSteps, long lYPosSteps) {
@@ -381,11 +392,11 @@ int E761_XYStage::SetPositionSteps(long lXPosSteps, long lYPosSteps) {
 
 	double posUm[2] = { xUm, yUm };
 
-	char axis[3] = {0, 0, 0};
+	char axis[3] = { 0, 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(axis, axis + 1, NULL);
 	BOOL ret = E7XX_MOV(E761_Ctrl::getInstance()->getDeviceId(), axis, posUm);
 	if (!ret)
-		return E761_Ctrl::getInstance()->getErrorMsg();
+		return E761_Ctrl::getInstance()->getErrorMsg("Set XY positions.");
 
 	return DEVICE_OK;
 }
@@ -395,11 +406,11 @@ int E761_XYStage::GetPositionSteps(long& x, long& y) {
 	double stepSizeY = GetStepSizeYUm();
 
 	double posUm[2];
-	char axis[3] = {0, 0, 0};
+	char axis[3] = { 0, 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(axis, axis + 1, NULL);
 	BOOL ret = E7XX_qMOV(E761_Ctrl::getInstance()->getDeviceId(), axis, posUm);
 	if (!ret)
-		return E761_Ctrl::getInstance()->getErrorMsg();
+		return E761_Ctrl::getInstance()->getErrorMsg("Get XY positions.");
 
 	x = (long) (posUm[0] / stepSizeX + 0.5);
 	y = (long) (posUm[1] / stepSizeY + 0.5);
@@ -465,7 +476,7 @@ int E761_ZStage::Initialize() {
 		return DEVICE_OK;
 	int ret;
 
-	// E761_Ctrl±ØÐëÏÈ³õÊ¼»¯
+	// E761_Ctrlï¿½ï¿½ï¿½ï¿½ï¿½È³ï¿½Ê¼ï¿½ï¿½
 	if (!E761_Ctrl::getInstance()->isInitialized())
 		return DEVICE_NOT_CONNECTED;
 
@@ -491,14 +502,14 @@ int E761_ZStage::Initialize() {
 
 int E761_ZStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	BOOL val[1];
-	char axis[2] = {0, 0};
+	char axis[2] = { 0, 0 };
 	E761_Ctrl* pCtrl = E761_Ctrl::getInstance();
 	pCtrl->getAxisName(NULL, NULL, axis);
 
 	if (eAct == MM::BeforeGet) {
 		BOOL ret = E7XX_qSVO(pCtrl->getDeviceId(), axis, val);
 		if (!ret)
-			return E761_Ctrl::getInstance()->getErrorMsg();
+			return E761_Ctrl::getInstance()->getErrorMsg("Get Z stage SVO status.");
 		m_servoMode = val[0] ? true : false;
 		pProp->Set(m_servoMode ? "True" : "False");
 	} else if (eAct == MM::AfterSet) {
@@ -508,7 +519,7 @@ int E761_ZStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		val[0] = m_servoMode;
 		BOOL ret = E7XX_SVO(pCtrl->getDeviceId(), axis, val);
 		if (!ret)
-			return E761_Ctrl::getInstance()->getErrorMsg();
+			return E761_Ctrl::getInstance()->getErrorMsg("Set Z stage SVO status.");
 	}
 	return DEVICE_OK;
 }
@@ -520,8 +531,7 @@ int E761_ZStage::Shutdown() {
 
 void E761_ZStage::GetName(char* name) const {
 	CDeviceUtils::CopyLimitedString(name,
-			E761_Ctrl::getConstString(
-					E761_Ctrl::STR_ZStageDevName).c_str());
+			E761_Ctrl::getConstString(E761_Ctrl::STR_ZStageDevName).c_str());
 }
 
 int E761_ZStage::SetPositionUm(double pos) {
@@ -541,10 +551,10 @@ int E761_ZStage::GetPositionUm(double& pos) {
 int E761_ZStage::SetPositionSteps(long steps) {
 	double posUm[1] = { steps * stepSizeUm };
 
-	char axis[2] = {0, 0};
+	char axis[2] = { 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(NULL, NULL, axis);
 	if (!E7XX_MOV(E761_Ctrl::getInstance()->getDeviceId(), axis, posUm))
-		return E761_Ctrl::getInstance()->getErrorMsg();
+		return E761_Ctrl::getInstance()->getErrorMsg("Set Z position.");
 	OnStagePositionChanged(posUm[0]);
 
 	return DEVICE_OK;
@@ -552,11 +562,11 @@ int E761_ZStage::SetPositionSteps(long steps) {
 
 int E761_ZStage::GetPositionSteps(long& steps) {
 	double posUm[1];
-	char axis[2] = {0, 0};
+	char axis[2] = { 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(NULL, NULL, axis);
 	BOOL ret = E7XX_qMOV(E761_Ctrl::getInstance()->getDeviceId(), axis, posUm);
 	if (!ret)
-		return E761_Ctrl::getInstance()->getErrorMsg();
+		return E761_Ctrl::getInstance()->getErrorMsg("Get z position.");
 
 	steps = (long) (posUm[0] / stepSizeUm + 0.5);
 	return DEVICE_OK;

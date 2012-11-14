@@ -31,6 +31,8 @@ public:
 		STR_PROP_SERVO
 	};
 
+	static const int PI_E761_ERROR_CODE = 2000;
+
 	static E761_Ctrl* getInstance();
 	void GetName(char* name) const;
 	static std::string getConstString(int strCode);
@@ -55,6 +57,7 @@ public:
 	void getAxisName(char* px, char* py, char* pz);
 	E761_Ctrl();
 	int getErrorMsg();
+	int getErrorMsg(const char* msg);
 
 protected:
 	virtual ~E761_Ctrl();
