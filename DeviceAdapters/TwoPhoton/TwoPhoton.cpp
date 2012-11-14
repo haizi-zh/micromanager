@@ -912,6 +912,9 @@ int BitFlowCamera::StartSequenceAcquisition(double interval_ms)
    if (IsCapturing())
       return DEVICE_CAMERA_BUSY_ACQUIRING;
 
+   // this will open the shutter
+   GetCoreCallback()->PrepareForAcq(this);
+
    liveThd_->EnableStreaming(false);
    liveThd_->SetNumImages(-1);
 
@@ -931,6 +934,7 @@ int BitFlowCamera::StopSequenceAcquisition()
 {
    bfDev_.StopContinuousAcq();
    liveThd_->Abort();
+   GetCoreCallback()->AcqFinished(this, 0);
    return DEVICE_OK;
 }
 
@@ -1532,7 +1536,7 @@ int BitFlowCamera::LiveThread::svc()
                                                           cam_->GetImageWidth(),
                                                           cam_->GetImageHeight(),
                                                           cam_->GetImageBytesPerPixel(),
-                                                          &md);
+                                                          md.Serialize().c_str());
                if (ret == DEVICE_BUFFER_OVERFLOW)
                {
                   cam_->GetCoreCallback()->ClearImageBuffer(cam_);
@@ -1540,7 +1544,7 @@ int BitFlowCamera::LiveThread::svc()
                                                        cam_->GetImageWidth(),
                                                        cam_->GetImageHeight(),
                                                        cam_->GetImageBytesPerPixel(),
-                                                       &md);
+                                                       md.Serialize().c_str());
                }
                else if (ret != DEVICE_OK)
                {
@@ -1565,7 +1569,7 @@ int BitFlowCamera::LiveThread::svc()
                                                           cam_->GetImageWidth(),
                                                           cam_->GetImageHeight(),
                                                           cam_->GetImageBytesPerPixel(),
-                                                          &md);
+                                                          md.Serialize().c_str());
             if (ret == DEVICE_BUFFER_OVERFLOW)
             {
                cam_->GetCoreCallback()->ClearImageBuffer(cam_);
@@ -1573,7 +1577,7 @@ int BitFlowCamera::LiveThread::svc()
                                                        cam_->GetImageWidth(),
                                                        cam_->GetImageHeight(),
                                                        cam_->GetImageBytesPerPixel(),
-                                                       &md);
+                                                       md.Serialize().c_str());
             }
             else if (ret != DEVICE_OK)
             {
@@ -1599,11 +1603,13 @@ int BitFlowCamera::LiveThread::svc()
                cam_->GetChannelName(i, buf);
                mstChannelName.SetValue(buf);
                md.SetTag(mstChannelName);
+				   
+ 
                ret = cam_->GetCoreCallback()->InsertImage(cam_, cam_->GetImageBuffer(i),
                                                           cam_->GetImageWidth(),
                                                           cam_->GetImageHeight(),
                                                           cam_->GetImageBytesPerPixel(),
-                                                          &md);
+                                                          md.Serialize().c_str());
                if (ret == DEVICE_BUFFER_OVERFLOW)
                {
                   cam_->GetCoreCallback()->ClearImageBuffer(cam_);
@@ -1611,7 +1617,7 @@ int BitFlowCamera::LiveThread::svc()
                                                        cam_->GetImageWidth(),
                                                        cam_->GetImageHeight(),
                                                        cam_->GetImageBytesPerPixel(),
-                                                       &md);
+                                                       md.Serialize().c_str());
                }
                else if (ret != DEVICE_OK)
                {
@@ -1635,7 +1641,7 @@ int BitFlowCamera::LiveThread::svc()
                                                           cam_->GetImageWidth(),
                                                           cam_->GetImageHeight(),
                                                           cam_->GetImageBytesPerPixel(),
-                                                          &md);
+                                                          md.Serialize().c_str());
             if (ret == DEVICE_BUFFER_OVERFLOW)
             {
                cam_->GetCoreCallback()->ClearImageBuffer(cam_);
@@ -1643,7 +1649,7 @@ int BitFlowCamera::LiveThread::svc()
                                                        cam_->GetImageWidth(),
                                                        cam_->GetImageHeight(),
                                                        cam_->GetImageBytesPerPixel(),
-                                                       &md);
+                                                       md.Serialize().c_str());
             }
             else if (ret != DEVICE_OK)
             {
@@ -1667,7 +1673,7 @@ int BitFlowCamera::LiveThread::svc()
                                                           cam_->GetImageWidth(),
                                                           cam_->GetImageHeight(),
                                                           cam_->GetImageBytesPerPixel(),
-                                                          &md);
+                                                          md.Serialize().c_str());
             if (ret == DEVICE_BUFFER_OVERFLOW)
             {
                cam_->GetCoreCallback()->ClearImageBuffer(cam_);
@@ -1675,7 +1681,7 @@ int BitFlowCamera::LiveThread::svc()
                                                        cam_->GetImageWidth(),
                                                        cam_->GetImageHeight(),
                                                        cam_->GetImageBytesPerPixel(),
-                                                       &md);
+                                                       md.Serialize().c_str());
             }
             else if (ret != DEVICE_OK)
             {
