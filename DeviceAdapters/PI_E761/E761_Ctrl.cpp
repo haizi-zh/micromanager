@@ -15,7 +15,8 @@ E761_Ctrl* E761_Ctrl::m_pInstance(NULL);
 std::map<int, std::string> E761_Ctrl::m_strMap;
 char E761_Ctrl::errorMsg[MM::MaxStrLength];
 
-//int E761_Ctrl_ret = E761_Ctrl::initConstStrings();
+// global driver thread lock
+MMThreadLock g_E761DriverLock;
 
 int E761_Ctrl::initConstStrings() {
 	m_strMap[STR_CtrlDevName] = "PI-E761 Controller";
@@ -46,7 +47,8 @@ int E761_Ctrl::initConstStrings() {
 E761_Ctrl::E761_Ctrl() :
 		m_initialized(false), m_boardId(1), m_debugLogFlag(false), m_pXYStage(
 				NULL), m_pZStage(NULL), m_stopMonitorFlag(false), m_monitorIntvMs(
-				500), m_startMonitor(true), m_exitMonitorEvent(NULL) {
+				500), m_startMonitor(true), m_exitMonitorEvent(NULL), m_minIntervalMs(
+				20), m_checkedTimeStamp(0) {
 	InitializeDefaultErrorMessages();
 	// The custom PI-E761 error messages are kept here.
 	SetErrorText(PI_E761_ERROR_CODE, errorMsg);
@@ -96,6 +98,7 @@ E761_Ctrl::~E761_Ctrl() {
 }
 
 int E761_Ctrl::OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	E761_DriverGuard guard;
 	if (eAct == MM::BeforeGet) {
 		double tmin[3];
 		double tmax[3];
@@ -113,7 +116,7 @@ int E761_Ctrl::OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct) {
 }
 
 int E761_Ctrl::OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	int ret = DEVICE_OK;
+	E761_DriverGuard guard;
 	if (eAct == MM::BeforeGet) {
 		string val = m_reboot ? "True" : "False";
 		pProp->Set(val.c_str());
@@ -122,11 +125,11 @@ int E761_Ctrl::OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		pProp->Get(val);
 		m_reboot = (val.compare("True") == 0);
 	}
-	return ret;
+	return DEVICE_OK;
 }
 
 int E761_Ctrl::OnMonitor(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	int ret = DEVICE_OK;
+	E761_DriverGuard guard;
 	if (eAct == MM::BeforeGet) {
 		string val = m_startMonitor ? "True" : "False";
 		pProp->Set(val.c_str());
@@ -135,17 +138,27 @@ int E761_Ctrl::OnMonitor(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		pProp->Get(val);
 		m_startMonitor = (val.compare("True") == 0);
 	}
-	return ret;
+	return DEVICE_OK;
+}
+
+void E761_Ctrl::checkIn() {
+	E761_DriverGuard guard;
+	m_checkedTimeStamp = GetTickCount();
+}
+
+bool E761_Ctrl::Busy() {
+	E761_DriverGuard guard;
+	return GetTickCount() - m_checkedTimeStamp < m_minIntervalMs;
 }
 
 int E761_Ctrl::OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	int ret = DEVICE_OK;
+	E761_DriverGuard guard;
 	if (eAct == MM::BeforeGet) {
 		pProp->Set(m_boardId);
 	} else if (eAct == MM::AfterSet) {
 		pProp->Get(m_boardId);
 	}
-	return ret;
+	return DEVICE_OK;
 }
 
 void E761_Ctrl::getAxisName(char* px, char* py, char* pz) {
@@ -173,18 +186,19 @@ int E761_Ctrl::getErrorMsg(const char* msg) {
 	else
 		::_snprintf_s(errorMsg, MM::MaxStrLength, _TRUNCATE,
 				"PI error code: %d, reason: %s.", errorNo, str);
+	SetErrorText(PI_E761_ERROR_CODE, errorMsg);
+	if (m_pXYStage != NULL)
+		m_pXYStage->updateErrorText(PI_E761_ERROR_CODE, errorMsg);
+	if (m_pZStage != NULL)
+		m_pZStage->updateErrorText(PI_E761_ERROR_CODE, errorMsg);
 	return PI_E761_ERROR_CODE;
 }
 
 int E761_Ctrl::OnLastError(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	int ret = DEVICE_OK;
-	if (eAct == MM::BeforeGet) {
-		int errorNo = E7XX_GetError(m_devId);
-		char msg[MM::MaxStrLength];
-		E7XX_TranslateError(errorNo, msg, MM::MaxStrLength);
-		pProp->Set(msg);
-	}
-	return ret;
+	E761_DriverGuard guard;
+	if (eAct == MM::BeforeGet)
+		pProp->Set(errorMsg);
+	return DEVICE_OK;
 }
 
 DWORD E761_Ctrl::monitorThread(LPVOID param) {
@@ -259,7 +273,7 @@ int E761_Ctrl::Initialize() {
 	CPropertyAction* pActOnBoardId = new CPropertyAction(this,
 			&E761_Ctrl::OnBoardId);
 	ret = CreateProperty(propName, strBoardId, MM::Integer, false,
-			pActOnBoardId);
+			pActOnBoardId, true);
 	if (m_pInstance->debugLogFlag()) {
 		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
 				"<E761_Ctrl::Initialize> CreateProperty(%s = %d), ReturnCode = %d",
@@ -419,10 +433,12 @@ E761_XYStage::E761_XYStage() :
 }
 
 int E761_XYStage::Home() {
+	E761_DriverGuard guard;
 	char axis[3] = { 0, 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(axis, axis + 1, NULL);
 	if (!E7XX_GOH(E761_Ctrl::getInstance()->getDeviceId(), axis))
 		return DEVICE_ERR;
+	E761_Ctrl::getInstance()->checkIn();
 	return DEVICE_OK;
 }
 
@@ -473,7 +489,7 @@ int E761_XYStage::Initialize() {
 }
 
 int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	int ret = DEVICE_OK;
+	E761_DriverGuard guard;
 
 	double x = 0, y = 0;
 	if (eAct == MM::BeforeGet) {
@@ -485,7 +501,7 @@ int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		SetPositionUm(x, y);
 	}
 	OnXYStagePositionChanged(x, y);
-	return ret;
+	return DEVICE_OK;
 }
 
 int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
@@ -496,6 +512,7 @@ int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
 
 int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct,
 		const char* axis) {
+	E761_DriverGuard guard;
 	if (eAct == MM::BeforeGet) {
 		BOOL val[1];
 		if (!E7XX_qSVO(E761_Ctrl::getInstance()->getDeviceId(), axis, val))
@@ -518,10 +535,7 @@ int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
 }
 
 int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	std::ostringstream osMessage;
-	int ret = DEVICE_OK;
-
-	osMessage.str("");
+	E761_DriverGuard guard;
 	double x = 0, y = 0;
 	if (eAct == MM::BeforeGet) {
 		GetPositionUm(x, y);
@@ -532,7 +546,7 @@ int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		SetPositionUm(x, y);
 	}
 	OnXYStagePositionChanged(x, y);
-	return ret;
+	return DEVICE_OK;
 }
 
 int E761_XYStage::Shutdown() {
@@ -547,6 +561,8 @@ void E761_XYStage::GetName(char* name) const {
 }
 
 int E761_XYStage::SetPositionSteps(long lXPosSteps, long lYPosSteps) {
+	E761_DriverGuard guard;
+
 	double stepSizeX = GetStepSizeXUm();
 	double stepSizeY = GetStepSizeYUm();
 	double xUm = lXPosSteps * stepSizeX;
@@ -559,14 +575,16 @@ int E761_XYStage::SetPositionSteps(long lXPosSteps, long lYPosSteps) {
 	BOOL ret = E7XX_MOV(E761_Ctrl::getInstance()->getDeviceId(), axis, posUm);
 	if (!ret)
 		return E761_Ctrl::getInstance()->getErrorMsg("Set XY positions.");
+	E761_Ctrl::getInstance()->checkIn();
 
 	return DEVICE_OK;
 }
 
 int E761_XYStage::GetPositionSteps(long& x, long& y) {
+	E761_DriverGuard guard;
+
 	double stepSizeX = GetStepSizeXUm();
 	double stepSizeY = GetStepSizeYUm();
-
 	double posUm[2];
 	char axis[3] = { 0, 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(axis, axis + 1, NULL);
@@ -659,15 +677,17 @@ int E761_ZStage::Initialize() {
 }
 
 int E761_ZStage::Home() {
+	E761_DriverGuard guard;
 	char axis[2] = { 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(NULL, NULL, axis);
 	if (!E7XX_GOH(E761_Ctrl::getInstance()->getDeviceId(), axis))
 		return DEVICE_ERR;
+	E761_Ctrl::getInstance()->checkIn();
 	return DEVICE_OK;
 }
 
 int E761_ZStage::OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	int ret = DEVICE_OK;
+	E761_DriverGuard guard;
 
 	double pos = 0;
 	if (eAct == MM::BeforeGet) {
@@ -677,10 +697,12 @@ int E761_ZStage::OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		SetPositionUm(pos);
 	}
 	OnStagePositionChanged(pos);
-	return ret;
+	return DEVICE_OK;
 }
 
 int E761_ZStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	E761_DriverGuard guard;
+
 	BOOL val[1];
 	char axis[2] = { 0, 0 };
 	E761_Ctrl* pCtrl = E761_Ctrl::getInstance();
@@ -689,7 +711,8 @@ int E761_ZStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	if (eAct == MM::BeforeGet) {
 		BOOL ret = E7XX_qSVO(pCtrl->getDeviceId(), axis, val);
 		if (!ret)
-			return E761_Ctrl::getInstance()->getErrorMsg("Get Z stage SVO status.");
+			return E761_Ctrl::getInstance()->getErrorMsg(
+					"Get Z stage SVO status.");
 		m_servoMode = val[0] ? true : false;
 		pProp->Set(m_servoMode ? "True" : "False");
 	} else if (eAct == MM::AfterSet) {
@@ -699,7 +722,8 @@ int E761_ZStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		val[0] = m_servoMode;
 		BOOL ret = E7XX_SVO(pCtrl->getDeviceId(), axis, val);
 		if (!ret)
-			return E761_Ctrl::getInstance()->getErrorMsg("Set Z stage SVO status.");
+			return E761_Ctrl::getInstance()->getErrorMsg(
+					"Set Z stage SVO status.");
 	}
 	return DEVICE_OK;
 }
@@ -730,18 +754,21 @@ int E761_ZStage::GetPositionUm(double& pos) {
 }
 
 int E761_ZStage::SetPositionSteps(long steps) {
-	double posUm[1] = { steps * stepSizeUm };
+	E761_DriverGuard guard;
 
+	double posUm[1] = { steps * stepSizeUm };
 	char axis[2] = { 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(NULL, NULL, axis);
 	if (!E7XX_MOV(E761_Ctrl::getInstance()->getDeviceId(), axis, posUm))
 		return E761_Ctrl::getInstance()->getErrorMsg("Set Z position.");
+	E761_Ctrl::getInstance()->checkIn();
 	OnStagePositionChanged(posUm[0]);
 
 	return DEVICE_OK;
 }
 
 int E761_ZStage::GetPositionSteps(long& steps) {
+	E761_DriverGuard guard;
 	double posUm[1];
 	char axis[2] = { 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(NULL, NULL, axis);

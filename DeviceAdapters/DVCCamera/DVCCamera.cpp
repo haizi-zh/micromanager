@@ -26,7 +26,7 @@ unsigned int DVCCamera::refCount_ = 0;
 // Number of user buffers
 const int g_UserBufferNumber = 48;
 
-// global Andor driver thread lock
+// global driver thread lock
 MMThreadLock g_DVCCamDriverLock;
 
 map<int, string> DVCCamera::camTypeMap_;
@@ -208,7 +208,7 @@ int DVCCamera::Initialize() {
 
 	int ret;
 
-	// »ñÈ¡ËùÓÐµÄcameraÁÐ±í
+	// ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ðµï¿½cameraï¿½Ð±ï¿½
 	CameraListArrayStruct cams;
 	if (!dvcGetListOfCameras(&cams))
 		LogMessage("No DVC camera found!");
@@ -216,7 +216,7 @@ int DVCCamera::Initialize() {
 		camMap_.insert(pair<int, HANDLE>(i + 1, (HANDLE) NULL));
 	}
 
-	// ×ÜÊÇ´ò¿ªµÚÒ»¸öÏà»ú
+	// ï¿½ï¿½ï¿½Ç´ò¿ªµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½
 	currentCam_ = 1;
 	const HANDLE hCam = dvcOpenCamera(currentCam_);
 	if (hCam == NULL)

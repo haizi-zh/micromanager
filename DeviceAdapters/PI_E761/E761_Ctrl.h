@@ -56,9 +56,7 @@ public:
 	bool debugLogFlag() {
 		return m_debugLogFlag;
 	}
-	bool Busy() {
-		return false;
-	}
+	bool Busy();
 	int Shutdown();
 
 	int OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct);
@@ -89,6 +87,10 @@ public:
 	}
 
 	static DWORD WINAPI monitorThread(LPVOID param);
+	
+	// Some operations, such as setPosition, etc, will cause the device to be in 'busy' state.
+	// Such operatioins will call this methods and check the current time stamp.
+	void checkIn();
 
 protected:
 	virtual ~E761_Ctrl();
@@ -111,6 +113,9 @@ private:
 	// The interval of the position monitor in milliseconds.
 	int m_monitorIntvMs;
 	HANDLE m_exitMonitorEvent;
+	int m_checkedTimeStamp;
+	// The minimal interval in ms between adjacent operations
+	int m_minIntervalMs;
 
 	static char errorMsg[MM::MaxStrLength];
 };
@@ -130,7 +135,10 @@ public:
 		OnXYStagePositionChanged(x, y);
 	}
 	bool Busy() {
-		return false;
+		return E761_Ctrl::getInstance()->Busy();
+	}
+	void updateErrorText(int code, const char* msg) {
+		SetErrorText(code, msg);
 	}
 	int Shutdown();
 	void GetName(char* name) const;
@@ -190,7 +198,10 @@ public:
 	static E761_ZStage* getInstance();
 	E761_ZStage();
 	bool Busy() {
-		return false;
+		return E761_Ctrl::getInstance()->Busy();
+	}
+	void updateErrorText(int code, const char* msg) {
+		SetErrorText(code, msg);
 	}
 	int Initialize();
 	int Shutdown();
@@ -233,4 +244,16 @@ private:
 	double stepSizeUm;
 	bool m_servoMode;
 };
+
+class E761_DriverGuard
+{
+public:
+	E761_DriverGuard() {
+		g_E761DriverLock.Lock();
+	}
+   ~E761_DriverGuard(){
+	   g_E761DriverLock.Unlock();
+   }
+};
+
 #endif /* E761_CTRL_H_ */
