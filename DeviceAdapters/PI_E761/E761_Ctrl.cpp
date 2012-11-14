@@ -84,9 +84,9 @@ int E761_Ctrl::OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	if (eAct == MM::BeforeGet) {
 		double tmin[3];
 		double tmax[3];
-		if (!E7XX_qTMN(m_boardId, m_axisNames, tmin))
+		if (!E7XX_qTMN(m_devId, m_axisNames, tmin))
 			return getErrorMsg();
-		if (!E7XX_qTMX(m_boardId, m_axisNames, tmax))
+		if (!E7XX_qTMX(m_devId, m_axisNames, tmax))
 			return getErrorMsg();
 		char msg[MM::MaxStrLength];
 		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
