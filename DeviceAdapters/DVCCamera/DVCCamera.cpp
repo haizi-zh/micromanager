@@ -26,7 +26,7 @@ DVCCamera* DVCCamera::instance_ = NULL;
 // Number of user buffers
 const int g_UserBufferNumber = 48;
 
-// global Andor driver thread lock
+// global driver thread lock
 MMThreadLock g_DVCCamDriverLock;
 
 map<int, string> DVCCamera::camTypeMap_;

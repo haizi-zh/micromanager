@@ -588,6 +588,7 @@ namespace MM {
       virtual int GetPositionSteps(long& steps) = 0;
       virtual int SetOrigin() = 0;
       virtual int GetLimits(double& lower, double& upper) = 0;
+      virtual int Home() { return DEVICE_OK; }
       /*
        * Returns whether a stage can be sequenced (synchronized by TTLs)
        * If returning true, then a Stage class should also inherit

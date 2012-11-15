@@ -8,9 +8,15 @@
 #ifndef E761_CTRL_H_
 #define E761_CTRL_H_
 
+#include <Windows.h>
 #include "../../MMDevice/DeviceBase.h"
 #include "../../MMDevice/ImgBuffer.h"
 #include "../../MMDevice/DeviceThreads.h"
+
+class E761_XYStage;
+class E761_ZStage;
+// global driver thread lock
+extern MMThreadLock g_E761DriverLock;
 
 //////
 // PI_E761_Control class
@@ -24,12 +30,23 @@ public:
 		STR_Version,
 		STR_PROP_NAME,
 		STR_PROP_DESC,
+		STR_PROP_REBOOT,
+		STR_PROP_STARTMONITOR,
 		STR_PROP_BOARDID,
+		STR_PROP_LASTERR,
+		STR_PROP_XPOSITION,
+		STR_PROP_YPOSITION,
+		STR_PROP_POSITION,
+		STR_PROP_TRVRANGE,
+		STR_PROP_XSERVO,
+		STR_PROP_YSERVO,
 		STR_XYStageDesc,
 		STR_ZStageDesc,
 		STR_CtrlDesc,
 		STR_PROP_SERVO
 	};
+
+	static const int PI_E761_ERROR_CODE = 2000;
 
 	static E761_Ctrl* getInstance();
 	void GetName(char* name) const;
@@ -41,12 +58,14 @@ public:
 	bool debugLogFlag() {
 		return m_debugLogFlag;
 	}
-	bool Busy() {
-		return false;
-	}
+	bool Busy();
 	int Shutdown();
 
 	int OnBoardId(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnTravelRange(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnMonitor(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnLastError(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 	static int initConstStrings();
 	int getDeviceId() {
@@ -55,6 +74,25 @@ public:
 	void getAxisName(char* px, char* py, char* pz);
 	E761_Ctrl();
 	int getErrorMsg();
+	int getErrorMsg(const char* msg);
+	void setXYStage(E761_XYStage* pStage) {
+		m_pXYStage = pStage;
+	}
+	E761_XYStage* getXYStage() {
+		return m_pXYStage;
+	}
+	void setZStage(E761_ZStage* pStage) {
+		m_pZStage = pStage;
+	}
+	E761_ZStage* getZStage() {
+		return m_pZStage;
+	}
+
+	static DWORD WINAPI monitorThread(LPVOID param);
+	
+	// Some operations, such as setPosition, etc, will cause the device to be in 'busy' state.
+	// Such operatioins will call this methods and check the current time stamp.
+	void checkIn();
 
 protected:
 	virtual ~E761_Ctrl();
@@ -62,13 +100,26 @@ protected:
 private:
 	bool m_initialized;			// controller initialized flag
 	bool m_debugLogFlag;			// Whether to log debug information
+	bool m_reboot;
 	long m_boardId;	//	PI_E761 board ID for initialization
 	int m_devId;
 	static E761_Ctrl* m_pInstance;
+	E761_XYStage* m_pXYStage;
+	E761_ZStage* m_pZStage;
 	static std::map<int, std::string> m_strMap;
 	char m_axisNames[32];
-	
-	static char errorMsg[MM::MaxStrLength];	
+	// A flag to inform the monitor to stop.
+	bool m_stopMonitorFlag;
+	// Whether to start the monitor
+	bool m_startMonitor;
+	// The interval of the position monitor in milliseconds.
+	int m_monitorIntvMs;
+	HANDLE m_exitMonitorEvent;
+	int m_checkedTimeStamp;
+	// The minimal interval in ms between adjacent operations
+	int m_minIntervalMs;
+
+	static char errorMsg[MM::MaxStrLength];
 };
 
 //////
@@ -79,14 +130,21 @@ public:
 	static E761_XYStage* getInstance();
 	E761_XYStage();
 	int Initialize();
+	bool isIntialized() {
+		return m_initialized;
+	}
+	void OnPositionChanged(double x, double y) {
+		OnXYStagePositionChanged(x, y);
+	}
 	bool Busy() {
-		return false;
+		return E761_Ctrl::getInstance()->Busy();
+	}
+	void updateErrorText(int code, const char* msg) {
+		SetErrorText(code, msg);
 	}
 	int Shutdown();
 	void GetName(char* name) const;
-	int Home() {
-		return DEVICE_OK;
-	}
+	int Home();
 	int SetOrigin() {
 		return DEVICE_OK;
 	}
@@ -117,12 +175,21 @@ public:
 	int SetPositionSteps(long lXPosSteps, long lYPosSteps);
 	int GetPositionSteps(long& x, long& y);
 
+	int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp,
+			MM::ActionType eAct);
+	int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp,
+			MM::ActionType eAct);
+	int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct,
+			const char* axis);
+
 protected:
 	~E761_XYStage();
 
 private:
 	bool m_initialized;			// controller initialized flag
-	static E761_XYStage* m_pInstance;	
+	static E761_XYStage* m_pInstance;
 };
 
 //////
@@ -133,7 +200,10 @@ public:
 	static E761_ZStage* getInstance();
 	E761_ZStage();
 	bool Busy() {
-		return false;
+		return E761_Ctrl::getInstance()->Busy();
+	}
+	void updateErrorText(int code, const char* msg) {
+		SetErrorText(code, msg);
 	}
 	int Initialize();
 	int Shutdown();
@@ -142,6 +212,7 @@ public:
 	int GetPositionUm(double& pos);
 	int SetPositionSteps(long steps);
 	int GetPositionSteps(long& steps);
+	int Home();
 	int SetOrigin() {
 		return DEVICE_OK;
 	}
@@ -158,6 +229,13 @@ public:
 		return true;
 	}
 	int OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+	bool isInitialized() {
+		return m_initialized;
+	}
+	void OnPositionChanged(double pos) {
+		OnStagePositionChanged(pos);
+	}
 
 protected:
 	~E761_ZStage();
@@ -166,6 +244,18 @@ private:
 	bool m_initialized;			// controller initialized flag
 	static E761_ZStage* m_pInstance;
 	double stepSizeUm;
-	bool m_servoMode;	
+	bool m_servoMode;
 };
+
+class E761_DriverGuard
+{
+public:
+	E761_DriverGuard() {
+		g_E761DriverLock.Lock();
+	}
+   ~E761_DriverGuard(){
+	   g_E761DriverLock.Unlock();
+   }
+};
+
 #endif /* E761_CTRL_H_ */

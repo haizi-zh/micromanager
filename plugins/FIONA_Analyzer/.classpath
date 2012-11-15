@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" output="build" path="src"/>
+	<classpathentry kind="var" path="JRE_LIB" sourcepath="JRE_SRC"/>
+	<classpathentry kind="con" path="d:/Users/Zephyre/Development/bioscope/ij-plugins/Distribution/ij.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/bioscope/ij-plugins/FIONA_Analyzer/lib/FIONA.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/bioscope/ij-plugins/FIONA_Analyzer/lib/javabuilder.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/ImageJ"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
