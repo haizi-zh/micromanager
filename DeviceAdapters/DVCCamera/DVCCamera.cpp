@@ -1,10 +1,9 @@
-// DVCCamera.cpp : Defines the exported functions for the DLL application.
+﻿// DVCCamera.cpp : Defines the exported functions for the DLL application.
 //
 
 #include "stdafx.h"
 #include "DVCCamera.h"
 #include <iostream>
-//#include <map>
 //#include <cassert>
 //#include <cstring>
 
@@ -12,6 +11,29 @@ using namespace std;
 
 /////////////////////////// START HERE /////////////////////////////////
 
+// Constant strings
+map<int, string> DVCCamera::m_strMap;
+
+void DVCCamera::initConstStrings() {
+	m_strMap[STR_NAME] = "DVCCamera";
+	m_strMap[STR_DESC] = "DVC GigE Camera";
+	m_strMap[STR_PROP_CAMID] = "Camera Id";
+	m_strMap[STR_CAM_BUSY] = "Camera is busy.";
+	m_strMap[STR_INVALID_ROI] = "Invalid ROI.";
+}
+
+string DVCCamera::getConstString(int strCode) {
+	if (m_strMap.size() == 0)
+		initConstStrings();
+
+	string sText;
+	map<int, string>::const_iterator it = m_strMap.find(strCode);
+	if (it != m_strMap.end())
+		sText = it->second;
+	return sText;
+}
+
+char DVCCamera::m_errorMsg[MM::MaxStrLength];
 // All the DVC error code will be returned plus this.
 const int g_Err_Offset = 10000;
 
@@ -112,24 +134,12 @@ void DVCCamera::GetName(char* name) const {
 //
 
 DVCCamera::DVCCamera() :
-		initialized_(false), hCam_(NULL), busy_(false), currentCam_(0), camType_(
-				0), camSSN_(0), fullFrameX_(0), fullFrameY_(0), depth_(0), expMs_(
-				0.0), sequenceRunning_(false), bufNumber(48), fullFrameBuffer_(
-				NULL), binSize_(1), sequenceLength_(0), intervalMs_(0), imageCounter_(
-				0), startTime_(0), thd_(NULL), sequencePaused_(false), stopOnOverflow_(
-				true) {
+		initialized_(false), hCam_(NULL), busy_(false), m_camId(1), camType_(0), camSSN_(
+				0), fullFrameX_(0), fullFrameY_(0), depth_(0), expMs_(0.0), sequenceRunning_(
+				false), bufNumber(48), fullFrameBuffer_(NULL), binSize_(1), sequenceLength_(
+				0), intervalMs_(0), imageCounter_(0), startTime_(0), thd_(NULL), sequencePaused_(
+				false), stopOnOverflow_(true) {
 	InitializeDefaultErrorMessages();
-	// add custom messages
-	SetErrorText(ERR_BUSY_ACQUIRING,
-			"Camera Busy.  Stop camera activity first.");
-	SetErrorText(ERR_NO_AVAIL_AMPS, "No available amplifiers.");
-	SetErrorText(ERR_TRIGGER_NOT_SUPPORTED, "Trigger Not supported.");
-	SetErrorText(ERR_INVALID_VSPEED, "Invalid Vertical Shift Speed.");
-	SetErrorText(ERR_INVALID_PREAMPGAIN, "Invalid Pre-Amp Gain.");
-	SetErrorText(ERR_CAMERA_DOES_NOT_EXIST,
-			"No Camera Found.  Make sure it is connected and switched on, and try again.");
-	SetErrorText(ERR_SOFTWARE_TRIGGER_IN_USE,
-			"Only one camera can use software trigger.");
 
 	//seqThread_ = new AcqSequenceThread(this);
 
@@ -158,24 +168,47 @@ DVCCamera::DVCCamera() :
 	camTypeMap_.insert(
 			pair<int, string>(14, "Kodak 340 12 bit monochrome: 340C"));
 
-	instance_ = this;
+	int ret;
+	char propName[MM::MaxStrLength];
+	char msg[MM::MaxStrLength];
 
+	// Name
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_NAME).c_str());
+	ret = CreateProperty(propName, getConstString(STR_NAME).c_str(), MM::String,
+			true);
+
+	// Description
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_DESC).c_str());
+	ret = CreateProperty(propName, getConstString(STR_DESC).c_str(), MM::String,
+			true);
+
+	// Camera Id
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_CAMID).c_str());
+	char strBoardId[32];
+	_snprintf_s(strBoardId, sizeof(strBoardId), _TRUNCATE, "%d", m_camId);
+	CPropertyAction* pActOnCamId = new CPropertyAction(this,
+			&DVCCamera::OnCamId);
+	ret = CreateProperty(propName, strBoardId, MM::Integer, false, pActOnCamId,
+			true);
+
+	instance_ = this;
 }
 
 DVCCamera::~DVCCamera() {
-	DriverGuard dg(this);
-
-//	refCount_--;
-//	if (refCount_ == 0) {
-	// release resources
-
-		if (initialized_) {
-			Shutdown();
-			dvcReleaseUserBuffers(&userBuffers_);
-		}		
-
 	Shutdown();
-//	}
+}
+
+int DVCCamera::OnCamId(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+	if (eAct == MM::BeforeGet) {
+		pProp->Set(m_camId);
+	} else if (eAct == MM::AfterSet) {
+		pProp->Get(m_camId);
+	}
+	return DEVICE_OK;
 }
 
 DVCCamera* DVCCamera::GetInstance() {
@@ -190,8 +223,33 @@ int DVCCamera::processErr() {
 	int err = dvcGetLastErr();
 	const char* msg = dvcGetLastErrMsg();
 	if (msg != NULL)
-		SetErrorText(err + g_Err_Offset, msg);
-	return err;
+		_snprintf_s(m_errorMsg, MM::MaxStrLength, _TRUNCATE,
+				"DVCCamera error: code: %d, reason: %s", err, msg);
+	return DVCCAM_ERROR_CODE;
+}
+
+int DVCCamera::getErrorMsg() {
+	return getErrorMsg(NULL);
+}
+
+int DVCCamera::getErrorMsg(const char* msg) {
+	int err = dvcGetLastErr();
+	const char* errStr = dvcGetLastErrMsg();
+	if (errStr != NULL) {
+		if (msg != NULL)
+			_snprintf_s(m_errorMsg, MM::MaxStrLength, _TRUNCATE,
+					"DVCCamera error: code: %d, reason: %s. Custom message: %s",
+					err, errStr, msg);
+		else
+			_snprintf_s(m_errorMsg, MM::MaxStrLength, _TRUNCATE,
+					"DVCCamera error: code: %d, reason: %s.", err, errStr);
+	} else if (msg != NULL)
+		_snprintf_s(m_errorMsg, MM::MaxStrLength, _TRUNCATE,
+				"DVCCamera error. Custom message: %s", msg);
+	else
+		strcpy_s(m_errorMsg, MM::MaxStrLength, "DVCCamera error: Unknown.");
+
+	return DVCCAM_ERROR_CODE;
 }
 
 int DVCCamera::Initialize() {
@@ -200,7 +258,6 @@ int DVCCamera::Initialize() {
 
 	int ret;
 
-	// ��ȡ���е�camera�б�
 	CameraListArrayStruct cams;
 	if (!dvcGetListOfCameras(&cams))
 		LogMessage("No DVC camera found!");
@@ -208,12 +265,10 @@ int DVCCamera::Initialize() {
 		camMap_.insert(pair<int, HANDLE>(i + 1, (HANDLE) NULL));
 	}
 
-	// ���Ǵ򿪵�һ�����
-	currentCam_ = 1;
-	const HANDLE hCam = dvcOpenCamera(currentCam_);
+	const HANDLE hCam = dvcOpenCamera(m_camId);
 	if (hCam == NULL)
 		return processErr();
-	camMap_[currentCam_] = hCam;
+	camMap_[m_camId] = hCam;
 	hCam_ = hCam;
 
 	thd_ = new DVCCamera::AcqSequenceThread(this, hCam);
@@ -222,7 +277,7 @@ int DVCCamera::Initialize() {
 	if (!dvcResetCamera(hCam))
 		return processErr();
 
-	// Description
+// Description
 	if (!HasProperty(MM::g_Keyword_Description)) {
 		ret = CreateProperty(MM::g_Keyword_Description, "DVC camera adapter",
 				MM::String, true);
@@ -230,13 +285,13 @@ int DVCCamera::Initialize() {
 			return ret;
 	}
 
-	// Dummy property for getPixelSizeUm
+// Dummy property for getPixelSizeUm
 	if (!HasProperty(g_Label)) {
 		ret = CreateProperty(g_Label, "Dummy", MM::String, false);
 		assert(ret == DEVICE_OK);
 	}
 
-	// Camera name
+// Camera name
 	{
 		char str[1024];
 		camType_ = dvcGetCameraName(hCam, str, 1024);
@@ -254,7 +309,7 @@ int DVCCamera::Initialize() {
 			return ret;
 	}
 
-	// Camera serial number
+// Camera serial number
 	if (!dvcGetCameraSerialNumber(hCam, &camSSN_)) {
 		return processErr();
 	}
@@ -335,7 +390,7 @@ int DVCCamera::Initialize() {
 
 	assert(createScanRateProp() == DEVICE_OK);
 
-	// Set Mirror X to 1
+// Set Mirror X to 1
 	SetProperty(MM::g_Keyword_Transpose_MirrorX, "1");
 
 	if (!dvcAllocateUserBuffers(hCam, &dvcBuf, bufNumber))
@@ -382,7 +437,7 @@ int DVCCamera::createGainProp() {
 int DVCCamera::OnGaindB(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	DriverGuard dg(this);
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	if (eAct == MM::BeforeGet) {
 		double gain;
 		if (!dvcGetGaindB(hCam, &gain))
@@ -445,7 +500,7 @@ int DVCCamera::OnScanRate(MM::PropertyBase* pProp, MM::ActionType eAct) {
 int DVCCamera::OnGaindBRange(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	DriverGuard dg(this);
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	if (eAct == MM::BeforeGet) {
 		double min, max, interval;
 		if (!dvcGetGaindBRange(hCam, &min, &max, &interval))
@@ -463,7 +518,7 @@ int DVCCamera::OnGaindBRange(MM::PropertyBase* pProp, MM::ActionType eAct) {
 int DVCCamera::createBinProp() {
 	DriverGuard dg(this);
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	int ret = 0;
 
 	int hb, vb;
@@ -486,7 +541,7 @@ int DVCCamera::createBinProp() {
 int DVCCamera::getReadoutTime(double& time) {
 	DriverGuard dg(this);
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	double line, frame;
 	if (!dvcGetLineFrameTime(hCam, &line, &frame)) {
 		return processErr();
@@ -506,9 +561,9 @@ int DVCCamera::SnapImage() {
 	DriverGuard dg(this);
 
 	if (sequenceRunning_)   // If we are in the middle of a SequenceAcquisition
-		return ERR_BUSY_ACQUIRING;
+		return getErrorMsg(getConstString(STR_CAM_BUSY).c_str());
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	if (!dvcTakePicture(hCam)) {
 		return processErr();
 	}
@@ -521,7 +576,7 @@ int DVCCamera::SnapImage() {
 int DVCCamera::Shutdown() {
 	DriverGuard dg(this);
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	if (initialized_) {
 		SetToIdle();
 		dvcSetUserBuffers(hCam, NULL);
@@ -530,9 +585,8 @@ int DVCCamera::Shutdown() {
 		delete fullFrameBuffer_;
 		initialized_ = false;
 	}
-	camMap_.erase(currentCam_);
-	currentCam_ = 0;
-	// clear the instance pointer
+	camMap_.erase(m_camId);
+// clear the instance pointer
 	instance_ = NULL;
 	return DEVICE_OK;
 }
@@ -540,7 +594,7 @@ int DVCCamera::Shutdown() {
 bool DVCCamera::IsAcquiring() {
 	DriverGuard dg(this);
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	return (dvcGetStatus(hCam) != DVC_STATUS_STOPPED);
 }
 
@@ -550,7 +604,7 @@ int DVCCamera::SetToIdle() {
 	if (!initialized_ || !IsAcquiring())
 		return DEVICE_OK;
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	if (!dvcStopSequence(hCam))
 		return processErr();
 
@@ -565,7 +619,7 @@ int DVCCamera::SetToIdle() {
 const unsigned char* DVCCamera::GetImageBuffer() {
 	DriverGuard dg(this);
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	int nBytes = dvcGetImageBytes(hCam);
 	assert(nBytes <= fullFrameX_ * fullFrameY_ * 2);
 
@@ -607,7 +661,7 @@ int DVCCamera::SetBinning(int bin) {
 		DriverGuard dg(this);
 
 		if (sequenceRunning_)
-			return ERR_BUSY_ACQUIRING;
+			return getErrorMsg(getConstString(STR_CAM_BUSY).c_str());
 
 		//added to use RTA
 		SetToIdle();
@@ -629,7 +683,7 @@ int DVCCamera::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct) {
 
 		{
 			DriverGuard dg(this);
-			HANDLE hCam = camMap_[currentCam_];
+			HANDLE hCam = camMap_[m_camId];
 			double interval;
 
 			if (!dvcGetExposeInterval(hCam, -1, -1, -1, &interval))
@@ -656,11 +710,11 @@ void DVCCamera::SetExposure(double exp) {
 	if (acquiring)
 		StopSequenceAcquisition(true);
 
-	//if (sequenceRunning_)
-	//	return ERR_BUSY_ACQUIRING;
+//if (sequenceRunning_)
+//	return ERR_BUSY_ACQUIRING;
 
 	DriverGuard dg(this);
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 	expMs_ = dvcSetExposeMsec(hCam, exp);
 
 	if (acquiring)
@@ -686,12 +740,12 @@ int DVCCamera::GetROI(unsigned& uX, unsigned& uY, unsigned& uXSize,
 int DVCCamera::SetROI(unsigned uX, unsigned uY, unsigned uXSize,
 		unsigned uYSize) {
 	DriverGuard dg(this);
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 
 	if (Busy())
-		return ERR_BUSY_ACQUIRING;
+		return getErrorMsg(getConstString(STR_CAM_BUSY).c_str());
 
-	//added to use RTA
+//added to use RTA
 	SetToIdle();
 
 	ROI oldRoi = roi_;
@@ -704,10 +758,13 @@ int DVCCamera::SetROI(unsigned uX, unsigned uY, unsigned uXSize,
 	if (roi_.x + roi_.xSize > fullFrameX_
 			|| roi_.y + roi_.ySize > fullFrameY_) {
 		roi_ = oldRoi;
-		return ERR_INVALID_ROI;
+		_snprintf_s(m_errorMsg, MM::MaxStrLength, _TRUNCATE,
+				"%s: (%d, %d, %d, %d", getConstString(STR_INVALID_ROI).c_str(),
+				roi_.x, roi_.y, roi_.xSize, roi_.ySize);
+		return DVCCAM_ERROR_CODE;
 	}
 
-	// adjust image extent to conform to the bin size
+// adjust image extent to conform to the bin size
 	roi_.xSize -= roi_.xSize % binSize_;
 	roi_.ySize -= roi_.ySize % binSize_;
 
@@ -729,12 +786,12 @@ int DVCCamera::SetROI(unsigned uX, unsigned uY, unsigned uXSize,
 
 int DVCCamera::ClearROI() {
 	DriverGuard dg(this);
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 
 	if (sequenceRunning_)
-		return ERR_BUSY_ACQUIRING;
+		return getErrorMsg(getConstString(STR_CAM_BUSY).c_str());
 
-	//added to use RTA
+//added to use RTA
 	SetToIdle();
 
 	roi_.x = 0;
@@ -742,7 +799,7 @@ int DVCCamera::ClearROI() {
 	roi_.xSize = fullFrameX_;
 	roi_.ySize = fullFrameY_;
 
-	// adjust image extent to conform to the bin size
+// adjust image extent to conform to the bin size
 	roi_.xSize -= roi_.xSize % binSize_;
 	roi_.ySize -= roi_.ySize % binSize_;
 
@@ -760,8 +817,8 @@ int DVCCamera::ClearROI() {
 }
 
 int DVCCamera::ResizeImageBuffer() {
-	// resize internal buffers
-	// NOTE: we are assuming 16-bit pixel type
+// resize internal buffers
+// NOTE: we are assuming 16-bit pixel type
 	const int bpp = (int) ceil(depth_ / 8.0);
 	img_.Resize(roi_.xSize / binSize_, roi_.ySize / binSize_, bpp);
 	return DEVICE_OK;
@@ -828,10 +885,10 @@ int DVCCamera::StartSequenceAcquisition(long numImages, double interval_ms,
 		bool stopOnOverflow) {
 	DriverGuard dg(this);
 
-	HANDLE hCam = camMap_[currentCam_];
+	HANDLE hCam = camMap_[m_camId];
 
 	if (sequenceRunning_)
-		return ERR_BUSY_ACQUIRING;
+		return getErrorMsg(getConstString(STR_CAM_BUSY).c_str());
 
 	stopOnOverflow_ = stopOnOverflow;
 	sequenceLength_ = numImages;
@@ -846,7 +903,7 @@ int DVCCamera::StartSequenceAcquisition(long numImages, double interval_ms,
 			<< interval_ms << " ms" << endl;
 	LogMessage(os.str().c_str());
 
-	// start thread
+// start thread
 	imageCounter_ = 0;
 
 	os.str("");
@@ -857,7 +914,7 @@ int DVCCamera::StartSequenceAcquisition(long numImages, double interval_ms,
 	thd_->SetWaitTime((int) (dvcGetExposeMsec(hCam) / 5));
 	thd_->SetTimeOut(10000);
 
-	// prepare the core
+// prepare the core
 	int ret = GetCoreCallback()->PrepareForAcq(this);
 	if (ret != DEVICE_OK) {
 		return ret;
@@ -915,7 +972,7 @@ int DVCCamera::StopSequenceAcquisition(bool temporary) {
 int DVCCamera::StopCameraAcquisition() {
 	{
 		DriverGuard dg(this);
-		HANDLE hCam = camMap_[currentCam_];
+		HANDLE hCam = camMap_[m_camId];
 
 		if (!sequenceRunning_)
 			return DEVICE_OK;
@@ -950,13 +1007,13 @@ int DVCCamera::StopCameraAcquisition() {
  * is called, which will raise the stop_ flag and cause the thread to exit.
  */
 int DVCCamera::PushImage(int userBufferId) {
-	// create metadata
+// create metadata
 	char label[MM::MaxStrLength];
 	this->GetLabel(label);
 
 	MM::MMTime timestamp = this->GetCurrentMMTime();
 	Metadata md;
-	// Copy the metadata inserted by other processes:
+// Copy the metadata inserted by other processes:
 	std::vector<std::string> keys = metadata_.GetKeys();
 	for (unsigned int i = 0; i < keys.size(); i++) {
 		md.put(keys[i],
@@ -998,14 +1055,14 @@ int DVCCamera::PushImage(int userBufferId) {
 	mstB.SetValue(CDeviceUtils::ConvertToString(binSize_));
 	md.SetTag(mstB);
 
-	const HANDLE hCam = camMap_[currentCam_];
+	const HANDLE hCam = camMap_[m_camId];
 	const int height = GetImageHeight();
 	const int width = GetImageWidth();
 	const int bytesPerPixel = GetImageBytesPerPixel();
 
 	imageCounter_++;
 
-	// This method inserts new image in the circular buffer (residing in MMCore)
+// This method inserts new image in the circular buffer (residing in MMCore)
 	const int retCode = GetCoreCallback()->InsertImage(this,
 			(const unsigned char*) (userBuffers_.pBuffers[userBufferId]),
 			(unsigned int) width, (unsigned int) height,
