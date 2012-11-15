@@ -104,7 +104,7 @@ MODULE_API void DeleteDevice(MM::Device* pDevice) {
 	delete pDevice;
 }
 
-DriverGuard::DriverGuard(const DVCCamera * cam) {
+DriverGuard::DriverGuard(const DVCCamera*) {
 	g_DVCCamDriverLock.Lock();
 	//if (cam != 0 && cam->GetNumberOfWorkableCameras() > 1)
 	//{
@@ -170,7 +170,6 @@ DVCCamera::DVCCamera() :
 
 	int ret;
 	char propName[MM::MaxStrLength];
-	char msg[MM::MaxStrLength];
 
 	// Name
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
@@ -765,21 +764,27 @@ int DVCCamera::SetROI(unsigned uX, unsigned uY, unsigned uXSize,
 	}
 
 // adjust image extent to conform to the bin size
-	roi_.xSize -= roi_.xSize % binSize_;
-	roi_.ySize -= roi_.ySize % binSize_;
+	roi_.xSize -= (roi_.xSize % binSize_);
+	roi_.ySize -= (roi_.ySize % binSize_);
 
 	RECT rc;
 	rc.left = roi_.x;
 	rc.right = roi_.x + roi_.xSize;
 	rc.top = roi_.y;
 	rc.bottom = roi_.y + roi_.ySize;
+
 	if (!dvcSetRoi(hCam, 1, &rc)) {
 		roi_ = oldRoi;
 		return logDeviceError();
 	}
+	// Sometimes, the requested ROI cannot be set, in which case
+	// the returned rc contains actual ROI information.
+	roi_.x = rc.left;
+	roi_.y = rc.top;
+	roi_.xSize = rc.right - rc.left;
+	roi_.ySize = rc.bottom - rc.top;
 
 	ResizeImageBuffer();
-	OnPropertiesChanged();
 
 	return DEVICE_OK;
 }

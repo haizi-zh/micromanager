@@ -221,6 +221,6 @@ private:
 
 class DriverGuard {
 public:
-	DriverGuard(const DVCCamera * cam);
+	DriverGuard(const DVCCamera*);
 	~DriverGuard();
 };

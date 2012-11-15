@@ -19,8 +19,6 @@ LIB_FLAGS = $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)/Lib" -LIB
 
 .PHONY: all full clean pre-build main-build post-build
 
-full: clean all
-
 all: CFLAGS += -Zi -O2 -MD
 all: LINK_FLAGS += -OPT:REF -OPT:ICF -TLBID:1 
 all: pre-build main-build post-build
@@ -86,6 +84,7 @@ post-build:
 	-@mv -f *.pdb $(CONFIG)
 	-@mv -f *.idb $(CONFIG)
 	-@cp -fv $(TARGET) $(MM_ROOT)/trunk/bin_Win32
+	-@cp -fv $(TARGET) $(MM_ROOT)/trunk/Install_Win32/micro-manager
 	@echo.
 	
 clean:
