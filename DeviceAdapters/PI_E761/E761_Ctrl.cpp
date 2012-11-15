@@ -70,6 +70,16 @@ E761_Ctrl::E761_Ctrl() :
 	ret = CreateProperty(propName,
 			E761_Ctrl::getConstString(STR_CtrlDesc).c_str(), MM::String, true);
 
+	// Board Id
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getConstString(STR_PROP_BOARDID).c_str());
+	char strBoardId[32];
+	_snprintf_s(strBoardId, sizeof(strBoardId), _TRUNCATE, "%d", m_boardId);
+	CPropertyAction* pActOnBoardId = new CPropertyAction(this,
+			&E761_Ctrl::OnBoardId);
+	ret = CreateProperty(propName, strBoardId, MM::Integer, false,
+			pActOnBoardId, true);
+
 	// Reboot
 	CPropertyAction* pActReboot = new CPropertyAction(this,
 			&E761_Ctrl::OnReboot);
@@ -85,7 +95,7 @@ E761_Ctrl::E761_Ctrl() :
 			&E761_Ctrl::OnMonitor);
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getConstString(STR_PROP_STARTMONITOR).c_str());
-	ret = CreateProperty(propName, "True", MM::String, false, pActMonitor,
+	ret = CreateProperty(propName, "False", MM::String, false, pActMonitor,
 			true);
 	AddAllowedValue(propName, "True");
 	AddAllowedValue(propName, "False");
@@ -230,10 +240,10 @@ int E761_Ctrl::Initialize() {
 
 	int id = -1;
 	if (!m_reboot)
-		id = E7XX_ConnectPciBoard(1);
-	// 如果m_reboot为true或者E7XX_ConnectPciBoard失败了：
+		id = E7XX_ConnectPciBoard(m_boardId);
+	// 濡傛灉m_reboot涓簍rue鎴栬�E7XX_ConnectPciBoard澶辫触浜嗭細
 	if (id == -1) {
-		id = E7XX_ConnectPciBoardAndReboot(1);
+		id = E7XX_ConnectPciBoardAndReboot(m_boardId);
 		if (id == -1)
 			return DEVICE_ERR;
 	}
@@ -265,21 +275,6 @@ int E761_Ctrl::Initialize() {
 	this->LogMessage(msg);
 
 	char propName[MM::MaxStrLength];
-
-	// Board Id
-	sprintf(propName, getInstance()->getConstString(STR_PROP_BOARDID).c_str());
-	char strBoardId[32];
-	sprintf(strBoardId, "%d", m_boardId);
-	CPropertyAction* pActOnBoardId = new CPropertyAction(this,
-			&E761_Ctrl::OnBoardId);
-	ret = CreateProperty(propName, strBoardId, MM::Integer, false,
-			pActOnBoardId, true);
-	if (m_pInstance->debugLogFlag()) {
-		_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE,
-				"<E761_Ctrl::Initialize> CreateProperty(%s = %d), ReturnCode = %d",
-				propName, m_boardId, ret);
-		this->LogMessage(msg);
-	}
 
 	// Travel range
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
@@ -437,7 +432,7 @@ int E761_XYStage::Home() {
 	char axis[3] = { 0, 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(axis, axis + 1, NULL);
 	if (!E7XX_GOH(E761_Ctrl::getInstance()->getDeviceId(), axis))
-		return DEVICE_ERR;
+		return E761_Ctrl::getInstance()->getErrorMsg("XYStage: Home");
 	E761_Ctrl::getInstance()->checkIn();
 	return DEVICE_OK;
 }
@@ -516,14 +511,14 @@ int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct,
 	if (eAct == MM::BeforeGet) {
 		BOOL val[1];
 		if (!E7XX_qSVO(E761_Ctrl::getInstance()->getDeviceId(), axis, val))
-			return DEVICE_ERR;
+			return E761_Ctrl::getInstance()->getErrorMsg("XYStage: qSVO");
 		pProp->Set(val[0] ? "True" : "False");
 	} else if (eAct == MM::AfterSet) {
 		string str;
 		pProp->Get(str);
 		BOOL val[1] = { (str.compare("True") == 0) ? TRUE : FALSE };
 		if (!E7XX_SVO(E761_Ctrl::getInstance()->getDeviceId(), axis, val))
-			return DEVICE_ERR;
+			return E761_Ctrl::getInstance()->getErrorMsg("XYStage: SVO");
 	}
 	return DEVICE_OK;
 }
@@ -681,7 +676,7 @@ int E761_ZStage::Home() {
 	char axis[2] = { 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(NULL, NULL, axis);
 	if (!E7XX_GOH(E761_Ctrl::getInstance()->getDeviceId(), axis))
-		return DEVICE_ERR;
+		return E761_Ctrl::getInstance()->getErrorMsg("ZStage: Home");
 	E761_Ctrl::getInstance()->checkIn();
 	return DEVICE_OK;
 }

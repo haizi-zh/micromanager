@@ -15,6 +15,8 @@
 
 class E761_XYStage;
 class E761_ZStage;
+// global driver thread lock
+extern MMThreadLock g_E761DriverLock;
 
 //////
 // PI_E761_Control class
