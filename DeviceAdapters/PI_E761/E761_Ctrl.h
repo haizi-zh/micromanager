@@ -66,8 +66,6 @@ public:
 	int OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnMonitor(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnLastError(MM::PropertyBase* pProp, MM::ActionType eAct);
-
-	static int initConstStrings();
 	int getDeviceId() {
 		return m_devId;
 	}
@@ -88,8 +86,6 @@ public:
 		return m_pZStage;
 	}
 
-	static DWORD WINAPI monitorThread(LPVOID param);
-	
 	// Some operations, such as setPosition, etc, will cause the device to be in 'busy' state.
 	// Such operatioins will call this methods and check the current time stamp.
 	void checkIn();
@@ -120,6 +116,9 @@ private:
 	int m_minIntervalMs;
 
 	static char errorMsg[MM::MaxStrLength];
+
+	static int initConstStrings();
+	static DWORD WINAPI monitorThread(LPVOID param);
 };
 
 //////

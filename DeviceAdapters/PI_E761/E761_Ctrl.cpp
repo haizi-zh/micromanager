@@ -309,6 +309,7 @@ int E761_Ctrl::Shutdown() {
 		E7XX_CloseConnection(m_devId);
 		WaitForSingleObject(m_exitMonitorEvent, 2 * m_monitorIntvMs);
 	}
+	m_pInstance = NULL;
 	return DEVICE_OK;
 }
 
@@ -371,8 +372,8 @@ BOOL APIENTRY DllMain(HANDLE /*hModule*/, DWORD ul_reason_for_call, LPVOID /*lpR
 #endif
 
 std::string E761_Ctrl::getConstString(int strCode) {
-//	if (m_strMap.size() == 0)
-	initConstStrings();
+	if (m_strMap.size() == 0)
+		initConstStrings();
 
 	string sText;
 	map<int, string>::const_iterator it = m_strMap.find(strCode);
