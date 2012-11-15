@@ -166,19 +166,19 @@ public:
    void setProperty(const char* label, const char* propName, const float propValue) throw (CMMError);
    void setProperty(const char* label, const char* propName, const double propValue) throw (CMMError);
 
-   bool hasProperty(const char* label, const char* propName) const throw (CMMError);
-   std::vector<std::string> getAllowedPropertyValues(const char* label, const char* propName) const throw (CMMError);
-   bool isPropertyReadOnly(const char* label, const char* propName) const throw (CMMError);
-   bool isPropertyPreInit(const char* label, const char* propName) const throw (CMMError);
-   bool isPropertySequenceable(const char* label, const char* propName) const throw (CMMError);
-   bool hasPropertyLimits(const char* label, const char* propName) const throw (CMMError);
-   double getPropertyLowerLimit(const char* label, const char* propName) const throw (CMMError);
-   double getPropertyUpperLimit(const char* label, const char* propName) const throw (CMMError);
-   void startPropertySequence(const char* label, const char* propName) const throw (CMMError);
-   void stopPropertySequence(const char* label, const char* propName) const throw (CMMError);
-   long getPropertySequenceMaxLength(const char* label, const char* propName) const throw (CMMError);
-   void loadPropertySequence(const char* label, const char* propName, std::vector<std::string> eventSequence) const throw (CMMError);
-   MM::PropertyType getPropertyType(const char* label, const char* propName) const throw (CMMError);
+   bool hasProperty(const char* label, const char* propName) throw (CMMError);
+   std::vector<std::string> getAllowedPropertyValues(const char* label, const char* propName) throw (CMMError);
+   bool isPropertyReadOnly(const char* label, const char* propName) throw (CMMError);
+   bool isPropertyPreInit(const char* label, const char* propName) throw (CMMError);
+   bool isPropertySequenceable(const char* label, const char* propName) throw (CMMError);
+   bool hasPropertyLimits(const char* label, const char* propName) throw (CMMError);
+   double getPropertyLowerLimit(const char* label, const char* propName) throw (CMMError);
+   double getPropertyUpperLimit(const char* label, const char* propName) throw (CMMError);
+   void startPropertySequence(const char* label, const char* propName) throw (CMMError);
+   void stopPropertySequence(const char* label, const char* propName) throw (CMMError);
+   long getPropertySequenceMaxLength(const char* label, const char* propName) throw (CMMError);
+   void loadPropertySequence(const char* label, const char* propName, std::vector<std::string> eventSequence) throw (CMMError);
+   MM::PropertyType getPropertyType(const char* label, const char* propName) throw (CMMError);
    MM::DeviceType getDeviceType(const char* label) throw (CMMError);
    std::string getDeviceLibrary(const char* label) throw (CMMError);
    void unloadLibrary(const char* moduleName) throw (CMMError);
@@ -280,14 +280,14 @@ public:
    void* getImage() throw (CMMError);
    void* getImage(unsigned numChannel) throw (CMMError);
    void snapImage() throw (CMMError);
-   unsigned getImageWidth() const;
-   unsigned getImageHeight() const;
-   unsigned getBytesPerPixel() const;
-   unsigned getImageBitDepth() const;
-   unsigned getNumberOfComponents() const;
-   unsigned getNumberOfCameraChannels() const;
-   std::string getCameraChannelName(unsigned int channelNr) const;
-   long getImageBufferSize() const;
+   unsigned getImageWidth();
+   unsigned getImageHeight();
+   unsigned getBytesPerPixel();
+   unsigned getImageBitDepth();
+   unsigned getNumberOfComponents();
+   unsigned getNumberOfCameraChannels();
+   std::string getCameraChannelName(unsigned int channelNr);
+   long getImageBufferSize();
    void assignImageSynchro(const char* deviceLabel) throw (CMMError);
    void removeImageSynchro(const char* label) throw (CMMError);
    void removeImageSynchroAll();
@@ -353,10 +353,10 @@ public:
    long getState(const char* deviceLabel) throw (CMMError);
    long getNumberOfStates(const char* deviceLabel);
    void setStateLabel(const char* deviceLabel, const char* stateLabel) throw (CMMError);
-   std::string getStateLabel(const char* deviceLabel) const throw (CMMError);
+   std::string getStateLabel(const char* deviceLabel) throw (CMMError);
    void defineStateLabel(const char* deviceLabel, long state, const char* stateLabel) throw (CMMError);
-   std::vector<std::string> getStateLabels(const char* deviceLabel) const throw (CMMError);
-   long getStateFromLabel(const char* deviceLabel, const char* stateLabel) const throw (CMMError);
+   std::vector<std::string> getStateLabels(const char* deviceLabel) throw (CMMError);
+   long getStateFromLabel(const char* deviceLabel, const char* stateLabel) throw (CMMError);
    PropertyBlock getStateLabelData(const char* deviceLabel, const char* stateLabel);
    PropertyBlock getData(const char* deviceLabel);
    //@ }
@@ -452,10 +452,10 @@ public:
    void setSLMPixelsTo(const char* deviceLabel, unsigned char intensity) throw (CMMError);
    void setSLMPixelsTo(const char* deviceLabel, unsigned char red, unsigned char green, unsigned char blue) throw (CMMError);
    void displaySLMImage(const char* deviceLabel) throw (CMMError);
-   unsigned getSLMWidth(const char* deviceLabel) const;
-   unsigned getSLMHeight(const char* deviceLabel) const;
-   unsigned getSLMNumberOfComponents(const char* deviceLabel) const;
-   unsigned getSLMBytesPerPixel(const char* deviceLabel) const;
+   unsigned getSLMWidth(const char* deviceLabel);
+   unsigned getSLMHeight(const char* deviceLabel);
+   unsigned getSLMNumberOfComponents(const char* deviceLabel);
+   unsigned getSLMBytesPerPixel(const char* deviceLabel);
    //@ }
 
    /** @name Galvo control
