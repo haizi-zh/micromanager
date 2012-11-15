@@ -1245,7 +1245,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       exitMenuItem.addActionListener(new ActionListener() {
 
          public void actionPerformed(ActionEvent e) {
-            closeSequence();
+            closeSequence(false);
          }
       });
       fileMenu.add(exitMenuItem);
@@ -1747,7 +1747,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
          ij.IJ.getInstance().addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-               closeSequence();
+               closeSequence(true);
             };
          });
       }
@@ -1757,7 +1757,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       addWindowListener(new WindowAdapter() {
          @Override
          public void windowClosing(WindowEvent e) {
-            closeSequence();
+            closeSequence(false);
          }
 
          @Override
@@ -1980,6 +1980,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       final JButton zoomOutButton = new JButton();
       zoomOutButton.addActionListener(new ActionListener() {
 
+            @Override
          public void actionPerformed(final ActionEvent e) {
             zoomOut();
          }
@@ -3378,15 +3379,17 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 
    }
 
+    @Override
    public boolean okToAcquire() {
       return !isLiveModeOn();
    }
 
+    @Override
    public void stopAllActivity() {
       enableLiveMode(false);
    }
 
-   private boolean cleanupOnClose() {
+   private boolean cleanupOnClose(boolean calledByImageJ) {
       // Save config presets if they were changed.
       if (configChanged_) {
          Object[] options = {"Yes", "No"};
@@ -3401,8 +3404,12 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       if (liveModeTimer_ != null)
          liveModeTimer_.stop();
       
-      if (!WindowManager.closeAllWindows())
-         core_.logMessage("Failed to close some windows");
+       // check needed to avoid deadlock
+       if (!calledByImageJ) {
+           if (!WindowManager.closeAllWindows()) {
+               core_.logMessage("Failed to close some windows");
+           }
+       }
 
       if (profileWin_ != null) {
          removeMMBackgroundListener(profileWin_);
@@ -3490,7 +3497,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    }
 
 
-   public synchronized void closeSequence() {
+   public synchronized void closeSequence(boolean calledByImageJ) {
 
       if (!this.isRunning()) {
          if (core_ != null) {
@@ -3513,7 +3520,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 
       stopAllActivity();
 
-      if (!cleanupOnClose())
+      if (!cleanupOnClose(calledByImageJ))
          return;
 
       running_ = false;
