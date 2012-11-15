@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+<<<<<<< HEAD
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/ImageJ"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/MMJ"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/bioscope/micromanager/bin_Win32/MMCoreJ.jar"/>
+	<classpathentry kind="lib" path="C:/commons-math3-3.0/commons-math3-3.0.jar"/>
+	<classpathentry kind="lib" path="C:/jfreechart-1.0.14/lib/jcommon-1.0.17.jar"/>
+	<classpathentry kind="lib" path="C:/jfreechart-1.0.14/lib/jfreechart-1.0.14.jar"/>
+=======
+	<classpathentry kind="src" output="build" path="src"/>
+	<classpathentry kind="var" path="JRE_LIB" rootpath="JRE_SRCROOT" sourcepath="JRE_SRC"/>
+	<classpathentry kind="lib" path="E:/Users/Zephyre/Development/bioscope/micromanager/Install_Win32/micro-manager/ij.jar"/>
+	<classpathentry kind="lib" path="E:/Users/Zephyre/Development/bioscope/micromanager/bin_Win32/MMCoreJ.jar"/>
+	<classpathentry kind="lib" path="E:/Users/Zephyre/Development/bioscope/micromanager/bin_Win32/plugins/Micro-Manager/MMJ_.jar"/>
+	<classpathentry kind="lib" path="C:/commons-math3-3.0/commons-math3-3.0.jar"/>
+	<classpathentry kind="lib" path="C:/jfreechart-1.0.14/lib/jfreechart-1.0.14.jar"/>
+	<classpathentry kind="lib" path="C:/jfreechart-1.0.14/lib/jcommon-1.0.17.jar"/>
+>>>>>>> An MM plugin to calibrate readout noises.
+	<classpathentry kind="output" path="bin"/>
+</classpath>

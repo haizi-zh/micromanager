@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="CCDGainCalc_" default="compile" basedir=".">
+	<description>
+		This plugin calculates CCD gains by fitting the relationship between 
+		image intensity and its variations.
+    </description>
+
+	<property name="build.dir" value="build" />
+	<property name="src.dir" value="src" />
+	<property name="fiji.dir" value="c:/Fiji.app" />
+	<property name="mm.dir" value="../../micromanager/bin_Win32" />
+	<property name="dist.dir" value="../../micromanager/Install_Win32/micro-manager" />
+	<property name="target.name" value="CCD_Gain_Calc" />
+	<property environment="env" />
+
+	<path id="project.class.path">
+		<pathelement location="${dist.dir}/ij.jar" />
+		<pathelement location="${mm.dir}/MMCoreJ.jar" />
+		<pathelement location="${mm.dir}/plugins/Micro-Manager/MMJ_.jar" />
+		<pathelement location="${env.COMMONS_MATH3}" />
+		<pathelement location="${env.JFREE_CHART}/jfreechart-1.0.14.jar" />
+		<pathelement location="${env.JFREE_CHART}/jcommon-1.0.17.jar" />
+	</path>
+
+	<target description="Creates necessary directories" name="init">
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${dist.dir}/mmplugins" />
+	</target>
+
+	<target name="compile" depends="init" description="Compile.">
+		<javac includeantruntime="false" srcdir="${src.dir}" destdir="${build.dir}" source="1.6" target="1.6" optimize="on" debug="on" verbose="off">
+			<classpath refid="project.class.path" />
+		</javac>
+	</target>
+
+	<target name="build" depends="compile" description="Build .jar.">
+		<jar destfile="${target.name}.jar">
+			<fileset dir="." includes="plugins.config" />
+			<fileset dir="${build.dir}" includes="**/**" />
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+			</manifest>
+		</jar>
+		<copy file="${target.name}.jar" toDir="${dist.dir}/mmplugins" preservelastmodified="true" />
+		<copy file="${target.name}.jar" toDir="${fiji.dir}/mmplugins" preservelastmodified="true" />
+	</target>
+
+	<target name="clean" description="Delete the build files.">
+		<echo>
+			Deleting the build files.
+		</echo>
+		<delete dir="${build.dir}" />
+		<delete file="${target.name}.jar" />
+	</target>
+</project>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="FIONA_Analyzer" default="compile" basedir=".">
+	<description>
+		This plugin tracks fluorescent particles via FIONA algorithm.
+	</description>
+
+	<property name="build.dir" value="build" />
+	<property name="src.dir" value="src" />
+	<property name="dist.dir" value="../../imagej/dist" />
+	<property name="target.name" value="FIONA_Analyzer" />
+
+	<path id="project.class.path">
+		<pathelement location="${dist.dir}/ij.jar" />
+		<pathelement location="lib/FIONA.jar" />
+		<pathelement location="lib/javabuilder.jar" />
+	</path>
+
+	<target description="Creates necessary directories" name="init">
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${dist.dir}/plugins/SM4" />
+	</target>
+
+	<target name="compile" depends="init" description="Compile.">
+		<javac includeantruntime="false" srcdir="${src.dir}" destdir="${build.dir}" source="1.6" target="1.6" optimize="on" debug="on" verbose="off">
+			<classpath refid="project.class.path" />
+		</javac>
+	</target>
+
+	<target name="build" depends="compile" description="Build .jar.">
+		<jar destfile="${target.name}.jar">
+			<fileset dir="." includes="plugins.config" />
+			<fileset dir="${build.dir}" includes="**/**" />
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+			</manifest>
+		</jar>
+		<copy toDir="${dist.dir}/plugins/SM4" preservelastmodified="true">
+			<fileset dir="." casesensitive="no">
+				<include name="${target.name}.jar" />
+				<include name="lib\FIONA.jar" />
+				<include name="lib\javabuilder.jar" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="clean" description="Delete the build files.">
+		<echo>
+			Deleting the build files.
+		</echo>
+		<delete dir="${build.dir}" />
+		<delete file="${target.name}.jar" />
+	</target>
+</project>

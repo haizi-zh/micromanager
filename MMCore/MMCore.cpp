@@ -1472,6 +1472,24 @@ void CMMCore::home(const char* deviceName) throw (CMMError)
    CORE_LOG1("Stage %s moved to the HOME position.\n", deviceName);
 }
 
+// go home for focus stage
+void CMMCore::homeFocus(const char* deviceName) throw (CMMError) {
+	MM::Stage* pStage = getSpecificDevice<MM::Stage>(deviceName);
+	MMThreadGuard guard(pluginManager_.getModuleLock(pStage));
+	int ret = pStage->Home();
+	if (ret != DEVICE_OK) {
+		logError(deviceName, getDeviceErrorText(ret, pStage).c_str());
+		throw CMMError(getDeviceErrorText(ret, pStage).c_str(),
+				MMERR_DEVICE_GENERIC);
+	}
+	CORE_LOG1("Stage %s moved to the HOME position.\n", deviceName);
+}
+
+// go home for xy stage
+void CMMCore::homeXY(const char* deviceLabel) throw (CMMError) {
+	home(deviceLabel);
+}
+
 //jizhen, 4/12/2007
 /**
  * zero the current XY position.
