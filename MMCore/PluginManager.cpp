@@ -68,6 +68,7 @@ CPluginManager::~CPluginManager()
 
 std::vector<std::string> CPluginManager::searchPaths_;
 std::map<std::string, HDEVMODULE> CPluginManager::moduleMap_;
+std::map<std::string, MMThreadLock*> CPluginManager::moduleLocks_;
 
 /**
  * Add search path.
@@ -154,18 +155,20 @@ HDEVMODULE CPluginManager::LoadPluginLibrary(const char* shortName)
       hMod = dlopen(name.c_str(), RTLD_NOLOAD | mode);
       if (!hMod)
       {
-         hMod = dlopen(name.c_str(), RTLD_NODELETE | mode);
+         hMod = dlopen(name.c_str(), mode);
       }
    #endif // WIN32
    if (hMod) 
    {
       moduleMap_[shortName] = hMod;
+      CreateModuleLock(shortName);
       return hMod;
    }
    GetSystemError (errorText);
    errorText += " ";
    errorText += shortName;
    throw CMMError(errorText.c_str(), MMERR_LoadLibraryFailed); // dll load failed
+
 }
 
 /** 
@@ -910,26 +913,17 @@ void CPluginManager::Restore(const string& data)
 }
 
 /**
- * Creates a separate thread lock for each module.
- * Automatically deletes any previous locks that may exist.
- * Should be called before accessing any devices, i.e. after all devices are loaded.
- */
-void CPluginManager::CreateModuleLocks()
+* Creates a thread lock for a particular module.
+*/
+void CPluginManager::CreateModuleLock(const char* moduleName)
 {
-   DeleteModuleLocks();
-
-   DeviceVector::const_iterator it;
-   for (it = devVector_.begin(); it != devVector_.end(); it++)
-   {
-      char moduleName[MM::MaxStrLength];
-      (*it)->GetModuleName(moduleName);
-      CModuleLockMap::iterator it2 = moduleLocks_.find(moduleName);
-      if (it2 == moduleLocks_.end())
-      {
-         moduleLocks_[moduleName] = new MMThreadLock;
-      }
-   }
+	CModuleLockMap::iterator it2 = moduleLocks_.find(moduleName);
+	if (it2 == moduleLocks_.end())
+	{
+		moduleLocks_[moduleName] = new MMThreadLock;
+	}
 }
+
 
 /**
  * Deletes all module locks.

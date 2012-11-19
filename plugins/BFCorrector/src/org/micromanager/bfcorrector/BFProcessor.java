@@ -2,15 +2,12 @@
 package org.micromanager.bfcorrector;
 
 import ij.ImagePlus;
-import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
-import ij.measure.Measurements;
 import mmcorej.TaggedImage;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.micromanager.acquisition.TaggedImageQueue;
 import org.micromanager.api.DataProcessor;
-import org.micromanager.utils.ImageUtils;
 import org.micromanager.utils.MDUtils;
 import org.micromanager.utils.MMScriptException;
 import org.micromanager.utils.ReportingUtils;
@@ -25,11 +22,12 @@ class BFProcessor extends DataProcessor<TaggedImage> {
    private int flatFieldWidth_;
    private int flatFieldHeight_;
    private int flatFieldType_;
+   private float[] normalizedFlatField_;
    
    
    /**
     * Set the flatfield image that will be used in flatfielding
-    * Set to null if no fltafielding is desired
+    * Set to null if no flatfielding is desired
     * 
     * @param flatField ImagePlus object representing the flatfield image 
     */
@@ -42,7 +40,20 @@ class BFProcessor extends DataProcessor<TaggedImage> {
          flatFieldWidth_ = flatField_.getWidth();
          flatFieldHeight_ = flatField_.getHeight();
          flatFieldType_ = flatField_.getType();
+         normalizedFlatField_ = new float[flatFieldWidth_ * flatFieldHeight_];
+         float mean = (float) flatFieldStats_.mean;
+         for (int x = 0; x < flatFieldWidth_; x++) {
+            for (int y = 0; y < flatFieldHeight_; y++) {
+               int index = (y * flatFieldWidth_) + x;
+               normalizedFlatField_[index] =  
+                       flatField.getProcessor().getf(index) / mean;
+            }
+         }
+         
+      } else {
+         flatField_ = null;
       }
+      
    }
    
    /**
@@ -56,7 +67,6 @@ class BFProcessor extends DataProcessor<TaggedImage> {
          TaggedImage nextImage = poll();
          if (nextImage != TaggedImageQueue.POISON) {
             try {
-               String camera = nextImage.tags.getString("Core-Camera");
 
                produce(proccessTaggedImage(nextImage));
 
@@ -96,30 +106,46 @@ class BFProcessor extends DataProcessor<TaggedImage> {
          ijType = ImagePlus.GRAY16;
       }
       
-      if (width != flatFieldWidth_ || height != flatFieldHeight_ || ijType != flatFieldType_) {
+      if (! (ijType == ImagePlus.GRAY8 || ijType == ImagePlus.GRAY16) ) {
+         // Report???
+         return nextImage;
+      }
+      
+      // do not calculate if image size differs
+      if (width != flatFieldWidth_ || height != flatFieldHeight_) {
          ReportingUtils.logError("FlatField dimensions do not match image dimensions");
          return nextImage;
       }
       
-      
-      
-      ImageProcessor proc = ImageUtils.makeProcessor(ijType, width, height, nextImage.pix);
-      ImagePlus tip = new ImagePlus("MM", proc);
-      
-      ij.plugin.ImageCalculator ic = new ij.plugin.ImageCalculator();
-      ImagePlus res = ic.run("divide 32-bit", tip, flatField_);
-      // TODO: better scaling
-      ImageProcessor resProc = res.getProcessor();
-      if (ijType == ImagePlus.GRAY8)
-         resProc = resProc.convertToByte(true);
-      else if (ijType == ImagePlus.GRAY16)
-         resProc = resProc.convertToShort(true);
-      
       JSONObject newTags = nextImage.tags;
-      MDUtils.setWidth(newTags, proc.getWidth());
-      MDUtils.setHeight(newTags, proc.getHeight());
+      TaggedImage newImage = null;
+      
+      if (ijType == ImagePlus.GRAY8) {
+         byte[] newPixels = new byte[width * height];
+         byte[] oldPixels = (byte[]) nextImage.pix;
+         for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+               int index = (y * flatFieldWidth_) + x;
+               newPixels[index] = (byte) ( (float) oldPixels[index] 
+                       / normalizedFlatField_[index]);
+            }
+         }
+         newImage = new TaggedImage(newPixels, newTags);
+      } else if (ijType == ImagePlus.GRAY16) {
+         short[] newPixels = new short[width * height];
+         short[] oldPixels = (short[]) nextImage.pix;
+         for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+               int index = (y * flatFieldWidth_) + x;
+               newPixels[index] = (short) ( (float) oldPixels[index] 
+                       / normalizedFlatField_[index]);
+            }
+         }
+         newImage = new TaggedImage(newPixels, newTags);
+      }
+      
 
-      return new TaggedImage(resProc.getPixels(), newTags);
+      return newImage;
    }
    
 }
