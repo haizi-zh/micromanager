@@ -81,7 +81,6 @@ public:
 
    // module level thread locking
    void CreateModuleLocks();
-   void CreateModuleLock(const char* device);
    void DeleteModuleLocks();
    MMThreadLock* getModuleLock(const MM::Device* pDev);
    bool removeModuleLock(const char* moduleName);
