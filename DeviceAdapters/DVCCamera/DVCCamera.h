@@ -30,9 +30,23 @@ class DVCCamera: public CCameraBase<DVCCamera> {
 public:
 	enum _MPStr {
 		STR_NAME = 0,
-		STR_DESC,
 		STR_VERSION,
+		STR_DEVICE_DESC,
 		STR_PROP_CAMID,
+		STR_PROP_CAM_DIMENSION,
+		STR_PROP_CAM_WIDTH,
+		STR_PROP_CAM_HEIGHT,
+		STR_PROP_NAME,
+		STR_PROP_DESC,
+		STR_PROP_SSN,
+		STR_PROP_DEPTH,
+		STR_PROP_BINSIZE,
+		STR_PROP_GAINDB,
+		STR_PROP_GAINRANGE,
+		STR_PROP_EXPOSURE,
+		STR_PROP_ACTUAL_FRAME_TIME,
+		STR_PROP_PIXELCLOCK,
+		STR_PROP_SCANRATE,
 		STR_CAM_BUSY,
 		STR_INVALID_ROI
 	};
@@ -89,14 +103,14 @@ public:
 	int StopSequenceAcquisition(bool temporary); // temporary=true
 
 	// Get the constant string
-	std::string DVCCamera::getConstString(int strCode);
+	static std::string DVCCamera::getConstString(int strCode);
 
 	int DVCCamera::OnCamId(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 private:
 	// Constant strings
 	static std::map<int, std::string> m_strMap;
-	void DVCCamera::initConstStrings();
+	static void DVCCamera::initConstStrings();
 
 	// Error messages
 	static char m_errorMsg[MM::MaxStrLength];
@@ -138,17 +152,21 @@ private:
 	int OnActualFrameTime(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnPixelClock(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnScanRate(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnCameraDimension(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnCameraWidth(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnCameraHeight(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnDepth(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnGain(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnGainRange(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 	// a list of available cameras
 	std::map<int, void*> camMap_;
 	long m_camId;
 
 	// Camera information
-	void* hCam_;
 	std::string camName_;
 	static std::map<int, std::string> camTypeMap_;
 	int camType_;
-	int camSSN_;
 	int fullFrameX_;
 	int fullFrameY_;
 	int depth_;
@@ -161,7 +179,7 @@ private:
 	double expMs_;
 	bool sequenceRunning_;
 	dvcBufStruct dvcBuf;
-	const int bufNumber;
+	const int bufNumber_;
 	unsigned short* fullFrameBuffer_;
 	int binSize_;
 	int sequenceLength_;

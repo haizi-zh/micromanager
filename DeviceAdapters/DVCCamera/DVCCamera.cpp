@@ -4,8 +4,6 @@
 #include "stdafx.h"
 #include "DVCCamera.h"
 #include <iostream>
-//#include <cassert>
-//#include <cstring>
 
 using namespace std;
 
@@ -16,11 +14,27 @@ map<int, string> DVCCamera::m_strMap;
 
 void DVCCamera::initConstStrings() {
 	m_strMap[STR_NAME] = "DVCCamera";
-	m_strMap[STR_DESC] = "DVC GigE Camera";
-	m_strMap[STR_PROP_CAMID] = "Camera Id";
+	m_strMap[STR_PROP_CAMID] = string(MM::g_Keyword_CameraID);
 	m_strMap[STR_CAM_BUSY] = "Camera is busy.";
 	m_strMap[STR_INVALID_ROI] = "Invalid ROI.";
+	m_strMap[STR_DEVICE_DESC] = "DVC GigE Camera";
+	m_strMap[STR_PROP_CAM_DIMENSION] = "Dimension";
+	m_strMap[STR_PROP_CAM_WIDTH] = "Camera width";
+	m_strMap[STR_PROP_CAM_HEIGHT] = "Camera height";
+	m_strMap[STR_PROP_NAME] = string(MM::g_Keyword_CameraName);
+	m_strMap[STR_PROP_DESC] = string(MM::g_Keyword_Description);
+	m_strMap[STR_PROP_SSN] = "Serial number";
+	m_strMap[STR_PROP_DEPTH] = "Depth";
+	m_strMap[STR_PROP_GAINDB] = string(MM::g_Keyword_Gain);
+	m_strMap[STR_PROP_GAINRANGE] = "Gain range(dB)";
+	m_strMap[STR_PROP_BINSIZE] = string(MM::g_Keyword_Binning);
+	m_strMap[STR_PROP_EXPOSURE] = string(MM::g_Keyword_Exposure);
+	m_strMap[STR_PROP_ACTUAL_FRAME_TIME] = string(MM::g_Keyword_ActualInterval_ms);
+	m_strMap[STR_PROP_PIXELCLOCK] = "Pixel Clock Frequency(Hz)";
+	m_strMap[STR_PROP_SCANRATE] = "Scan rate";
 }
+
+const char* g_DVCCameraDeviceName = "DVCCamera";
 
 string DVCCamera::getConstString(int strCode) {
 	if (m_strMap.size() == 0)
@@ -37,9 +51,9 @@ char DVCCamera::m_errorMsg[MM::MaxStrLength];
 // All the DVC error code will be returned plus this.
 const int g_Err_Offset = 10000;
 
-// External names used used by the rest of the system
-// to load particular device from the "DemoCamera.dll" library
-const char* g_DVCCameraDeviceName = "DVCCamera";
+//// External names used used by the rest of the system
+//// to load particular device from the "DemoCamera.dll" library
+//const char* g_DVCCameraDeviceName = "DVCCamera";
 
 // singleton instance
 DVCCamera* DVCCamera::instance_ = NULL;
@@ -57,7 +71,6 @@ map<int, string> testMap;
 // Properties
 const char g_CameraName[] = "Camera Name";
 const char g_CameraType[] = "Camera Type";
-const char g_SSN[] = "Camera Serial Number";
 const char g_Width[] = "Camera Width";
 const char g_Height[] = "Camera Height";
 const char g_Depth[] = "Bit Depth";
@@ -86,7 +99,8 @@ const char g_MD_TriggerTimestamp[] = "Trigger Timestamp";
  * maintains a list of supported device (MMDeviceList.txt).  This list is generated using 
  * information supplied by this function, so runtime discovery will create problems.
  */MODULE_API void InitializeModuleData() {
-	AddAvailableDeviceName(g_DVCCameraDeviceName, "DVC GigE Camera");
+	AddAvailableDeviceName(g_DVCCameraDeviceName,
+			DVCCamera::getConstString(DVCCamera::STR_DEVICE_DESC).c_str());
 }
 
 MODULE_API MM::Device* CreateDevice(const char* deviceName) {
@@ -134,10 +148,10 @@ void DVCCamera::GetName(char* name) const {
 //
 
 DVCCamera::DVCCamera() :
-		initialized_(false), hCam_(NULL), busy_(false), m_camId(1), camType_(0), camSSN_(
-				0), fullFrameX_(0), fullFrameY_(0), depth_(0), expMs_(0.0), sequenceRunning_(
-				false), bufNumber(48), fullFrameBuffer_(NULL), binSize_(1), sequenceLength_(
-				0), intervalMs_(0), imageCounter_(0), startTime_(0), thd_(NULL), sequencePaused_(
+		initialized_(false), busy_(false), m_camId(1), camType_(0), fullFrameX_(
+				0), fullFrameY_(0), depth_(0), bufNumber_(48), expMs_(0.0), sequenceRunning_(
+				false), fullFrameBuffer_(NULL), binSize_(1), sequenceLength_(0), intervalMs_(
+				0), imageCounter_(0), startTime_(0), thd_(NULL), sequencePaused_(
 				false), stopOnOverflow_(true) {
 	InitializeDefaultErrorMessages();
 
@@ -170,18 +184,6 @@ DVCCamera::DVCCamera() :
 
 	int ret;
 	char propName[MM::MaxStrLength];
-
-	// Name
-	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
-			getConstString(STR_NAME).c_str());
-	ret = CreateProperty(propName, getConstString(STR_NAME).c_str(), MM::String,
-			true);
-
-	// Description
-	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
-			getConstString(STR_DESC).c_str());
-	ret = CreateProperty(propName, getConstString(STR_DESC).c_str(), MM::String,
-			true);
 
 	// Camera Id
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
@@ -268,7 +270,6 @@ int DVCCamera::Initialize() {
 	if (hCam == NULL)
 		return processErr();
 	camMap_[m_camId] = hCam;
-	hCam_ = hCam;
 
 	thd_ = new DVCCamera::AcqSequenceThread(this, hCam);
 	dvcAllocateUserBuffers(hCam, &userBuffers_, g_UserBufferNumber);
@@ -276,123 +277,121 @@ int DVCCamera::Initialize() {
 	if (!dvcResetCamera(hCam))
 		return processErr();
 
-// Description
-	if (!HasProperty(MM::g_Keyword_Description)) {
-		ret = CreateProperty(MM::g_Keyword_Description, "DVC camera adapter",
-				MM::String, true);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
+	char propName[MM::MaxStrLength];
+	char str[MM::MaxStrLength];
 
-// Dummy property for getPixelSizeUm
-	if (!HasProperty(g_Label)) {
-		ret = CreateProperty(g_Label, "Dummy", MM::String, false);
-		assert(ret == DEVICE_OK);
-	}
+	// Name
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_NAME).c_str());
+	ret = CreateProperty(propName, DVCCamera::getConstString(STR_NAME).c_str(),
+			MM::String, true);
 
-// Camera name
-	{
-		char str[1024];
-		camType_ = dvcGetCameraName(hCam, str, 1024);
-		camName_ = str;
-	}
-	if (!HasProperty(g_CameraName)) {
-		ret = CreateProperty(g_CameraName, camName_.c_str(), MM::String, true);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
-	if (!HasProperty(g_CameraType)) {
-		ret = CreateProperty(g_CameraType, camTypeMap_[camType_].c_str(),
-				MM::String, true);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
+	// Description
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_DESC).c_str());
+	dvcGetCameraName(hCam, str, MM::MaxStrLength);
+	ret = CreateProperty(propName, str, MM::String, true);
 
-// Camera serial number
-	if (!dvcGetCameraSerialNumber(hCam, &camSSN_)) {
+	// Camera serial number
+	int camSSN;
+	if (!dvcGetCameraSerialNumber(hCam, &camSSN)) {
 		return processErr();
 	}
-	if (!HasProperty(g_SSN)) {
-		char str[64];
-		_itoa_s(camSSN_, str, 64, 10);
-		ret = CreateProperty(g_SSN, str, MM::String, true);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
+	_itoa_s(camSSN, str, MM::MaxStrLength, 10);
+	CreateProperty(DVCCamera::getConstString(STR_PROP_SSN).c_str(), str,
+			MM::String, true);
+
+	// Gain
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_GAINDB).c_str());
+	CPropertyAction* pAct = new CPropertyAction(this, &DVCCamera::OnGain);
+	CreateProperty(propName, "", MM::Float, false, pAct);
+
+	// Gain range
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_GAINRANGE).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnGainRange);
+	CreateProperty(propName, "", MM::String, true, pAct);
+
+	// Binning size
+	int hb, vb;
+	if (!dvcGetHVBin(hCam, &hb, &vb))
+		return processErr();
+	binSize_ = hb;
+	if (!dvcSetHVBin(hCam, binSize_, binSize_))
+		return processErr();
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_BINSIZE).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnBinning);
+	CreateProperty(propName, "", MM::Integer, false, pAct);
+
+	// Exposure
+	expMs_ = dvcGetExposeMsec(hCam);
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_EXPOSURE).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnExposure);
+	CreateProperty(propName, "", MM::Float, false, pAct);
+
+	// Camera dimension
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_CAM_DIMENSION).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnCameraDimension);
+	CreateProperty(propName, "", MM::String, true, pAct);
+
+	// Camera width
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_CAM_WIDTH).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnCameraWidth);
+	CreateProperty(propName, "", MM::Integer, true, pAct);
+
+	// Camera height
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_CAM_HEIGHT).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnCameraHeight);
+	CreateProperty(propName, "", MM::Integer, true, pAct);
 
 	fullFrameX_ = dvcGetCCDWidth(hCam);
 	fullFrameY_ = dvcGetCCDHeight(hCam);
-	if (!HasProperty(g_Width)) {
-		char str[64];
-		_itoa_s(fullFrameX_, str, 64, 10);
-		ret = CreateProperty(g_Width, str, MM::Integer, true);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
-	if (!HasProperty(g_Height)) {
-		char str[64];
-		_itoa_s(fullFrameY_, str, 64, 10);
-		ret = CreateProperty(g_Height, str, MM::Integer, true);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
 	roi_.x = 0;
 	roi_.y = 0;
 	roi_.xSize = fullFrameX_;
 	roi_.ySize = fullFrameY_;
 
+	// Depth
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_DEPTH).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnDepth);
+	CreateProperty(propName, "", MM::Integer, true, pAct);
 	depth_ = dvcGetNBits(hCam);
-	if (!HasProperty(g_Depth)) {
-		char str[64];
-		_itoa_s(depth_, str, 64, 10);
-		ret = CreateProperty(g_Depth, str, MM::Integer, true);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
 
 	fullFrameBuffer_ = new unsigned short[fullFrameX_ * fullFrameY_];
 	ResizeImageBuffer();
 
-	ret = createGainProp();
-	if (ret != DEVICE_OK)
-		return ret;
+	// Frame time
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_ACTUAL_FRAME_TIME).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnActualFrameTime);
+	CreateProperty(propName, "", MM::Float, true, pAct);
 
-	ret = createBinProp();
-	if (ret != DEVICE_OK)
-		return ret;
+	// Pixel clock
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_PIXELCLOCK).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnPixelClock);
+	CreateProperty(propName, "", MM::Float, true, pAct);
 
-	expMs_ = GetExposure();
-	if (!HasProperty(MM::g_Keyword_Exposure)) {
-		CPropertyAction* pAct = new CPropertyAction(this,
-				&DVCCamera::OnExposure);
-		ret = CreateProperty(MM::g_Keyword_Exposure, "", MM::Float, false,
-				pAct);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
+	// Scan rate
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			getConstString(STR_PROP_SCANRATE).c_str());
+	pAct = new CPropertyAction(this, &DVCCamera::OnScanRate);
+	CreateProperty(propName, "", MM::String, false, pAct);
+	scanRates_.push_back("20 MHz");
+	scanRates_.push_back("40 MHz");
+	SetAllowedValues(propName, scanRates_);
 
-	if (!HasProperty(g_ActualFrameTime)) {
-		CPropertyAction* pAct = new CPropertyAction(this,
-				&DVCCamera::OnActualFrameTime);
-		ret = CreateProperty(g_ActualFrameTime, "", MM::Float, true, pAct);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
-
-	if (!HasProperty(g_PixelClock)) {
-		CPropertyAction* pAct = new CPropertyAction(this,
-				&DVCCamera::OnPixelClock);
-		ret = CreateProperty(g_PixelClock, "", MM::Float, true, pAct);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
-
-	assert(createScanRateProp() == DEVICE_OK);
-
-// Set Mirror X to 1
+	// Set Mirror X to 1
 	SetProperty(MM::g_Keyword_Transpose_MirrorX, "1");
 
-	if (!dvcAllocateUserBuffers(hCam, &dvcBuf, bufNumber))
+	if (!dvcAllocateUserBuffers(hCam, &dvcBuf, bufNumber_))
 		return processErr();
 
 	if (!dvcSetUserBuffers(hCam, &dvcBuf))
@@ -401,39 +400,55 @@ int DVCCamera::Initialize() {
 	return DEVICE_OK;
 }
 
-int DVCCamera::createScanRateProp() {
-	if (!HasProperty(g_ScanRate)) {
-		CPropertyAction* pAct = new CPropertyAction(this,
-				&DVCCamera::OnScanRate);
-		int ret = CreateProperty(g_ScanRate, "", MM::String, false, pAct);
-		assert(ret == DEVICE_OK);
-		scanRates_.push_back("20 MHz");
-		scanRates_.push_back("40 MHz");
-		ret = SetAllowedValues(g_ScanRate, scanRates_);
-		assert(ret == DEVICE_OK);
+int DVCCamera::OnCameraDimension(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+
+	if (eAct == MM::BeforeGet) {
+		HANDLE hCam = camMap_[m_camId];
+		int width = dvcGetCCDWidth(hCam);
+		int height = dvcGetCCDHeight(hCam);
+		char str[MM::MaxStrLength];
+		_snprintf_s(str, sizeof(str), _TRUNCATE,
+				"Width: %d pixels, height: %d pixels", width, height);
+		pProp->Set(str);
 	}
 	return DEVICE_OK;
 }
 
-int DVCCamera::createGainProp() {
-	int ret = 0;
-	CPropertyAction* pAct = NULL;
-	if (!HasProperty(g_GaindB)) {
-		pAct = new CPropertyAction(this, &DVCCamera::OnGaindB);
-		ret = CreateProperty(g_GaindB, "", MM::Float, false, pAct);
-		if (ret != DEVICE_OK)
-			return ret;
-	}
-	if (!HasProperty(g_GaindBRange)) {
-		pAct = new CPropertyAction(this, &DVCCamera::OnGaindBRange);
-		ret = CreateProperty(g_GaindBRange, "", MM::String, true, pAct);
-		if (ret != DEVICE_OK)
-			return ret;
+int DVCCamera::OnCameraWidth(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+
+	if (eAct == MM::BeforeGet) {
+		HANDLE hCam = camMap_[m_camId];
+		long width = dvcGetCCDWidth(hCam);
+		pProp->Set(width);
 	}
 	return DEVICE_OK;
 }
 
-int DVCCamera::OnGaindB(MM::PropertyBase* pProp, MM::ActionType eAct) {
+int DVCCamera::OnCameraHeight(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+
+	if (eAct == MM::BeforeGet) {
+		HANDLE hCam = camMap_[m_camId];
+		long width = dvcGetCCDHeight(hCam);
+		pProp->Set(width);
+	}
+	return DEVICE_OK;
+}
+
+int DVCCamera::OnDepth(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+
+	if (eAct == MM::BeforeGet) {
+		HANDLE hCam = camMap_[m_camId];
+		long dep = dvcGetNBits(hCam);
+		pProp->Set(dep);
+	}
+	return DEVICE_OK;
+}
+
+int DVCCamera::OnGain(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	DriverGuard dg(this);
 
 	HANDLE hCam = camMap_[m_camId];
@@ -447,37 +462,58 @@ int DVCCamera::OnGaindB(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		pProp->Get(gain);
 		if (!dvcSetGaindB(hCam, gain))
 			return processErr();
-		OnPropertiesChanged();
+	}
+	return DEVICE_OK;
+}
+
+int DVCCamera::OnGainRange(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+
+	HANDLE hCam = camMap_[m_camId];
+	if (eAct == MM::BeforeGet) {
+		double min, max, granularity;
+		if (!dvcGetGaindBRange(hCam, &min, &max, &granularity))
+			return processErr();
+
+		char str[MM::MaxStrLength];
+		_snprintf_s(str, MM::MaxStrLength, _TRUNCATE,
+				"Range: %.1f~%.1fdB, granularity: %.1f", min, max, granularity);
+		pProp->Set(str);
+
+		SetPropertyLimits(getConstString(STR_PROP_GAINDB).c_str(), min, max);
 	}
 	return DEVICE_OK;
 }
 
 int DVCCamera::OnActualFrameTime(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+	HANDLE hCam = camMap_[m_camId];
 	if (eAct == MM::BeforeGet) {
 		double lineTime, frameTime;
-		DriverGuard dg(this);
-		if (!dvcGetLineFrameTime(hCam_, &lineTime, &frameTime))
-			return processErr();
+		if (!dvcGetLineFrameTime(hCam, &lineTime, &frameTime))
+			return getErrorMsg("OnActualFrameTime");
 		pProp->Set(frameTime);
 	}
 	return DEVICE_OK;
 }
 
 int DVCCamera::OnPixelClock(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+	HANDLE hCam = camMap_[m_camId];
 	if (eAct == MM::BeforeGet) {
-		DriverGuard dg(this);
-		double freq = dvcGetPixelClock(hCam_);
+		double freq = dvcGetPixelClock(hCam);
 		pProp->Set(freq);
 	}
 	return DEVICE_OK;
 }
 
 int DVCCamera::OnScanRate(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+	HANDLE hCam = camMap_[m_camId];
 	if (eAct == MM::BeforeGet) {
-		DriverGuard dg(this);
 		int scan;
-		if (!dvcGetScanRate(hCam_, &scan))
-			return processErr();
+		if (!dvcGetScanRate(hCam, &scan))
+			return getErrorMsg("OnScanRate: BeforeGet");
 		pProp->Set(scanRates_[scan].c_str());
 	} else if (eAct == MM::AfterSet) {
 		string scan;
@@ -485,54 +521,11 @@ int DVCCamera::OnScanRate(MM::PropertyBase* pProp, MM::ActionType eAct) {
 
 		for (int i = 0; i < scanRates_.size(); i++) {
 			if (scan.compare(scanRates_[i]) == 0) {
-				if (!dvcSetScanRate(hCam_, i))
-					return processErr();
-				OnPropertiesChanged();
+				if (!dvcSetScanRate(hCam, i))
+					return getErrorMsg("OnScanRate: AfterSet");
 				return DEVICE_OK;
 			}
 		}
-		assert(false);
-	}
-	return DEVICE_OK;
-}
-
-int DVCCamera::OnGaindBRange(MM::PropertyBase* pProp, MM::ActionType eAct) {
-	DriverGuard dg(this);
-
-	HANDLE hCam = camMap_[m_camId];
-	if (eAct == MM::BeforeGet) {
-		double min, max, interval;
-		if (!dvcGetGaindBRange(hCam, &min, &max, &interval))
-			return processErr();
-
-		char str[1024];
-		snprintf(str, 1024, "Range: %.1f~%.1fdB", min, max);
-		pProp->Set(str);
-
-		SetPropertyLimits(g_GaindB, min, max);
-	}
-	return DEVICE_OK;
-}
-
-int DVCCamera::createBinProp() {
-	DriverGuard dg(this);
-
-	HANDLE hCam = camMap_[m_camId];
-	int ret = 0;
-
-	int hb, vb;
-	if (!dvcGetHVBin(hCam, &hb, &vb))
-		return logDeviceError();
-	binSize_ = hb;
-	if (!dvcSetHVBin(hCam, binSize_, binSize_))
-		return logDeviceError();
-
-	CPropertyAction* pAct = NULL;
-	if (!HasProperty(g_Binning)) {
-		pAct = new CPropertyAction(this, &DVCCamera::OnBinning);
-		ret = CreateProperty(g_Binning, "", MM::Integer, false, pAct);
-		if (ret != DEVICE_OK)
-			return ret;
 	}
 	return DEVICE_OK;
 }
@@ -592,9 +585,24 @@ int DVCCamera::Shutdown() {
 
 bool DVCCamera::IsAcquiring() {
 	DriverGuard dg(this);
-
 	HANDLE hCam = camMap_[m_camId];
 	return (dvcGetStatus(hCam) != DVC_STATUS_STOPPED);
+}
+
+int DVCCamera::SetBinning(int bin) {
+	DriverGuard dg(this);
+	HANDLE hCam = camMap_[m_camId];
+
+	if (sequenceRunning_)
+		return getErrorMsg(getConstString(STR_CAM_BUSY).c_str());
+
+	//added to use RTA
+	SetToIdle();
+	if (!dvcSetHVBin(hCam, bin, bin))
+		return getErrorMsg("SetBinning");
+	binSize_ = bin;
+	ResizeImageBuffer();
+	return DEVICE_OK;
 }
 
 int DVCCamera::SetToIdle() {
@@ -620,7 +628,6 @@ const unsigned char* DVCCamera::GetImageBuffer() {
 
 	HANDLE hCam = camMap_[m_camId];
 	int nBytes = dvcGetImageBytes(hCam);
-	assert(nBytes <= fullFrameX_ * fullFrameY_ * 2);
 
 	int w = dvcGetXDim(hCam);
 	int h = dvcGetYDim(hCam);
@@ -644,62 +651,41 @@ int DVCCamera::logDeviceError() {
 }
 
 int DVCCamera::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+
+	HANDLE hCam = camMap_[m_camId];
 	if (eAct == MM::BeforeGet) {
+		int hb, vb;
+		if (!dvcGetHVBin(hCam, &hb, &vb))
+			return getErrorMsg("OnBinning: BeforeGet");
+		binSize_ = hb;
 		pProp->Set((long) binSize_);
 	} else if (eAct == MM::AfterSet) {
 		long bin;
 		pProp->Get(bin);
-		int ret = SetBinning(bin);
-		return ret;
+		SetBinning((int) bin);
 	}
-	return DEVICE_OK;
-}
-
-int DVCCamera::SetBinning(int bin) {
-	{
-		DriverGuard dg(this);
-
-		if (sequenceRunning_)
-			return getErrorMsg(getConstString(STR_CAM_BUSY).c_str());
-
-		//added to use RTA
-		SetToIdle();
-		if (!dvcSetHVBin(hCam_, bin, bin))
-			return processErr();
-	}
-	binSize_ = bin;
-	ResizeImageBuffer();
-	OnPropertiesChanged();
 	return DEVICE_OK;
 }
 
 int DVCCamera::OnExposure(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	DriverGuard dg(this);
+
+	HANDLE hCam = camMap_[m_camId];
 	if (eAct == MM::BeforeGet) {
+		expMs_ = dvcGetExposeMsec(hCam);
 		pProp->Set(expMs_);
 	} else if (eAct == MM::AfterSet) {
 		double exp;
 		pProp->Get(exp);
 
-		{
-			DriverGuard dg(this);
-			HANDLE hCam = camMap_[m_camId];
-			double interval;
+		double interval;
+		if (!dvcGetExposeInterval(hCam, -1, -1, -1, &interval))
+			return processErr();
 
-			if (!dvcGetExposeInterval(hCam, -1, -1, -1, &interval))
-				return processErr();
-
-			if (fabs(exp - expMs_) < interval)
-				return DEVICE_OK;
-		}
+		if (fabs(exp - expMs_) < interval)
+			return DEVICE_OK;
 		SetExposure(exp);
-
-		//bool acquiring = sequenceRunning_;
-		//if (acquiring)
-		//	StopSequenceAcquisition(true);
-		//if (sequenceRunning_)
-		//	return ERR_BUSY_ACQUIRING;
-
-		//OnPropertiesChanged();
 	}
 	return DEVICE_OK;
 }
@@ -723,7 +709,8 @@ void DVCCamera::SetExposure(double exp) {
 
 double DVCCamera::GetExposure() const {
 	DriverGuard dg(this);
-	return dvcGetExposeMsec(hCam_);
+	map<int, HANDLE>::const_iterator it = camMap_.find(m_camId);
+	return dvcGetExposeMsec((it->second));
 }
 
 int DVCCamera::GetROI(unsigned& uX, unsigned& uY, unsigned& uXSize,
@@ -1060,7 +1047,6 @@ int DVCCamera::PushImage(int userBufferId) {
 	mstB.SetValue(CDeviceUtils::ConvertToString(binSize_));
 	md.SetTag(mstB);
 
-	const HANDLE hCam = camMap_[m_camId];
 	const int height = GetImageHeight();
 	const int width = GetImageWidth();
 	const int bytesPerPixel = GetImageBytesPerPixel();

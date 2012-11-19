@@ -1768,9 +1768,9 @@ void CDemoCamera::GenerateSyntheticImage(ImgBuffer& img, double exp)
          // write the compact debug image...
          char ctmp[12];
          snprintf(ctmp,12,"%ld",iseq++);
-         int status = writeCompactTiffRGB( img.Width(), img.Height(), pTmpBuffer, ("democamera"+std::string(ctmp)).c_str()
-            );
-			status = status;
+			int status = writeCompactTiffRGB(img.Width(), img.Height(),
+					pTmpBuffer, ("democamera" + std::string(ctmp)).c_str());
+//			status = status;
       }
 
 	}
@@ -3604,7 +3604,7 @@ int DemoHub::OnDivideOneByMe(MM::PropertyBase* pProp, MM::ActionType eAct)
       bool crashtest = CDeviceUtils::CheckEnvironment("MICROMANAGERCRASHTEST");
       if((0 != divideOneByMe_) || crashtest)
          result = 1/divideOneByMe_;
-      result = result;
+//      result = result;
 
    }
    else if (eAct == MM::BeforeGet)
