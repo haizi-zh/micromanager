@@ -41,6 +41,9 @@ int E761_Ctrl::initConstStrings() {
 	m_strMap[STR_ZStageDesc] =
 			"Physik Instrumente(PI) E761 Piezo Stage Controller";
 	m_strMap[STR_PROP_SERVO] = "Servo Mode";
+	m_strMap[STR_PROP_XSVA] = "OpenLoopValueX";
+	m_strMap[STR_PROP_YSVA] = "OpenLoopValueY";
+	m_strMap[STR_PROP_SVA] = "OpenLoopValue";
 	return DEVICE_OK;
 }
 
@@ -344,8 +347,7 @@ MODULE_API void DeleteDevice(MM::Device* pDevice) {
  * Do not discover devices at runtime.  To avoid warnings about missing DLLs, Micro-Manager
  * maintains a list of supported device (MMDeviceList.txt).  This list is generated using
  * information supplied by this function, so runtime discovery will create problems.
- */
-MODULE_API void InitializeModuleData() {
+ */MODULE_API void InitializeModuleData() {
 	string strXY = E761_Ctrl::getConstString(E761_Ctrl::STR_XYStageDevName);
 	AddAvailableDeviceName(strXY.c_str(), strXY.c_str());
 	string strZ =
@@ -476,6 +478,18 @@ int E761_XYStage::Initialize() {
 			&E761_XYStage::OnYServoMode);
 	ret = CreateProperty(propName, "", MM::String, false, pActYServo);
 
+	// Open loop values
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_XSVA).c_str());
+	CPropertyAction* pAct = new CPropertyAction(this,
+			&E761_XYStage::OnXOpenLoopValue);
+	ret = CreateProperty(propName, "", MM::Float, false, pAct);
+
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_YSVA).c_str());
+	pAct = new CPropertyAction(this, &E761_XYStage::OnYOpenLoopValue);
+	ret = CreateProperty(propName, "", MM::Float, false, pAct);
+
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK)
 		return ret;
@@ -500,10 +514,34 @@ int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 	return DEVICE_OK;
 }
 
-int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
+int E761_XYStage::OnOpenLoopValue(MM::PropertyBase* pProp, MM::ActionType eAct,
+		const char* axis) {
+	E761_DriverGuard guard;
+	double val[1];
+	if (eAct == MM::BeforeGet) {
+		if (!E7XX_qSVA(E761_Ctrl::getInstance()->getDeviceId(), axis, val))
+			return E761_Ctrl::getInstance()->getErrorMsg("XYStage: qSVA");
+		pProp->Set(val[0]);
+	} else if (eAct == MM::AfterSet) {
+		pProp->Get(val[0]);
+		if (!E7XX_SVA(E761_Ctrl::getInstance()->getDeviceId(), axis, val))
+			return E761_Ctrl::getInstance()->getErrorMsg("XYStage: SVA");
+	}
+	return DEVICE_OK;
+}
+
+int E761_XYStage::OnXOpenLoopValue(MM::PropertyBase* pProp,
+		MM::ActionType eAct) {
 	char axis[2] = { 0, 0 };
 	E761_Ctrl::getInstance()->getAxisName(axis, NULL, NULL);
-	return OnServoMode(pProp, eAct, axis);
+	return OnOpenLoopValue(pProp, eAct, axis);
+}
+
+int E761_XYStage::OnYOpenLoopValue(MM::PropertyBase* pProp,
+		MM::ActionType eAct) {
+	char axis[2] = { 0, 0 };
+	E761_Ctrl::getInstance()->getAxisName(NULL, axis, NULL);
+	return OnOpenLoopValue(pProp, eAct, axis);
 }
 
 int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct,
@@ -522,6 +560,12 @@ int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct,
 			return E761_Ctrl::getInstance()->getErrorMsg("XYStage: SVO");
 	}
 	return DEVICE_OK;
+}
+
+int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	char axis[2] = { 0, 0 };
+	E761_Ctrl::getInstance()->getAxisName(axis, NULL, NULL);
+	return OnServoMode(pProp, eAct, axis);
 }
 
 int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp, MM::ActionType eAct) {
@@ -642,16 +686,21 @@ int E761_ZStage::Initialize() {
 
 	char propName[MM::MaxStrLength];
 	char msg[MM::MaxStrLength];
-	CPropertyAction* pActOnServoMode = new CPropertyAction(this,
-			&E761_ZStage::OnServoMode);
-
 	// Servo mode
+	CPropertyAction* pAct = new CPropertyAction(this,
+			&E761_ZStage::OnServoMode);
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_SERVO).c_str());
-	ret = CreateProperty(propName, "True", MM::String, false, pActOnServoMode);
+	ret = CreateProperty(propName, "True", MM::String, false, pAct);
 	AddAllowedValue(propName, "False");
 	if (ret != DEVICE_OK)
 		return ret;
+
+	// Open loop value
+	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
+			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_SVA).c_str());
+	pAct = new CPropertyAction(this, &E761_ZStage::OnOpenLoopValue);
+	ret = CreateProperty(propName, "", MM::Float, false, pAct);
 
 	// Position
 	double pos;
@@ -693,6 +742,27 @@ int E761_ZStage::OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		SetPositionUm(pos);
 	}
 	OnStagePositionChanged(pos);
+	return DEVICE_OK;
+}
+
+int E761_ZStage::OnOpenLoopValue(MM::PropertyBase* pProp, MM::ActionType eAct) {
+	E761_DriverGuard guard;
+
+	char axis[2] = { 0, 0 };
+	double val[1];
+	E761_Ctrl* pCtrl = E761_Ctrl::getInstance();
+	pCtrl->getAxisName(NULL, NULL, axis);
+	if (eAct == MM::BeforeGet) {
+		if (!E7XX_qSVA(pCtrl->getDeviceId(), axis, val))
+			return E761_Ctrl::getInstance()->getErrorMsg(
+					"Get Z stage open loop value.");
+		pProp->Set(val[0]);
+	} else if (eAct == MM::AfterSet) {
+		pProp->Get(val[0]);
+		if (!E7XX_SVA(pCtrl->getDeviceId(), axis, val))
+			return E761_Ctrl::getInstance()->getErrorMsg(
+					"Set Z stage open loop value.");
+	}
 	return DEVICE_OK;
 }
 
