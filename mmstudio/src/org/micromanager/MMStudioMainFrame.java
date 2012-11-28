@@ -665,7 +665,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    }
 
 	public void runDisplayThread(
-			BlockingQueue<DataProcessor<TaggedImage>> rawImageQueue,
+			BlockingQueue<TaggedImage> rawImageQueue,
 			final DisplayImageRoutine displayImageRoutine) {
 		runDisplayThread(rawImageQueue, displayImageRoutine, null);
 	}
@@ -675,7 +675,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 	 * default processor stack to process images as they arrive on the
 	 * rawImageQueue.
 	 */
-	public void runDisplayThread(BlockingQueue rawImageQueue,
+	public void runDisplayThread(BlockingQueue<TaggedImage> rawImageQueue,
 			final DisplayImageRoutine displayImageRoutine, String acqName) {
 		List<DataProcessor<TaggedImage>> processors;
 		if (acqName == null || acqName.equals("")) {
@@ -690,7 +690,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 				processors.add(it.next());
 			}
 		}
-		final BlockingQueue processedImageQueue = ProcessorStack.run(
+		final BlockingQueue<TaggedImage> processedImageQueue = ProcessorStack.run(
 				rawImageQueue, processors);
 		Thread displayThread = new Thread("Display thread") {
 			@Override
@@ -698,7 +698,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 				try {
 					TaggedImage image = null;
 					do {
-						image = (TaggedImage) processedImageQueue.take();
+						image = processedImageQueue.take();
 						if (image != TaggedImageQueue.POISON) {
 							displayImageRoutine.show(image);
 						}
@@ -3078,7 +3078,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 			return;
 		}
 
-		BlockingQueue snapImageQueue = new LinkedBlockingQueue();
+		BlockingQueue<TaggedImage> snapImageQueue = new LinkedBlockingQueue<TaggedImage>();
 
 		try {
 			core_.snapImage();

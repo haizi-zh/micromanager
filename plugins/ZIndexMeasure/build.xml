@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ZIndexMeasure" default="build" basedir=".">
+	<description>
+		ZIndexMeasure
+    </description>
+
+	<property name="build.dir" value="build" />
+	<property name="src.dir" value="src" />
+	<property name="dist.dir" value="../../Install_Win32/micro-manager" />
+	<property name="target.name" value="ZIndexMeasure" />
+	<property name="third.party.dir" value="../../../3rdpartypublic" />
+
+	<path id="project.class.path">
+		<pathelement location="${third.party.dir}/classext/ij.jar" />
+		<pathelement location="${third.party.dir}/classext/jfreechart-1.0.14.jar" />		
+		<pathelement location="${third.party.dir}/classext/jcommon-1.0.17.jar" />
+		<pathelement location="../../bin_Win32/MMCoreJ.jar" />
+		<pathelement location="../../mmstudio/MMJ_.jar" />
+	</path>
+
+	<target description="Creates necessary directories" name="init">
+		<mkdir dir="${build.dir}" />
+	</target>
+
+	<target name="compile" depends="init" description="Compile.">
+		<javac includeantruntime="false" srcdir="${src.dir}" destdir="${build.dir}" target="1.6" source="1.6" optimize="on" debug="on" verbose="off">
+			<classpath refid="project.class.path" />
+		</javac>
+	</target>
+
+	<target name="build" depends="compile" description="Build .jar.">
+		<jar destfile="${target.name}.jar">
+			<fileset dir="${build.dir}" includes="**/**" />
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+			</manifest>
+		</jar>
+		<copy file="${target.name}.jar" toDir="${dist.dir}/mmplugins" preservelastmodified="true" />
+	</target>
+
+	<target name="clean" description="Delete the build files.">
+		<echo>
+			Deleting the build files.
+		</echo>
+		<delete dir="${build.dir}" />
+		<delete file="${target.name}.jar" />
+	</target>
+</project>

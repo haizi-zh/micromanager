@@ -84,6 +84,7 @@ post-build:
 	-@mv -f *.pdb $(CONFIG)
 	-@mv -f *.idb $(CONFIG)
 	-@cp -fv $(TARGET) $(MM_ROOT)/trunk/bin_Win32
+	-@cp -fv $(TARGET) $(MM_ROOT)/trunk/Install_Win32/micro-manager
 	@echo.
 	
 clean:
