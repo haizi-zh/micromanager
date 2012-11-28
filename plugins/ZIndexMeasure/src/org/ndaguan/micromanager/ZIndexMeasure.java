@@ -39,7 +39,8 @@ public class ZIndexMeasure implements MMPlugin {
 	public int isAcquisitionRunning = 0;
 	public int isCalibration = 0;
 	private TCPServer tcpServer_;
-	
+	private int port_=50501;
+
 	public static ZIndexMeasure getInstance() {
 		return instance_;
 	}
@@ -54,7 +55,7 @@ public class ZIndexMeasure implements MMPlugin {
 
 		xystage_ = core_.getXYStageDevice();
 		zstage_ = core_.getFocusDevice();
-		
+
 		try {
 			currxpos_ = core_.getXPosition(xystage_);
 			currypos_ = core_.getYPosition(xystage_);
@@ -63,9 +64,9 @@ public class ZIndexMeasure implements MMPlugin {
 			mygui_.log("GET POSTION ERR");
 		}
 		mCalc = new myCalculator();
-		tcpServer_ = new TCPServer( core_,50501);
+		tcpServer_ = new TCPServer(core_,port_);
+		mygui_.log("tcpServer ini ok");
 		tcpServer_.start();
-		IJ.log("Server ini ok");
 		mygui_.log("mCalc ini ok");
 
 	}
@@ -90,7 +91,7 @@ public class ZIndexMeasure implements MMPlugin {
 	// })).start();
 	public void StartCalibration() {
 		mygui_
-				.log("Calibration Start......Checking up in IJ log for more infomation");
+		.log("Calibration Start......Checking up in IJ log for more infomation");
 		if (isSetScale == 0) {
 			mygui_.log("Setscale first!");
 			return;
@@ -142,7 +143,7 @@ public class ZIndexMeasure implements MMPlugin {
 		}
 		isCalibration = 1;
 	}
- 
+
 	public void dispose() {
 		// TODO Auto-generated method stub
 		mCalc.DeleteData();
@@ -155,11 +156,11 @@ public class ZIndexMeasure implements MMPlugin {
 	}
 
 	public void show() {
-//		if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
-//				&& (!gui_.isLiveModeOn())) {
-//			gui_.enableLiveMode(true);
-//			mygui_.Live.setText("Stop Live");
-//		}
+		//		if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
+		//				&& (!gui_.isLiveModeOn())) {
+		//			gui_.enableLiveMode(true);
+		//			mygui_.Live.setText("Stop Live");
+		//		}
 	}
 
 	public void configurationChanged() {
@@ -230,66 +231,43 @@ public class ZIndexMeasure implements MMPlugin {
 
 	public void setXPosition(double xpos) throws Exception {
 
-		myIJlog(String.format("SetXPosition:\t%f",xpos));
-		if(true)
-		return;
 		core_.setXYPosition(xystage_, xpos, core_.getYPosition(xystage_));
 		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
 	}
 
 	public void setYPosition(double ypos) throws Exception {
-		myIJlog(String.format("SetYPosition:\t%f",ypos));
-		if(true)
-		return;
+
 		core_.setXYPosition(xystage_, core_.getXPosition(xystage_), ypos);
 		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
 	}
 
 	public void setZPosition(double zpos) throws Exception {
-		myIJlog(String.format("SetZPosition:\t%f",zpos));
-		if(true)
-		return;
+
 		core_.setPosition(zstage_, zpos);
 		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
 	}
 
 	public void setRXPosition(double xpos) throws Exception {
-		myIJlog(String.format("SetRXPosition:\t%f",xpos));
-		if(true)
-		return;
+
 		core_.setRelativeXYPosition(xystage_, xpos, 0);
 		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
 	}
 
 	public void setRYPosition(double ypos) throws Exception {
-		myIJlog(String.format("SetYPosition:\t%f",ypos));
-		if(true)
-		return;
+
 		core_.setRelativeXYPosition(xystage_,0, ypos);
 		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
 	}
 
-	private void myIJlog(final String format) {
-//		// TODO Auto-generated method stub
-//		SwingUtilities.invokeLater(new Runnable() {
-//			@Override
-//			public void run() {
-//				IJ.log(format);
-//			}
-//		});
-		IJ.log(format);
-	}
 
 	public void setRZPosition(double zpos) throws Exception {
-		myIJlog(String.format("SetZPosition:\t%f",zpos));
-		if(true)
-		return;
+
 		core_.setRelativePosition(zstage_, zpos);
 		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
 	}
 
-	
-	
+
+
 	public void Debug() throws Exception {
 		// (new Thread(new Runnable() {@Override public void run() {try {
 		// //Maininstance_.debug();
@@ -300,7 +278,7 @@ public class ZIndexMeasure implements MMPlugin {
 	private void Testing() throws Exception {// to verify if this stuff
 		// workable
 		mygui_
-				.log("Test begin......checking out the IJ log for move infomation.");
+		.log("Test begin......checking out the IJ log for move infomation.");
 		int len = mygui_.calPos_.length;
 		double pos[] = new double[4];
 		IJ.log(String.format("Testing:\r\n#index,#real,#get,#detal"));
@@ -310,8 +288,8 @@ public class ZIndexMeasure implements MMPlugin {
 			pos = getXYZPositon();
 			mygui_.dataSeries_.add(i, pos[2]);
 			IJ
-					.log(String.format("%d,%f,%f,%f", i, zpos, pos[2], zpos
-							- pos[2]));
+			.log(String.format("%d,%f,%f,%f", i, zpos, pos[2], zpos
+					- pos[2]));
 		}
 		setZPosition(currzpos_);// turn back to the first place,Always 5
 		mygui_.log("Test over ");

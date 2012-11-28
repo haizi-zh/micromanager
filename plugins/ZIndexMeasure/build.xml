@@ -6,8 +6,7 @@
 
 	<property name="build.dir" value="build" />
 	<property name="src.dir" value="src" />
-	<!-- <property name="dist.dir" value="../../Install_Win32/micro-manager" />-->
-	<property name="dist.dir" value="C:\Program Files\Micro-Manager-1.4.11\mmplugins" />
+	<property name="dist.dir" value="../../Install_Win32/micro-manager" />
 	<property name="target.name" value="ZIndexMeasure" />
 	
 	<property name="third.party.dir" value="../../../3rdpartypublic" />

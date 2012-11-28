@@ -74,7 +74,7 @@ public class myGUI {
 	private JTextField DNALen = new JTextField(1);
 	private JTextField Mstep = new JTextField(1);
 	private JTextField F_L_Flag = new JTextField(1);
-	
+
 	// calculate force
 	public double[] forceOpt_ = null;
 	private double DNALen_ = 2.4;// um
@@ -100,7 +100,7 @@ public class myGUI {
 	public double[] calPos_;
 	public int Mstep_ = 100;//um
 	public int F_L_Flag_ = 0;
-	
+
 	private FileWriter FileOut = null;
 	public BufferedWriter writer = null;
 	public JFreeChart chart  = null;
@@ -123,7 +123,7 @@ public class myGUI {
 		chart = ChartFactory.createXYLineChart("ZIndexMeasure",
 				"-Time", "-ZPosition", dataset_, PlotOrientation.VERTICAL,
 				true, true, false);
-		 
+
 		ChartPanel panel = new ChartPanel(chart, true);
 		return panel;
 	}
@@ -233,7 +233,7 @@ public class myGUI {
 			FileOut = new FileWriter(new File(SavePath_));
 			writer = new BufferedWriter(FileOut);
 			writer
-					.write("Frame, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
+			.write("Frame, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
 			writer.flush();
 		} catch (IOException e) {
 			log("Create File ERR  " + e.toString());
@@ -265,7 +265,7 @@ public class myGUI {
 
 	// opt_[13]
 	// :radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep
-	// £¬DNALen£¬Temperature£¬DNAPersLen,frame2calcForce
+	// ï¿½ï¿½DNALenï¿½ï¿½Temperatureï¿½ï¿½DNAPersLen,frame2calcForce
 	private void reSetOpt() {
 		calcOpt_[0] = Radius_;
 		calcOpt_[1] = RInterpStep_;
@@ -357,10 +357,10 @@ public class myGUI {
 		LeftCenter.add(FrameCalcForce);
 		LeftCenter.add(new JLabel("Mstep"));
 		LeftCenter.add(Mstep);
-	
+
 		LeftCenter.add(new JLabel("F_L_Flag"));
 		LeftCenter.add(F_L_Flag);
-	LeftCenter.add(new JLabel("StoragePath"));
+		LeftCenter.add(new JLabel("StoragePath"));
 		LeftCenter.add(StoragePath);
 		LeftCenter.add(new JLabel("SavePath"));
 		LeftCenter.add(SavePath);

@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.Arrays;
 
-public class packageAnalyzer {
+public class PackageAnalyzer {
 	private final short START_FLAG = (short) 0xFFFE;
 
 	/**
@@ -176,7 +176,7 @@ public class packageAnalyzer {
 			return false;
 		}		
 		return true;
-		
+
 	}
 	public boolean checksum(byte[] bf, int len) {
 		byte[] orignCS = new byte[16];
