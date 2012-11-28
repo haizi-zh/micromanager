@@ -1,3 +1,4 @@
+package org.ndaguan.micromanager;
 public class myCalculator {
 	static {
 		System.loadLibrary("myCalculator");
@@ -30,7 +31,7 @@ public class myCalculator {
 	/*
 	 * Function:GetZPosition, Get ZPosition with the input
 	 * image(calibration&correlation with calibration profile which storage in
-	 * DLL stack inputs: image:full image float[][]) roi:x,y,width,height
+	 * DLL stack inputs: image:full image£¨float[][]) roi:x,y,width,height
 	 * opt:Radius,RInterstep,bitDepth,halfQuadWidth,imgWidth,imgHeight
 	 * calProfile:the calibration file storage in ram calPro:z position scale
 	 * corrOpt_:calProfile length last zPos,divide number,threshold outputs:

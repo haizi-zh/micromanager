@@ -1,3 +1,4 @@
+package org.ndaguan.micromanager;
 import ij.WindowManager;
 import ij.process.ImageProcessor;
 
@@ -33,7 +34,6 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
-import org.zephyre.micromanager.TextAreaQueue;
 
 public class myGUI {
 	// main instance
@@ -42,7 +42,7 @@ public class myGUI {
 	public int MAX_LEN = 200000;
 	// GUI
 	private JFrame f_ = new JFrame("ZIndexMeasure");
-	private TextAreaQueue LogWindow = new TextAreaQueue(50, 40);
+	private JTextArea LogWindow = new JTextArea(50, 40);
 	public JTextField Msg0 = new JTextField(36);
 	public JTextField Msg1 = new JTextField(36);
 	public JButton Pause;
@@ -171,8 +171,7 @@ public class myGUI {
 				ZStep_, DNALen_, Temperature_, DNAPersLen_, FrameCalcForce_ };
 		calcRoi_ = new int[] { roix_, roiy_, roiwidth_, roiheight_ };
 
-//		LogWindow.setText("Welcome");
-		LogWindow.addEntry("Welcome");
+		LogWindow.setText("Welcome");
 		Raduis.setText(String.format("%f", Radius_));
 		DNALen.setText(String.format("%f", DNALen_));
 		ZScale.setText(String.format("%f", ZScale_));
@@ -266,7 +265,7 @@ public class myGUI {
 
 	// opt_[13]
 	// :radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep
-	// ï¿½ï¿½DNALenï¿½ï¿½Temperatureï¿½ï¿½DNAPersLen,frame2calcForce
+	// £¬DNALen£¬Temperature£¬DNAPersLen,frame2calcForce
 	private void reSetOpt() {
 		calcOpt_[0] = Radius_;
 		calcOpt_[1] = RInterpStep_;
@@ -308,7 +307,7 @@ public class myGUI {
 
 		// bottom
 		JPanel bottom = new JPanel(new BorderLayout());
-//		LogWindow.setText("welcome .....");
+		LogWindow.setText("welcome .....");
 		LogWindow.setLineWrap(true);
 		Box Bottom = Box.createVerticalBox();
 		Bottom.add(LogWindow);
@@ -503,7 +502,8 @@ public class myGUI {
 	}
 
 	public void log(String str) {
-		LogWindow.addEntry(str);
+		LogWindow.setText(String.format("%s\r\n     %s ", LogWindow.getText(),
+				str));
 		LogWindow.setCaretPosition(LogWindow.getText().length());
 	}
 
@@ -521,8 +521,7 @@ public class myGUI {
 	}
 
 	long now() {
-		return System.nanoTime();
-//		return System.currentTimeMillis();//
+		return System.currentTimeMillis();//
 	}
 
 	public void start() {
@@ -531,7 +530,7 @@ public class myGUI {
 
 	public void end(String str) {
 		long end = now();
-		log(String.format("%s#%.1f", str, (end - begin)/1.0e6));
+		log(String.format("%s#%d", str, end - begin));
 	}
 
 	// private void saveFile() {

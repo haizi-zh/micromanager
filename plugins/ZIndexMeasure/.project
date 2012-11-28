@@ -14,4 +14,11 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>src/org/ndaguan/micromanager/TCPServer.java</name>
+			<type>1</type>
+			<location>C:/Users/Administrator/Documents/workspace/micromanager/plugins/ZIndexMeasure/src/org/ndaguan/micromanager/TCPServer.java</location>
+		</link>
+	</linkedResources>
 </projectDescription>

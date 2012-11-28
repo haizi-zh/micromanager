@@ -1,9 +1,12 @@
+package org.ndaguan.micromanager;
 import ij.IJ;
 
 
 import ij.WindowManager;
 
 import java.util.concurrent.TimeUnit;
+
+import javax.swing.SwingUtilities;
 
 import mmcorej.CMMCore;
 import mmcorej.TaggedImage;
@@ -13,6 +16,7 @@ import org.micromanager.api.DataProcessor;
 import org.micromanager.api.MMPlugin;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.utils.MMException;
+import org.zephyre.micromanager.TextAreaQueue;
 
 public class ZIndexMeasure implements MMPlugin {
 	public CMMCore core_;
@@ -34,6 +38,7 @@ public class ZIndexMeasure implements MMPlugin {
 	public boolean isInstalCallback = false;
 	public int isAcquisitionRunning = 0;
 	public int isCalibration = 0;
+	private TCPServer tcpServer_;
 	
 	public static ZIndexMeasure getInstance() {
 		return instance_;
@@ -58,6 +63,9 @@ public class ZIndexMeasure implements MMPlugin {
 			mygui_.log("GET POSTION ERR");
 		}
 		mCalc = new myCalculator();
+		tcpServer_ = new TCPServer( core_,50501);
+		tcpServer_.start();
+		IJ.log("Server ini ok");
 		mygui_.log("mCalc ini ok");
 
 	}
@@ -147,11 +155,11 @@ public class ZIndexMeasure implements MMPlugin {
 	}
 
 	public void show() {
-		if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
-				&& (!gui_.isLiveModeOn())) {
-			gui_.enableLiveMode(true);
-			mygui_.Live.setText("Stop Live");
-		}
+//		if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
+//				&& (!gui_.isLiveModeOn())) {
+//			gui_.enableLiveMode(true);
+//			mygui_.Live.setText("Stop Live");
+//		}
 	}
 
 	public void configurationChanged() {
@@ -219,22 +227,69 @@ public class ZIndexMeasure implements MMPlugin {
 		gui_.getAcquisitionEngine().stop(true);
 	}
 
+
 	public void setXPosition(double xpos) throws Exception {
 
+		myIJlog(String.format("SetXPosition:\t%f",xpos));
+		if(true)
+		return;
 		core_.setXYPosition(xystage_, xpos, core_.getYPosition(xystage_));
 		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
 	}
 
 	public void setYPosition(double ypos) throws Exception {
+		myIJlog(String.format("SetYPosition:\t%f",ypos));
+		if(true)
+		return;
 		core_.setXYPosition(xystage_, core_.getXPosition(xystage_), ypos);
 		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
 	}
 
 	public void setZPosition(double zpos) throws Exception {
+		myIJlog(String.format("SetZPosition:\t%f",zpos));
+		if(true)
+		return;
 		core_.setPosition(zstage_, zpos);
 		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
 	}
 
+	public void setRXPosition(double xpos) throws Exception {
+		myIJlog(String.format("SetRXPosition:\t%f",xpos));
+		if(true)
+		return;
+		core_.setRelativeXYPosition(xystage_, xpos, 0);
+		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
+	}
+
+	public void setRYPosition(double ypos) throws Exception {
+		myIJlog(String.format("SetYPosition:\t%f",ypos));
+		if(true)
+		return;
+		core_.setRelativeXYPosition(xystage_,0, ypos);
+		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
+	}
+
+	private void myIJlog(final String format) {
+//		// TODO Auto-generated method stub
+//		SwingUtilities.invokeLater(new Runnable() {
+//			@Override
+//			public void run() {
+//				IJ.log(format);
+//			}
+//		});
+		IJ.log(format);
+	}
+
+	public void setRZPosition(double zpos) throws Exception {
+		myIJlog(String.format("SetZPosition:\t%f",zpos));
+		if(true)
+		return;
+		core_.setRelativePosition(zstage_, zpos);
+		TimeUnit.MILLISECONDS.sleep(mygui_.sleeptime_);
+	}
+
+	
+	
 	public void Debug() throws Exception {
 		// (new Thread(new Runnable() {@Override public void run() {try {
 		// //Maininstance_.debug();
@@ -269,5 +324,14 @@ public class ZIndexMeasure implements MMPlugin {
 		ret = mCalc.GetZPosition(WindowManager.getCurrentImage().getProcessor()
 				.getPixels(), mygui_.calcRoi_,-1);
 		return (double[]) ret[0];
+	}
+
+	public double[] getStagePositon() throws Exception {
+		// TODO Auto-generated method stub
+		double[] pos = new double[3];
+		pos[0] = core_.getXPosition(xystage_);
+		pos[1] = core_.getYPosition(xystage_);
+		pos[2] = core_.getPosition(zstage_);
+		return pos;
 	}
 }

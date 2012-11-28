@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/MMJ"/>
-	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/ij.jar"/>
-	<classpathentry kind="lib" path="/MMCoreJ_wrap/MMCoreJ.jar"/>
-	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/jcommon-1.0.17.jar"/>
-	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/jfreechart-1.0.14.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Administrator/Documents/workspace/3rdpartypublic/classext/jcommon-1.0.17.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Administrator/Documents/workspace/3rdpartypublic/classext/jfreechart-1.0.14.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Administrator/Documents/workspace/3rdpartypublic/classext/ij.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Administrator/Documents/workspace/micromanager/bin_Win32/MMCoreJ.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
