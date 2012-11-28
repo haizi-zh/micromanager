@@ -8,59 +8,68 @@ package org.micromanager.acquisition;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+
+import mmcorej.TaggedImage;
+
 import org.micromanager.api.DataProcessor;
 import org.micromanager.utils.ReportingUtils;
 
 /**
- *
+ * 
  * @author arthur
  */
 public class ProcessorStack<E> {
 
-   private final List<DataProcessor<E>> processors_;
-   private final BlockingQueue<E> input_;
-   private final BlockingQueue<E> output_;
-   public ProcessorStack(BlockingQueue<E> input,
-           List<DataProcessor<E>> processors) {
-      processors_ = processors;
-      input_ = input;
+	private final List<DataProcessor<E>> processors_;
+	private final BlockingQueue<E> input_;
+	private final BlockingQueue<E> output_;
 
-      BlockingQueue<E> left = input_;
-      BlockingQueue<E> right = left;
-      if (processors_ != null) {
-         for (DataProcessor<E> processor:processors_) {
-            right = new LinkedBlockingQueue<E>(1);
-            processor.setInput(left);
-            processor.setOutput(right);
-            left = right;
-         }
-      }
-      output_ = right;
-   }
+	public ProcessorStack(BlockingQueue<E> input,
+			List<DataProcessor<E>> processors) {
+		processors_ = processors;
+		input_ = input;
 
-   public BlockingQueue<E> begin() {
-      start();
-      return output_;
-   }
+		BlockingQueue<E> left = input_;
+		BlockingQueue<E> right = left;
+		if (processors_ != null) {
+			for (DataProcessor<E> processor : processors_) {
+				right = new LinkedBlockingQueue<E>(1);
+				processor.setInput(left);
+				processor.setOutput(right);
+				left = right;
+			}
+		}
+		output_ = right;
+	}
 
-   public void start() {
-      for (DataProcessor<E> processor : processors_) {
-         if (!processor.isAlive()) {
-            if (processor.isStarted()) {
-               ReportingUtils.showError("Processor: " + processor.getName()
-                       + " is no longer running. Remove and re-insert to get it to go again");
-            } else {
-            	processor.setDaemon(true);
-               processor.start();
-            }
-         }
-      }
-   }
+	public BlockingQueue<E> begin() {
+		start();
+		return output_;
+	}
 
-   public static BlockingQueue run(BlockingQueue inputTaggedImageQueue, List imageProcessors) {
-      // Set up the DataProcessor<TaggedImage> sequence
-      ProcessorStack processorStack = new ProcessorStack((BlockingQueue) inputTaggedImageQueue, imageProcessors);
-      return processorStack.begin();
-   }
-   
+	public void start() {
+		for (DataProcessor<E> processor : processors_) {
+			if (!processor.isAlive()) {
+				if (processor.isStarted()) {
+					ReportingUtils
+							.showError("Processor: "
+									+ processor.getName()
+									+ " is no longer running. Remove and re-insert to get it to go again");
+				} else {
+					processor.setDaemon(true);
+					processor.start();
+				}
+			}
+		}
+	}
+
+	public static BlockingQueue<TaggedImage> run(
+			BlockingQueue<TaggedImage> inputTaggedImageQueue,
+			List<DataProcessor<TaggedImage>> imageProcessors) {
+		// Set up the DataProcessor<TaggedImage> sequence
+		ProcessorStack<TaggedImage> processorStack = new ProcessorStack<TaggedImage>(
+				inputTaggedImageQueue, imageProcessors);
+		return processorStack.begin();
+	}
+
 }

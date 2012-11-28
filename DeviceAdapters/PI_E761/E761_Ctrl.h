@@ -40,10 +40,13 @@ public:
 		STR_PROP_TRVRANGE,
 		STR_PROP_XSERVO,
 		STR_PROP_YSERVO,
+		STR_PROP_XSVA,
+		STR_PROP_YSVA,
 		STR_XYStageDesc,
 		STR_ZStageDesc,
 		STR_CtrlDesc,
-		STR_PROP_SERVO
+		STR_PROP_SERVO,
+		STR_PROP_SVA,
 	};
 
 	static const int PI_E761_ERROR_CODE = 2000;
@@ -66,8 +69,6 @@ public:
 	int OnReboot(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnMonitor(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnLastError(MM::PropertyBase* pProp, MM::ActionType eAct);
-
-	static int initConstStrings();
 	int getDeviceId() {
 		return m_devId;
 	}
@@ -88,8 +89,6 @@ public:
 		return m_pZStage;
 	}
 
-	static DWORD WINAPI monitorThread(LPVOID param);
-	
 	// Some operations, such as setPosition, etc, will cause the device to be in 'busy' state.
 	// Such operatioins will call this methods and check the current time stamp.
 	void checkIn();
@@ -120,6 +119,9 @@ private:
 	int m_minIntervalMs;
 
 	static char errorMsg[MM::MaxStrLength];
+
+	static int initConstStrings();
+	static DWORD WINAPI monitorThread(LPVOID param);
 };
 
 //////
@@ -175,13 +177,17 @@ public:
 	int SetPositionSteps(long lXPosSteps, long lYPosSteps);
 	int GetPositionSteps(long& x, long& y);
 
-	int E761_XYStage::OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
-	int E761_XYStage::OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
-	int E761_XYStage::OnXServoMode(MM::PropertyBase* pProp,
+	int OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnXServoMode(MM::PropertyBase* pProp,
 			MM::ActionType eAct);
-	int E761_XYStage::OnYServoMode(MM::PropertyBase* pProp,
+	int OnYServoMode(MM::PropertyBase* pProp,
 			MM::ActionType eAct);
-	int E761_XYStage::OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct,
+	int OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct,
+			const char* axis);
+	int OnXOpenLoopValue(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnYOpenLoopValue(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnOpenLoopValue(MM::PropertyBase* pProp, MM::ActionType eAct,
 			const char* axis);
 
 protected:
@@ -229,6 +235,8 @@ public:
 		return true;
 	}
 	int OnServoMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnOpenLoopValue(MM::PropertyBase* pProp, MM::ActionType eAct);
+
 	int OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
 	bool isInitialized() {
 		return m_initialized;
