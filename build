@@ -73,5 +73,5 @@ popd
 
 echo Building ZIndexMeasure:
 pushd plugins/ZIndexMeasure
-ant -buildile build.xml clean build
+ant -buildfile build.xml clean build
 popd
