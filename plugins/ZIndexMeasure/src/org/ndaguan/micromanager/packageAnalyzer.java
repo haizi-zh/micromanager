@@ -4,18 +4,29 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.HashMap;
 
 public class PackageAnalyzer {
 	private final short START_FLAG = (short) 0xFFFE;
+	private static HashMap<Class<?>, Byte> typeMap_;
+	static {
+		typeMap_ = new HashMap<Class<?>, Byte>();
+		typeMap_.put(Boolean.class, (byte) '?');
+		typeMap_.put(Byte.class, (byte) 'c');
+		typeMap_.put(Short.class, (byte) 'H');
+		typeMap_.put(Integer.class, (byte) 'I');
+		typeMap_.put(Float.class, (byte) 'f');
+		typeMap_.put(Double.class, (byte) 'd');
+		typeMap_.put(String.class, (byte) 's');
+	}
 
 	/**
 	 * @param rawData
 	 * @param offset
-	 * @return  Object[para1.len,para1,para2.len,para2,etc.]
+	 * @return Object[para1.len,para1,para2.len,para2,etc.]
 	 * @throws IOException
 	 */
-	public Object[] unpackParas(byte[] rawData, int[] offset)
-	{
+	public Object[] unpackParas(byte[] rawData, int[] offset) {
 
 		byte paraNum = rawData[offset[0]];
 		offset[0]++;
@@ -23,18 +34,17 @@ public class PackageAnalyzer {
 			return null;
 
 		ByteBuffer buffer = ByteBuffer.wrap(rawData);
-		Object ret[] = new Object[paraNum*2];
+		Object ret[] = new Object[paraNum * 2];
 
-		for (int i = 0; i < paraNum ; i++) {
+		for (int i = 0; i < paraNum; i++) {
 			Object[] temp = unpackPara(buffer, rawData, offset);
-			ret[i*2] = temp[0];
-			ret[i*2+1] = temp[1];
+			ret[i * 2] = temp[0];
+			ret[i * 2 + 1] = temp[1];
 		}
 		return ret;
 	}
 
-	private Object[] unpackPara(ByteBuffer buffer, byte[] rawData, int[] offset)
-	{
+	private Object[] unpackPara(ByteBuffer buffer, byte[] rawData, int[] offset) {
 		// PARA FORMAT:
 		// START_FLAG, TYPE, LEN, [DATA]
 		// OX00(8bit-byte),(8bit-char),(16bit-short),(define as LEN and TYPE)
@@ -49,7 +59,7 @@ public class PackageAnalyzer {
 		switch (paraType) {
 		case '?':
 			ret[1] = false;
-			if(rawData[offset[0]] ==(byte) 1)
+			if (rawData[offset[0]] == (byte) 1)
 				ret[1] = true;
 			offset[0]++;
 			break;
@@ -81,83 +91,67 @@ public class PackageAnalyzer {
 		return ret;
 	}
 
-	public  int packData(Object[] data, byte[] rawData) {
-		ByteBuffer buffer = ByteBuffer.wrap(rawData );			
-		int offset=0;
+	public int packData(Object[] data, byte[] rawData) {
+		ByteBuffer buffer = ByteBuffer.wrap(rawData);
+		int offset = 0;
 
-		//------------------------------------------------HeaderStart
-		buffer.putShort(offset,START_FLAG);//start*2
-		offset+=2;	
-		buffer.putShort(offset,(short) 0);//DataLen*2 set 0 first
-		offset+=2;
-		rawData[offset]= Byte.parseByte(data[0].toString());//CMD*1
+		// ------------------------------------------------HeaderStart
+		buffer.putShort(START_FLAG);// start*2
+		offset += 2;
+		buffer.putShort((short) 0);// DataLen*2 set 0 first
+		offset += 2;
+		// CMD
+		buffer.put(Byte.parseByte(data[0].toString()));
 		offset++;
-		rawData[offset]= Byte.parseByte(data[1].toString());//PARA_NUM*1
+		// num para
+		buffer.put(Byte.parseByte(data[1].toString()));
 		offset++;
-		//------------------------------------------------paraStart	
+
+		// ------------------------------------------------paraStart
 		for (int i = 0; i < Integer.parseInt(data[1].toString()); i++) {
-			offset = packPara(i,data,rawData,buffer,offset);			
+			offset = packPara(i, data, rawData, buffer, offset);
 		}
-		buffer.putShort(2,(short) (offset+16));//DataLen*2 set 0 first
-		byte[] md5 = MD5(rawData,0,offset);
-		System.arraycopy(md5,0,rawData,offset,md5.length);	
-		return (int)(offset +md5.length);
+		buffer.putShort(2, (short) (offset + 16));// DataLen*2 set 0 first
+		byte[] md5 = MD5(rawData, 0, offset);
+		System.arraycopy(md5, 0, rawData, offset, md5.length);
+		return (int) (offset + md5.length);
 	}
-	private  int packPara(int i,Object[] data, byte[] rawData,ByteBuffer buffer,int offset) {
-		rawData[offset]= 0x00;//s_Flag*1
+
+	private int packPara(int i, Object[] data, byte[] rawData,
+			ByteBuffer buffer, int offset) {
+		buffer.put((byte) 0);
 		offset++;
-		String paraType = data[2+i*2+1].getClass().toString();
-		switch( paraType){
-		case  "class java.lang.Boolean":
-			rawData[offset]= (byte)'?';
+
+		Byte paraType = typeMap_.get(data[2 + i * 2 + 1].getClass());
+		buffer.put(paraType);
+		offset++;
+
+		buffer.putShort(Short.parseShort(data[2 + i * 2].toString()));// ParaLen*2
+		offset += 2;
+
+		if (paraType == (byte) '?') {
+			buffer.put(data[2 + i * 2 + 1].toString().equals("true") ? (byte) 1
+					: (byte) 0);
 			offset++;
-			buffer.putShort(offset,Short.parseShort(data[2+i*2].toString()));// ParaLen*2
-			offset+=2;
-			rawData[offset]= data[2+i*2+1].toString().equals("true")? (byte)1:(byte)0;//PARA*1
+		} else if (paraType == (byte) 'c') {
+			buffer.put(Byte.parseByte(data[2 + i * 2 + 1].toString()));
 			offset++;
-			break;
-		case "class java.lang.Byte":
-			rawData[offset]= (byte)'c';
-			offset++;
-			buffer.putShort(offset,Short.parseShort(data[2+i*2].toString()));// ParaLen*2
-			offset+=2;
-			rawData[offset]= Byte.parseByte(data[2+i*2+1].toString());//PARA*1
-			offset++;
-			break;
-		case "class java.lang.Short":
-			rawData[offset]= (byte)'H';
-			offset++;
-			buffer.putShort(offset,Short.parseShort(data[2+i*2].toString()));// ParaLen*2
-			offset+=2;
-			buffer.putShort(offset,Short.parseShort(data[2+i*2+1].toString()));// PARA*2
-			offset+=2;
-			break;
-		case "class java.lang.Integer":
-			rawData[offset]= (byte)'I';
-			offset++;
-			buffer.putShort(offset,Short.parseShort(data[2+i*2].toString()));// ParaLen*2
-			offset+=2;
-			buffer.putInt(offset,Integer.parseInt(data[2+i*2+1].toString()));// PARA*4
-			offset+=4;
-			break;
-		case "class java.lang.Float":
-			rawData[offset]= (byte)'f';
-			offset++;
-			buffer.putShort(offset,Short.parseShort(data[2+i*2].toString()));// ParaLen*2
-			offset+=2;
-			buffer.putFloat(offset,Float.parseFloat(data[2+i*2+1].toString()));// PARA*4
-			offset+=4;
-			break;
-		case "class java.lang.Double":
-			rawData[offset]= (byte)'d';
-			offset++;
-			buffer.putShort(offset,Short.parseShort(data[2+i*2].toString()));// ParaLen*2
-			offset+=2;
-			buffer.putDouble(offset,Double.parseDouble(data[2+i*2+1].toString()));// PARA*8
-			offset+=8;
-			break;
-		default:
-			return 0;
+		} else if (paraType == (byte) 'H') {
+			buffer.putShort(Short.parseShort(data[2 + i * 2 + 1].toString()));// PARA*2
+			offset += 2;
+		} else if (paraType == (byte) 'I') {
+			buffer.putInt(Integer.parseInt(data[2 + i * 2 + 1].toString()));// PARA*4
+			offset += 4;
+		} else if (paraType == (byte) 'f') {
+			buffer.putFloat(Float.parseFloat(data[2 + i * 2 + 1].toString()));// PARA*4
+			offset += 4;
+		} else if (paraType == (byte) 'd') {
+			buffer.putDouble(Double.parseDouble(data[2 + i * 2 + 1].toString()));// PARA*8
+			offset += 8;
+		} else if (paraType == (byte) 's') {
+			byte[] strBuf = ((String) data[2 + i * 2 + 1]).getBytes();
+			buffer.put(strBuf);
+			offset += strBuf.length;
 		}
 		return offset;
 	}
@@ -176,14 +170,16 @@ public class PackageAnalyzer {
 			return null;
 		}
 	}
-	public boolean checkStart(byte[] bf, int[] offset){
+
+	public boolean checkStart(byte[] bf, int[] offset) {
 		ByteBuffer buffer = ByteBuffer.wrap(bf);
-		if(buffer.getShort(offset[0]) != START_FLAG){
+		if (buffer.getShort(offset[0]) != START_FLAG) {
 			return false;
-		}		
+		}
 		return true;
 
 	}
+
 	public boolean checksum(byte[] bf, int len) {
 		byte[] orignCS = new byte[16];
 		System.arraycopy(bf, len - 16, orignCS, 0, 16);

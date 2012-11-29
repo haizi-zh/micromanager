@@ -31,8 +31,8 @@ int E761_Ctrl::initConstStrings() {
 	m_strMap[STR_PROP_YPOSITION] = "Y Position";
 	m_strMap[STR_PROP_POSITION] = "Position";
 	m_strMap[STR_PROP_TRVRANGE] = "Travel Range(um)";
-	m_strMap[STR_PROP_XSERVO] = "X Servo Mode";
-	m_strMap[STR_PROP_YSERVO] = "Y Servo Mode";
+	m_strMap[STR_PROP_XSERVO] = "ServoModeX";
+	m_strMap[STR_PROP_YSERVO] = "ServoModeY";
 	m_strMap[STR_PROP_LASTERR] = "Last Error";
 	m_strMap[STR_CtrlDesc] =
 			"Physik Instrumente(PI) E761 Piezo Stage Controller";
@@ -40,10 +40,10 @@ int E761_Ctrl::initConstStrings() {
 			"Physik Instrumente(PI) E761 Piezo Stage Controller";
 	m_strMap[STR_ZStageDesc] =
 			"Physik Instrumente(PI) E761 Piezo Stage Controller";
-	m_strMap[STR_PROP_SERVO] = "Servo Mode";
+	m_strMap[STR_PROP_SERVO] = "ServoModeZ";
 	m_strMap[STR_PROP_XSVA] = "OpenLoopValueX";
 	m_strMap[STR_PROP_YSVA] = "OpenLoopValueY";
-	m_strMap[STR_PROP_SVA] = "OpenLoopValue";
+	m_strMap[STR_PROP_SVA] = "OpenLoopValueZ";
 	return DEVICE_OK;
 }
 
@@ -58,7 +58,6 @@ E761_Ctrl::E761_Ctrl() :
 
 	int ret;
 	char propName[MM::MaxStrLength];
-	char msg[MM::MaxStrLength];
 
 	// Name
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
@@ -471,12 +470,16 @@ int E761_XYStage::Initialize() {
 	CPropertyAction* pActXServo = new CPropertyAction(this,
 			&E761_XYStage::OnXServoMode);
 	ret = CreateProperty(propName, "", MM::String, false, pActXServo);
+	AddAllowedValue(propName, "True");
+	AddAllowedValue(propName, "False");
 
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_YSERVO).c_str());
 	CPropertyAction* pActYServo = new CPropertyAction(this,
 			&E761_XYStage::OnYServoMode);
 	ret = CreateProperty(propName, "", MM::String, false, pActYServo);
+	AddAllowedValue(propName, "True");
+	AddAllowedValue(propName, "False");
 
 	// Open loop values
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
@@ -692,6 +695,7 @@ int E761_ZStage::Initialize() {
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getInstance()->getConstString(E761_Ctrl::STR_PROP_SERVO).c_str());
 	ret = CreateProperty(propName, "True", MM::String, false, pAct);
+	AddAllowedValue(propName, "True");
 	AddAllowedValue(propName, "False");
 	if (ret != DEVICE_OK)
 		return ret;
@@ -703,15 +707,12 @@ int E761_ZStage::Initialize() {
 	ret = CreateProperty(propName, "", MM::Float, false, pAct);
 
 	// Position
-	double pos;
-	GetPositionUm(pos);
 	_snprintf_s(propName, MM::MaxStrLength, _TRUNCATE,
 			E761_Ctrl::getInstance()->getConstString(
 					E761_Ctrl::STR_PROP_POSITION).c_str());
-	CPropertyAction* pActPosition = new CPropertyAction(this,
+	pAct = new CPropertyAction(this,
 			&E761_ZStage::OnPosition);
-	_snprintf_s(msg, MM::MaxStrLength, _TRUNCATE, "%f", pos);
-	ret = CreateProperty(propName, msg, MM::Float, false, pActPosition);
+	ret = CreateProperty(propName, "", MM::Float, false, pAct);
 
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK)
@@ -739,6 +740,7 @@ int E761_ZStage::OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct) {
 		GetPositionUm(pos);
 		pProp->Set(pos);
 	} else if (eAct == MM::AfterSet) {
+		pProp->Get(pos);
 		SetPositionUm(pos);
 	}
 	OnStagePositionChanged(pos);

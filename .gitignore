@@ -9,6 +9,7 @@
 *.vcxproj
 *.sln
 *.suo
+*.sdf
 Debug/
 Release/
 bin_Win32/
@@ -36,6 +37,11 @@ bin/
 *.settings/
 *.swp
 *~
+*.project
+*.classpath
+*.cproject
+*.pydevproject
+
 micromanager/MMCoreJ_wrap/mmcorej/*.java
 Install_Win32/
 Install_x64/
