@@ -47,6 +47,12 @@ public class PackageAnalyzer {
 		ret[0] = paraLen;
 		offset[0] += 2;
 		switch (paraType) {
+		case '?':
+			ret[1] = false;
+			if(rawData[offset[0]] ==(byte) 1)
+				ret[1] = true;
+			offset[0]++;
+			break;
 		case 'c':
 			ret[1] = rawData[offset[0]];
 			offset[0]++;
@@ -102,12 +108,12 @@ public class PackageAnalyzer {
 		offset++;
 		String paraType = data[2+i*2+1].getClass().toString();
 		switch( paraType){
-		case  "java.lang.Boolean":
+		case  "class java.lang.Boolean":
 			rawData[offset]= (byte)'?';
 			offset++;
 			buffer.putShort(offset,Short.parseShort(data[2+i*2].toString()));// ParaLen*2
 			offset+=2;
-			rawData[offset]= Byte.parseByte(data[2+i*2+1].toString());//PARA*1
+			rawData[offset]= data[2+i*2+1].toString().equals("true")? (byte)1:(byte)0;//PARA*1
 			offset++;
 			break;
 		case "class java.lang.Byte":
