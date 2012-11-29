@@ -1,12 +1,8 @@
 package org.ndaguan.micromanager;
 import ij.IJ;
-
-
 import ij.WindowManager;
 
 import java.util.concurrent.TimeUnit;
-
-import javax.swing.SwingUtilities;
 
 import mmcorej.CMMCore;
 import mmcorej.TaggedImage;
@@ -16,7 +12,6 @@ import org.micromanager.api.DataProcessor;
 import org.micromanager.api.MMPlugin;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.utils.MMException;
-import org.zephyre.micromanager.TextAreaQueue;
 
 public class ZIndexMeasure implements MMPlugin {
 	public CMMCore core_;
@@ -34,10 +29,10 @@ public class ZIndexMeasure implements MMPlugin {
 	public double currzpos_ = 0;
 
 	// MyAnalyzer
-	public int isSetScale = 0;
+	public boolean isSetScale = false;
 	public boolean isInstalCallback = false;
-	public int isAcquisitionRunning = 0;
-	public int isCalibration = 0;
+	public boolean isAcquisitionRunning = false;
+	public boolean isCalibration = false;
 	private TCPServer tcpServer_;
 	private int port_=50501;
 
@@ -92,7 +87,7 @@ public class ZIndexMeasure implements MMPlugin {
 	public void StartCalibration() {
 		mygui_
 		.log("Calibration Start......Checking up in IJ log for more infomation");
-		if (isSetScale == 0) {
+		if (!isSetScale) {
 			mygui_.log("Setscale first!");
 			return;
 		}
@@ -138,14 +133,12 @@ public class ZIndexMeasure implements MMPlugin {
 		try {
 			Testing();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		isCalibration = 1;
+		isCalibration = true;
 	}
 
 	public void dispose() {
-		// TODO Auto-generated method stub
 		mCalc.DeleteData();
 		if (isInstalCallback) {
 			gui_.getAcquisitionEngine().removeImageProcessor(processor_);
@@ -156,11 +149,11 @@ public class ZIndexMeasure implements MMPlugin {
 	}
 
 	public void show() {
-		//		if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
-		//				&& (!gui_.isLiveModeOn())) {
-		//			gui_.enableLiveMode(true);
-		//			mygui_.Live.setText("Stop Live");
-		//		}
+				if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
+						&& (!gui_.isLiveModeOn())) {
+					gui_.enableLiveMode(true);
+					mygui_.Live.setText("Stop Live");
+				}
 	}
 
 	public void configurationChanged() {
@@ -188,7 +181,7 @@ public class ZIndexMeasure implements MMPlugin {
 
 	public void InstallCallback() {
 
-		if (isCalibration == 0) {
+		if (!isCalibration) {
 			mygui_.log("Start Calibration first!");
 			return;
 		}
@@ -213,7 +206,8 @@ public class ZIndexMeasure implements MMPlugin {
 				mygui_.log("Image Acquistion False");
 			}
 		}
-		mygui_.dataSeries_.delete(0, mygui_.dataSeries_.getItemCount() - 1);
+//		
+//		mygui_.dataSeries_.delete(0, mygui_.dataSeries_.getItemCount() - 1);
 	}
 
 	public void UninstallCallback() {
@@ -302,14 +296,5 @@ public class ZIndexMeasure implements MMPlugin {
 		ret = mCalc.GetZPosition(WindowManager.getCurrentImage().getProcessor()
 				.getPixels(), mygui_.calcRoi_,-1);
 		return (double[]) ret[0];
-	}
-
-	public double[] getStagePositon() throws Exception {
-		// TODO Auto-generated method stub
-		double[] pos = new double[3];
-		pos[0] = core_.getXPosition(xystage_);
-		pos[1] = core_.getYPosition(xystage_);
-		pos[2] = core_.getPosition(zstage_);
-		return pos;
 	}
 }

@@ -242,8 +242,8 @@ public class myGUI {
 		reSetOpt();
 		setCalProfile();
 
-		Maininstance_.isSetScale = 1;
-		Maininstance_.isCalibration = 0;
+		Maininstance_.isSetScale = true;
+		Maininstance_.isCalibration = false;
 
 	}
 
@@ -255,7 +255,7 @@ public class myGUI {
 		}
 
 		Maininstance_.mCalc.DataInit(calcOpt_);
-		Maininstance_.isSetScale = 1;
+		Maininstance_.isSetScale = true;
 		Msg0.setText(String.format("Radius =%f  ,Scale = %f, Step = %f",
 				Radius_, ZScale_, ZStep_));
 		log("Scale Seted\t");

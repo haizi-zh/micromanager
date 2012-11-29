@@ -14,11 +14,4 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
-	<linkedResources>
-		<link>
-			<name>src/org/ndaguan/micromanager/TCPServer.java</name>
-			<type>1</type>
-			<location>E:/Users/Zephyre/Development/mmroot/trunk/plugins/ZIndexMeasure/src/org/ndaguan/micromanager/TCPServer.java</location>
-		</link>
-	</linkedResources>
 </projectDescription>
