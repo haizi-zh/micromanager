@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -30,23 +31,36 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		baseDir_ = path;
 	}
 
-	private HashMap<String, BufferedWriter> dataRecorder_;
+	private Writer dataFileWriter_;
 
 	public AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, myGUI mygui_) {
 		myGUI_ = mygui_;
 		main = main_;
 		mainWnd_ = gui;
-		dataRecorder_ = new HashMap<String, BufferedWriter>();
 	}
 
 	public boolean clearChart_;
-	private long start_ts;
 
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
+		// Retrieving a POISON image indicates that current acquisition is
+		// completed or has been canceled.
+		if (taggedImage == TaggedImageQueue.POISON) {
+			if (dataFileWriter_ != null) {
+				try {
+					dataFileWriter_.close();
+					dataFileWriter_ = null;
+					clearChart_ = true;
+				} catch (IOException e) {
+					mainWnd_.logError(e);
+				}
+			}
+		}
+
 		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON
 				|| !main.isCalibrated)
 			return;
+
 		// myGUI_.start();
 		try {
 			GetPosition(myGUI_.currFrame, taggedImage);
@@ -97,20 +111,13 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		});
 
 		String acqName = (String) taggedImage.tags.get("AcqName");
-		mainWnd_.logMessage(String.format("AcqName: %s", acqName));
-
 		String nameComp = "";
 		if (acqName.equals(MMStudioMainFrame.SIMPLE_ACQ))
 			nameComp = "Live";
 		else
 			nameComp = acqName;
 
-		mainWnd_.logMessage(String.format("AcqName: %s", nameComp));
-
-		BufferedWriter writer;
-		if (dataRecorder_.containsKey(nameComp))
-			writer = dataRecorder_.get(nameComp);
-		else {
+		if (dataFileWriter_ == null) {
 			// Build the path
 			Calendar cal = new GregorianCalendar();
 			DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -121,27 +128,16 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
 			File file = new File(dir, dateFormat.format(cal.getTime()) + "_"
 					+ nameComp + ".txt");
-
-			writer = new BufferedWriter(new FileWriter(file));
-			dataRecorder_.put(nameComp, writer);
-			start_ts = System.nanoTime();
-			writer.write("Frame, Timestamp, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
-			writer.flush();
-
+			dataFileWriter_ = new BufferedWriter(new FileWriter(file));
+			dataFileWriter_
+					.write("Frame, Timestamp, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
 		}
 
-		long ts = System.nanoTime();
-		double dt = (ts - start_ts) / 1e6;
-
-		String entry = String.format(
-				"%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n", index_, dt,
-				pos[0], pos[1], pos[2], pos[6], pos[7], pos[8], pos[9],
-				pos[10], pos[11], pos[12], pos[13]);
-		mainWnd_.logMessage(entry);
-
-		writer.write(entry);
-		if (index_ % myGUI_.FrameCalcForce_ == 0)
-			writer.flush();
+		dataFileWriter_.write(String.format(
+				"%d,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n", index_,
+				taggedImage.tags.get("ElapsedTime-ms"), pos[0], pos[1], pos[2],
+				pos[6], pos[7], pos[8], pos[9], pos[10], pos[11], pos[12],
+				pos[13]));
 
 		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.F_L_Flag_ == 1) {
 			main.PullMagnet();

@@ -57,14 +57,14 @@ public class DefaultTaggedImagePipeline {
       }
       
       // Set up the DataProcessor<TaggedImage> sequence
-      BlockingQueue<TaggedImage> taggedImageQueue2 = ProcessorStack.run(taggedImageQueue, processors);
+      BlockingQueue<TaggedImage> processedImageQueue = ProcessorStack.run(taggedImageQueue, processors);
       
       MMAcquisition acq = gui.getAcquisition(acqName_);
       display_ = acq.getAcquisitionWindow();
       imageCache_ = acq.getImageCache();
 
       // Start pumping images into the ImageCache
-      LiveAcq liveAcq = new LiveAcq(taggedImageQueue2, imageCache_);
+      LiveAcq liveAcq = new LiveAcq(processedImageQueue, imageCache_);
       liveAcq.start();
    }
 

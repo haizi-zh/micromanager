@@ -15,9 +15,8 @@ import org.micromanager.utils.ReportingUtils;
  * 
  */
 public abstract class DataProcessor<E> extends Thread {
-	private BlockingQueue<E> input_;
-	private BlockingQueue<E> output_;
-//	private volatile boolean stopRequested_ = false;
+	private volatile BlockingQueue<E> input_;
+	private volatile BlockingQueue<E> output_;
 	private boolean started_ = false;
 
 	/*
@@ -80,17 +79,21 @@ public abstract class DataProcessor<E> extends Thread {
 	public DataProcessor() {
 	}
 
-	/*
+	/**
 	 * Sets the input queue where objects to be processed are received by the
 	 * DataProcessor.
+	 * 
+	 * This method is thread-safe.
 	 */
 	public void setInput(BlockingQueue<E> input) {
 		input_ = input;
 	}
-
-	/*
+	
+	/**
 	 * Sets the output queue where objects that have been processed exit the
 	 * DataProcessor.
+	 * 
+	 * This method is thread-safe.
 	 */
 	public void setOutput(BlockingQueue<E> output) {
 		output_ = output;

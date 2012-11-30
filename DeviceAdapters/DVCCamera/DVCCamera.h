@@ -186,6 +186,11 @@ private:
 	double intervalMs_;
 	int imageCounter_;
 	MM::MMTime startTime_;
+
+	LARGE_INTEGER perfFreq_;
+	LARGE_INTEGER perfStartCounter_;
+	double dvcStartTs_;
+
 	dvcBufStruct userBuffers_;
 	class AcqSequenceThread;
 	DVCCamera::AcqSequenceThread* thd_;

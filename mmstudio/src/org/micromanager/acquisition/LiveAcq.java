@@ -17,7 +17,7 @@ public class LiveAcq  {
    private final BlockingQueue<TaggedImage> imageProducingQueue_;
    private ImageCache imageCache_ = null;
 
-   public LiveAcq(BlockingQueue imageProducingQueue,
+   public LiveAcq(BlockingQueue<TaggedImage> imageProducingQueue,
                   ImageCache imageCache) throws MMScriptException {
       imageProducingQueue_ = imageProducingQueue;
          imageCache_ = imageCache;

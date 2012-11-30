@@ -14,10 +14,13 @@ import javax.swing.SwingUtilities;
 import mmcorej.CMMCore;
 import mmcorej.TaggedImage;
 
+import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
+import org.micromanager.acquisition.TaggedImageQueue;
 import org.micromanager.api.DataProcessor;
 import org.micromanager.api.MMPlugin;
 import org.micromanager.api.ScriptInterface;
+import org.micromanager.api.TaggedImageAnalyzer;
 import org.micromanager.utils.MMException;
 
 public class ZIndexMeasure implements MMPlugin {
@@ -55,6 +58,10 @@ public class ZIndexMeasure implements MMPlugin {
 		gui_ = (MMStudioMainFrame) app;
 		core_ = gui_.getMMCore();
 		instance_ = this;
+
+//		gui_.getAcquisitionEngine().addImageProcessor(
+//				TestAnalyzer.getInstance(gui_));
+
 		mygui_ = new myGUI();
 		mygui_.GUIInitialization();
 		processor_ = new AcqAnalyzer(app, this, mygui_);
@@ -292,8 +299,10 @@ public class ZIndexMeasure implements MMPlugin {
 			setZPosition(mygui_.calPos_[i]);
 			double zpos = core_.getPosition(zstage_);
 			pos = getXYZPositon();
-			mygui_.dataSeries_.add(i, pos[2]);
-			IJ.log(String.format("%d,%f,%f,%f", i, zpos, pos[2], zpos - pos[2]));
+			mygui_.dataSeries_.add(zpos, pos[2]);
+			// mygui_.dataSeries_.add(zpos, zpos - pos[2]);
+			IJ.log(String.format("i=%d, zpos=%f, pos[2]=%f, delta=%f", i, zpos,
+					pos[2], zpos - pos[2]));
 		}
 		setZPosition(currzpos_);// turn back to the first
 								// place,Always 5
@@ -310,4 +319,35 @@ public class ZIndexMeasure implements MMPlugin {
 		ret = mCalc.GetZPosition(pix, mygui_.calcRoi_, -1);
 		return (double[]) ret[0];
 	}
+}
+
+class TestAnalyzer extends TaggedImageAnalyzer {
+	private ScriptInterface gui_;
+	private long index_;
+	private static TestAnalyzer instance_;
+
+	protected TestAnalyzer(ScriptInterface gui) {
+		gui_ = gui;
+	}
+
+	static TestAnalyzer getInstance(ScriptInterface gui) {
+		if (instance_ == null)
+			instance_ = new TestAnalyzer(gui);
+		return instance_;
+	}
+
+	@Override
+	protected void analyze(TaggedImage taggedImage) {
+		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON)
+			return;
+		Object obj = null;
+		try {
+			obj = taggedImage.tags.get("ElapsedTime-ms");
+		} catch (JSONException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		gui_.logMessage(String.format("Test: elapsed: %s", obj));
+	}
+
 }

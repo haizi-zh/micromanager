@@ -29,7 +29,8 @@ void DVCCamera::initConstStrings() {
 	m_strMap[STR_PROP_GAINRANGE] = "Gain range(dB)";
 	m_strMap[STR_PROP_BINSIZE] = string(MM::g_Keyword_Binning);
 	m_strMap[STR_PROP_EXPOSURE] = string(MM::g_Keyword_Exposure);
-	m_strMap[STR_PROP_ACTUAL_FRAME_TIME] = string(MM::g_Keyword_ActualInterval_ms);
+	m_strMap[STR_PROP_ACTUAL_FRAME_TIME] = string(
+			MM::g_Keyword_ActualInterval_ms);
 	m_strMap[STR_PROP_PIXELCLOCK] = "Pixel Clock Frequency(Hz)";
 	m_strMap[STR_PROP_SCANRATE] = "Scan rate";
 }
@@ -78,6 +79,7 @@ const char g_GaindB[] = "Gain (dB)";
 const char g_GaindBRange[] = "Gain Range (dB)";
 const char g_Binning[] = "Binning";
 const char g_hBinning[] = "hBin";
+const char g_absTimestamp[] = "Absolute Timestamp";
 const char g_vBinning[] = "vBin";
 const char g_ActualFrameTime[] = "Actual Frame Time (ms)";
 const char g_PixelClock[] = "Pixel Clock Frequency (Hz)";
@@ -155,6 +157,7 @@ DVCCamera::DVCCamera() :
 				false), stopOnOverflow_(true) {
 	InitializeDefaultErrorMessages();
 
+	QueryPerformanceFrequency(&perfFreq_);
 	//seqThread_ = new AcqSequenceThread(this);
 
 	// Initialize the camera type map
@@ -914,6 +917,8 @@ int DVCCamera::StartSequenceAcquisition(long numImages, double interval_ms,
 
 	LogMessage("Starting acquisition in the camera", true);
 	startTime_ = GetCurrentMMTime();
+	QueryPerformanceCounter(&perfStartCounter_);
+	dvcStartTs_ = dvcElapseTime(0.0);
 
 	if (!dvcSetUserBuffers(hCam, NULL))
 		return processErr();
@@ -1014,38 +1019,27 @@ int DVCCamera::PushImage(int userBufferId) {
 
 	ImageMetaDataP pMd = userBuffers_.pMeta + userBufferId;
 	md.put("Camera", label);
-	md.put(MM::g_Keyword_Metadata_StartTime,
-			CDeviceUtils::ConvertToString(startTime_.getMsec()));
-	md.put(MM::g_Keyword_Elapsed_Time_ms,
-			CDeviceUtils::ConvertToString((timestamp - startTime_).getMsec()));
+	md.put(MM::g_Keyword_Metadata_StartTime, dvcStartTs_);
+
+//	LARGE_INTEGER perfCounter;
+//	QueryPerformanceCounter(&perfCounter);
+//	md.put(MM::g_Keyword_Elapsed_Time_ms,
+//			(double) (perfCounter.QuadPart - perfStartCounter_.QuadPart)
+//					/ (double) perfFreq_.QuadPart);
+
+	md.put(MM::g_Keyword_Elapsed_Time_ms, pMd->dExposeTimeStamp - dvcStartTs_);
+
 	md.put(MM::g_Keyword_Metadata_ImageNumber,
 			CDeviceUtils::ConvertToString((long) (pMd->ulStreamCount)));
+
 	md.put(MM::g_Keyword_Binning, binSize_);
-	md.put(g_hBinning, pMd->hBin);
-	md.put(g_vBinning, pMd->vBin);
-	md.put(g_MD_ExposeTime, pMd->dExposeTime);
-	md.put(g_MD_ExposeTimestamp, pMd->dExposeTimeStamp);
-	md.put(g_MD_FrameTimestamp, pMd->dFrameTime);
-	md.put(g_MD_TransferTime, pMd->dTransferTime);
-	md.put(g_MD_TriggerTimestamp, pMd->dTriggerTimeStamp);
-
-	MetadataSingleTag mstStartTime(MM::g_Keyword_Metadata_StartTime, label,
-			true);
-	mstStartTime.SetValue(CDeviceUtils::ConvertToString(startTime_.getMsec()));
-	md.SetTag(mstStartTime);
-
-	MetadataSingleTag mst(MM::g_Keyword_Elapsed_Time_ms, label, true);
-	mst.SetValue(CDeviceUtils::ConvertToString(timestamp.getMsec()));
-	md.SetTag(mst);
-
-	MetadataSingleTag mstCount(MM::g_Keyword_Metadata_ImageNumber, label, true);
-	mstCount.SetValue(
-			CDeviceUtils::ConvertToString((long) (pMd->ulStreamCount)));
-	md.SetTag(mstCount);
-
-	MetadataSingleTag mstB(MM::g_Keyword_Binning, label, true);
-	mstB.SetValue(CDeviceUtils::ConvertToString(binSize_));
-	md.SetTag(mstB);
+	md.PutTag(g_hBinning, label, pMd->hBin);
+	md.PutTag(g_vBinning, label, pMd->vBin);
+	md.PutTag(g_MD_ExposeTime, label, pMd->dExposeTime);
+	md.PutTag(g_MD_ExposeTimestamp, label, pMd->dExposeTimeStamp);
+	md.PutTag(g_MD_FrameTimestamp, label, pMd->dFrameTime);
+	md.PutTag(g_MD_TransferTime, label, pMd->dTransferTime);
+	md.PutTag(g_MD_TriggerTimestamp, label, pMd->dTriggerTimeStamp);
 
 	const int height = GetImageHeight();
 	const int width = GetImageWidth();

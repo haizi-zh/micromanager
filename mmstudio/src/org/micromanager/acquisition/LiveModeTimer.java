@@ -65,7 +65,7 @@ public class LiveModeTimer {
    private Timer timer_;
    private TimerTask task_;
    private MMStudioMainFrame.DisplayImageRoutine displayImageRoutine_;
-    private LinkedBlockingQueue imageQueue_;
+    private LinkedBlockingQueue<TaggedImage> imageQueue_;
    
    public LiveModeTimer() {
       gui_ = MMStudioMainFrame.getInstance();
@@ -157,7 +157,7 @@ public class LiveModeTimer {
 		lastImageNumber_ = imageNumber_ - 1;
 		oldImageNumber_ = imageNumber_;
 
-		imageQueue_ = new LinkedBlockingQueue();
+		imageQueue_ = new LinkedBlockingQueue<TaggedImage>();
 		timer_.schedule(task_, 0, delay);
 		win_.liveModeEnabled(true);
 
