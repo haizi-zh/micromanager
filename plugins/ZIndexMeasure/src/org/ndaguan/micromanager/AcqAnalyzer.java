@@ -22,7 +22,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
-		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON || !main.isCalibration)
+		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON || !main.isCalibrated)
 			return;
 		//myGUI_.start();
 		GetPosition(myGUI_.currFrame, taggedImage);

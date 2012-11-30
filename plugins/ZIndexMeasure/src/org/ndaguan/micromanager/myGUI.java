@@ -243,7 +243,7 @@ public class myGUI {
 		setCalProfile();
 
 		Maininstance_.isSetScale = true;
-		Maininstance_.isCalibration = false;
+		Maininstance_.isCalibrated = false;
 
 	}
 

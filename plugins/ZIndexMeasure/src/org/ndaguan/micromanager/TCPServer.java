@@ -143,7 +143,6 @@ class TCPServer {
 				// Frame length
 				inStream.read(rawData, offset[0], 2);
 
-				long tic = System.nanoTime();
 				short length = buffer.getShort(offset[0]);
 				offset[0] += 2;
 				// checksum
@@ -153,9 +152,6 @@ class TCPServer {
 				// OPERATION
 				phaseData(socket, rawData, length, offset);
 				offset[0] += 16;// Skip Checksum
-				long toc = System.nanoTime();
-				core_.logMessage(String.format("TCPServer cmd: %d, cost: %f",
-						(int) rawData[4], (toc - tic) / 1e6));
 			}
 
 			socket.shutdownInput();

@@ -35,7 +35,7 @@ public class ZIndexMeasure implements MMPlugin {
 	public boolean isSetScale = false;
 	public boolean isInstalCallback = false;
 	public boolean isAcquisitionRunning = false;
-	public boolean isCalibration = false;
+	public boolean isCalibrated = false;
 	private TCPServer tcpServer_;
 	private int port_ = 50501;
 
@@ -45,11 +45,11 @@ public class ZIndexMeasure implements MMPlugin {
 
 	public void setApp(ScriptInterface app) {
 		gui_ = (MMStudioMainFrame) app;
-		core_ = gui_.getMMCore();		
+		core_ = gui_.getMMCore();
 		instance_ = this;
 		mygui_ = new myGUI();
 		mygui_.GUIInitialization();
-		processor_ = new AcqAnalyzer(app,this, mygui_);
+		processor_ = new AcqAnalyzer(app, this, mygui_);
 
 		xystage_ = core_.getXYStageDevice();
 		zstage_ = core_.getFocusDevice();
@@ -129,16 +129,13 @@ public class ZIndexMeasure implements MMPlugin {
 			setZPosition(currzpos_);// turn back to the first place,Always 5
 			gui_.snapSingleImage();
 			mygui_.log("Calibration OK......");
+
+			Testing();
+			isCalibrated = true;
 		} catch (Exception e) {
 			mygui_.log("Calibration False! god knows why......" + e.toString());
 			e.printStackTrace();
 		}
-		try {
-			Testing();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		isCalibration = true;
 	}
 
 	public void dispose() {
@@ -184,7 +181,7 @@ public class ZIndexMeasure implements MMPlugin {
 
 	public void InstallCallback() {
 
-		if (!isCalibration) {
+		if (!isCalibrated) {
 			mygui_.log("Start Calibration first!");
 			return;
 		}
@@ -197,18 +194,18 @@ public class ZIndexMeasure implements MMPlugin {
 			mygui_.log("Call back install,Start capture...");
 		}
 
-//			gui_.getAcquisitionEngine().enableFramesSetting(true);
-//			gui_.getAcquisitionEngine().setSaveFiles(true);
-//			gui_.getAcquisitionEngine().setRootName(mygui_.StoragePath_);
-//			gui_.getAcquisitionEngine().setFrames(mygui_.Frame2Acq_,
-//					mygui_.TimeIntervals_);
-//			try {
-//				gui_.getAcquisitionEngine().acquire();
-//			} catch (MMException e) {
-//				mygui_.log("Image Acquistion False");
-//			}
-//		}
-//		 mygui_.dataSeries_.clear();
+		// gui_.getAcquisitionEngine().enableFramesSetting(true);
+		// gui_.getAcquisitionEngine().setSaveFiles(true);
+		// gui_.getAcquisitionEngine().setRootName(mygui_.StoragePath_);
+		// gui_.getAcquisitionEngine().setFrames(mygui_.Frame2Acq_,
+		// mygui_.TimeIntervals_);
+		// try {
+		// gui_.getAcquisitionEngine().acquire();
+		// } catch (MMException e) {
+		// mygui_.log("Image Acquistion False");
+		// }
+		// }
+		// mygui_.dataSeries_.clear();
 	}
 
 	public void UninstallCallback() {
@@ -220,7 +217,7 @@ public class ZIndexMeasure implements MMPlugin {
 		} else {
 			mygui_.log("Repeat!");
 		}
-//		gui_.getAcquisitionEngine().stop(true);
+		// gui_.getAcquisitionEngine().stop(true);
 	}
 
 	public void setXPosition(double xpos) throws Exception {
@@ -287,22 +284,18 @@ public class ZIndexMeasure implements MMPlugin {
 			setZPosition(currzpos_);// turn back to the first
 									// place,Always 5
 		} catch (Exception e) {
-
+			mygui_.log("Test failed! " + e.toString());
 		}
 
 		mygui_.log("Test over ");
 	}
 
 	// -----------------------------------------------------------------------------------------DEBUG
-	public double[] getXYZPositon() {
+	public double[] getXYZPositon() throws Exception {
 		gui_.snapSingleImage();
 		Object[] ret = null;
 		Object pix = null;
-		try {
-			pix = core_.getTaggedImage().pix;
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		pix = core_.getTaggedImage().pix;
 		ret = mCalc.GetZPosition(pix, mygui_.calcRoi_, -1);
 		return (double[]) ret[0];
 	}
