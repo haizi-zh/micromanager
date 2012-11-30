@@ -26,7 +26,11 @@ public class ZIndexMeasure implements MMPlugin {
 	public MMStudioMainFrame gui_;
 	private myGUI mygui_;
 	private static ZIndexMeasure instance_;
-	private DataProcessor<TaggedImage> processor_;
+	private AcqAnalyzer processor_;
+
+	public AcqAnalyzer getProcessor() {
+		return processor_;
+	}
 
 	private String zstage_;
 	private String xystage_;
@@ -143,6 +147,7 @@ public class ZIndexMeasure implements MMPlugin {
 
 			Testing();
 			isCalibrated = true;
+			processor_.clearChart_ = true;
 		} catch (Exception e) {
 			mygui_.log("Calibration False! god knows why......" + e.toString());
 			e.printStackTrace();

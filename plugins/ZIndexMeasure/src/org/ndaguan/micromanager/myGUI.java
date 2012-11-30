@@ -105,14 +105,20 @@ public class myGUI {
 	public int Mstep_ = 100;// um
 	public int F_L_Flag_ = 0;
 
-	public BufferedWriter writer = null;
+	// public BufferedWriter writer = null;
 	public JFreeChart chart = null;
 	private int ChartMaxItemCount = 1000;
 	private int isPause = 0;
 	// Temp
 	private long begin;
 	final Object lock = new Object();
-	private String baseDir_;
+
+	// private String baseDir_;
+	// private long start_ts;
+
+	// public long getStartTs() {
+	// return start_ts;
+	// }
 
 	public static myGUI getInstance() {
 		return instance_;
@@ -171,8 +177,6 @@ public class myGUI {
 		roi_rectangle = new Rectangle();
 
 		// Get user home directory
-		baseDir_ = System.getProperty("user.home");
-
 		calcOpt_ = new double[] { Radius_, RInterpStep_, BitDepth_,
 				HalfQuadWindow_, Imgwidth_, Imgheight_, ZStart_, ZScale_,
 				ZStep_, DNALen_, Temperature_, DNAPersLen_, FrameCalcForce_ };
@@ -190,7 +194,8 @@ public class myGUI {
 		Mstep.setText(String.format("%d", Mstep_));
 		F_L_Flag.setText(String.format("%d", F_L_Flag_));
 		TimeIntervals.setText(String.format("%d", TimeIntervals_));
-		StoragePath.setText(String.format("%s", baseDir_));
+		StoragePath
+				.setText(String.format("%s", System.getProperty("user.home")));
 		// SavePath.setText(String.format("%s", baseDir_));
 
 		Msg0.setText(String.format("Radius =%f  ,Scale = %f, Step = %f",
@@ -232,28 +237,30 @@ public class myGUI {
 
 		Frame2Acq_ = Integer.parseInt(Frame2Acq.getText());
 		TimeIntervals_ = Integer.parseInt(TimeIntervals.getText());
-		baseDir_ = StoragePath.getText();
+		Maininstance_.getProcessor().setBaseDir(StoragePath.getText());
 		// baseDir_ = SavePath.getText();
 		Mstep_ = Integer.parseInt(Mstep.getText());
 		F_L_Flag_ = Integer.parseInt(F_L_Flag.getText());
-		try {
-			// Build the path
-			Calendar cal = new GregorianCalendar();
-
-			DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
-			File dir = new File(baseDir_, dateFormat.format(cal.getTime()));
-			dir.mkdirs();
-
-			dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
-			File file = new File(dir, dateFormat.format(cal.getTime()) + ".txt");
-
-			writer = new BufferedWriter(new FileWriter(file));
-			writer.write("Frame, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
-			writer.flush();
-		} catch (IOException e) {
-			log("Create File ERR  " + e.toString());
-			return;
-		}
+		// try {
+		// // Build the path
+		// Calendar cal = new GregorianCalendar();
+		//
+		// DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+		// File dir = new File(new File(baseDir_, "ZIndexMeasure"),
+		// dateFormat.format(cal.getTime()));
+		// dir.mkdirs();
+		//
+		// dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+		// File file = new File(dir, dateFormat.format(cal.getTime()) + ".txt");
+		//
+		// writer = new BufferedWriter(new FileWriter(file));
+		// start_ts = System.nanoTime();
+		// writer.write("Frame, Timestamp, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
+		// writer.flush();
+		// } catch (IOException e) {
+		// log("Create File ERR  " + e.toString());
+		// return;
+		// }
 		reSetOpt();
 		setCalProfile();
 
@@ -395,8 +402,7 @@ public class myGUI {
 
 				Frame2Acq_ = Integer.parseInt(Frame2Acq.getText());
 				TimeIntervals_ = Integer.parseInt(TimeIntervals.getText());
-				baseDir_ = StoragePath.getText();
-
+				Maininstance_.getProcessor().setBaseDir(StoragePath.getText());
 				Maininstance_.InstallCallback();
 			}
 		});
@@ -497,6 +503,7 @@ public class myGUI {
 							@Override
 							public void run() {
 								Maininstance_.StartCalibration();
+								Maininstance_.InstallCallback();
 							}
 						})).start();
 
