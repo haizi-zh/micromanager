@@ -1,6 +1,7 @@
 package org.ndaguan.micromanager;
 
 import java.io.IOException;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
@@ -33,23 +34,28 @@ class TCPServer {
 		QPOS, MOV, MVR, SVO, QSVO, CST, QCST, SVA, QSVA, PLM, QPLM, NLM, QNLM
 	};
 
-
 	public static void main(String[] argv) throws Exception {
-
 		CMMCore core = new CMMCore();
-		core.loadSystemConfiguration("MMConfig_demo.cfg");
+		core.loadSystemConfiguration("Total.cfg");
 		TCPServer tcpServer_ = new TCPServer(core, 50501);
-		System.out.print(String.format("Loaded devices as follows:\t%s",
-				core.getLoadedDevices()));
-		tcpServer_.start();
-		TimeUnit.HOURS.sleep(24);
-	}
 
+		TimeUnit.SECONDS.sleep(2);
+
+		String zlabel = core.getFocusDevice();
+
+		core.setPosition(zlabel, 5);
+		TimeUnit.MILLISECONDS.sleep(100);
+		System.out.print(String.valueOf(core.getPosition(zlabel)) + "\n");
+
+		// tcpServer_.start();
+		// TimeUnit.HOURS.sleep(24);
+	}
 
 	public TCPServer(CMMCore core, int port) {
 		core_ = core;
 		xystage_ = core_.getXYStageDevice();
 		zstage_ = core_.getFocusDevice();
+
 		port_ = port;
 		packAnalyzer = new PackageAnalyzer();
 	}
@@ -118,13 +124,17 @@ class TCPServer {
 			byte[] rawData = new byte[BUFFER_SIZE];
 			ByteBuffer buffer = ByteBuffer.wrap(rawData);
 			while (true) {
+				if (socket.isClosed()) {
+					core_.logMessage("Socket closed");
+					break;
+				}
 
 				int[] offset = new int[1];
 				offset[0] = 0;
 				Arrays.fill(rawData, (byte) 0);
-				int cnt = inStream.read(rawData, offset[0], 2);
-				if (cnt == 0)
+				if (inStream.read(rawData, offset[0], 2) == -1)
 					break;
+
 				if (!packAnalyzer.checkStart(rawData, offset)) {
 					offset[0] += 2;
 					continue;
@@ -132,6 +142,8 @@ class TCPServer {
 				offset[0] += 2;
 				// Frame length
 				inStream.read(rawData, offset[0], 2);
+
+				long tic = System.nanoTime();
 				short length = buffer.getShort(offset[0]);
 				offset[0] += 2;
 				// checksum
@@ -141,18 +153,23 @@ class TCPServer {
 				// OPERATION
 				phaseData(socket, rawData, length, offset);
 				offset[0] += 16;// Skip Checksum
-
+				long toc = System.nanoTime();
+				core_.logMessage(String.format("TCPServer cmd: %d, cost: %f",
+						(int) rawData[4], (toc - tic) / 1e6));
 			}
+
+			socket.shutdownInput();
+			socket.shutdownOutput();
+			socket.close();
 		} catch (IOException e) {
 			return;
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 
+		core_.logMessage("Socket thread exited.");
 	}
 
 	private void phaseData(Socket socket, byte[] rawData, short length,
-			int[] offset) throws Exception {
+			int[] offset) throws IOException {
 		// DATA FORMAT:
 		// START_FLAG, DATA_LEN, CMD_FLAG, PARA_NUM, [PARAS], MD5
 		// 0XFFFE(16bit-short),(8bit-short),(8bit-char),(8bit-byte),(random-bit,random-type),(16bit-byte);
@@ -164,38 +181,40 @@ class TCPServer {
 			QueryPosition(socket);
 			break;
 		case MOV:
-			setPositions(packAnalyzer.unpackParas(rawData, offset), true);
+			setPositions(packAnalyzer.unpackParas(rawData, offset), true,
+					socket);
 			break;
 		case MVR:
-			setPositions(packAnalyzer.unpackParas(rawData, offset), false);
+			setPositions(packAnalyzer.unpackParas(rawData, offset), false,
+					socket);
 			break;
 		case SVO:
-			setServoMode(packAnalyzer.unpackParas(rawData, offset));
+			setServoMode(packAnalyzer.unpackParas(rawData, offset), socket);
 			break;
 		case QSVO:
 			QueryServoMode(socket);
 			break;
 		case CST:
-			SetCST(packAnalyzer.unpackParas(rawData, offset));
+			SetCST(packAnalyzer.unpackParas(rawData, offset), socket);
 			break;
 		case QCST:
 			QueryCST(socket);
 			break;
 		case SVA:
-			setOpenLoopValue(packAnalyzer.unpackParas(rawData, offset));
+			setOpenLoopValue(packAnalyzer.unpackParas(rawData, offset), socket);
 			break;
 		case QSVA:
 			queryOpenLoopValue(socket);
 			break;
 
 		case PLM:
-			setPLM(packAnalyzer.unpackParas(rawData, offset));
+			setPLM(packAnalyzer.unpackParas(rawData, offset), socket);
 			break;
 		case QPLM:
 			QueryPLM(socket);
 			break;
 		case NLM:
-			setNLM(packAnalyzer.unpackParas(rawData, offset));
+			setNLM(packAnalyzer.unpackParas(rawData, offset), socket);
 			break;
 		case QNLM:
 			QueryNLM(socket);
@@ -207,31 +226,27 @@ class TCPServer {
 
 	}
 
-	private void QueryPosition(Socket socket) {
+	private void QueryPosition(Socket socket) throws IOException {
+		byte CMD = (byte) ECMDLIST.QPOS.ordinal();
+		short paraNum = 3;
 		try {
-			byte[] rawData = new byte[BUFFER_SIZE];
-			byte CMD = (byte) ECMDLIST.QPOS.ordinal();
-			short paraNum = 3;
 			double currxpos_ = core_.getXPosition(xystage_);
 			double currypos_ = core_.getYPosition(xystage_);
 			double currzpos_ = core_.getPosition(zstage_);
 
 			short paralen = 8;
-
-			Object[] data = new Object[] { CMD, paraNum, paralen, currxpos_,
-					paralen, currypos_, paralen, currzpos_ };
-			int len = packAnalyzer.packData(data, rawData);
-			OutputStream outPutSteam = socket.getOutputStream();
-			outPutSteam.write(rawData, 0, len);
-			outPutSteam.flush();
+			respond(socket, new Object[] { CMD, paraNum + 1, 1, true, paralen,
+					currxpos_, paralen, currypos_, paralen, currzpos_ });
 		} catch (Exception e) {
-			setLastErr("get StagePosition ERR");
-			e.printStackTrace();
+			String msg = e.getMessage();
+			respond(socket,
+					new Object[] { CMD, 2, 1, false, msg.length(), msg });
 		}
 
 	}
 
-	private void setOpenLoopValue(Object[] para) throws Exception {
+	private void setOpenLoopValue(Object[] para, Socket socket)
+			throws IOException {
 		if (para == null) {
 			setLastErr("paraNum undefined!");
 			return;
@@ -241,19 +256,27 @@ class TCPServer {
 		String[] props = new String[] { "X", "Y", "Z" };
 		for (int i = 0; i < props.length; i++)
 			props[i] = "OpenLoopValue" + props[i];
-		for (Integer axis : paraMap.keySet()) {
-			String label = (axis == 2) ? zstage_ : xystage_;
-			core_.setProperty(label, props[axis],
-					(paraMap.get(axis)).toString());
+
+		try {
+			for (Integer axis : paraMap.keySet()) {
+				String label = (axis == 2) ? zstage_ : xystage_;
+				core_.setProperty(label, props[axis],
+						(paraMap.get(axis)).toString());
+			}
+			respond(socket, new Object[] { (byte) ECMDLIST.SVA.ordinal(), 1, 1,
+					true });
+		} catch (Exception e) {
+			String msg = e.getMessage();
+			respond(socket, new Object[] { (byte) ECMDLIST.SVA.ordinal(), 2, 1,
+					false, msg.length(), msg });
 		}
 	}
 
-	private void queryOpenLoopValue(Socket socket) {
-		try {
-			byte[] rawData = new byte[BUFFER_SIZE];
-			byte CMD = (byte) ECMDLIST.QSVA.ordinal();
-			short paraNum = 3;
+	private void queryOpenLoopValue(Socket socket) throws IOException {
+		byte CMD = (byte) ECMDLIST.QSVA.ordinal();
+		short paraNum = 3;
 
+		try {
 			double openLoopValueX = Double.parseDouble(core_.getProperty(
 					xystage_, "OpenLoopValueX"));
 			double openLoopValueY = Double.parseDouble(core_.getProperty(
@@ -263,21 +286,18 @@ class TCPServer {
 
 			short paralen = 8;
 
-			Object[] data = new Object[] { CMD, paraNum, paralen,
+			respond(socket, new Object[] { CMD, paraNum + 1, 1, true, paralen,
 					openLoopValueX, paralen, openLoopValueY, paralen,
-					openLoopValueZ };
-			int len = packAnalyzer.packData(data, rawData);
-			OutputStream outPutSteam = socket.getOutputStream();
-			outPutSteam.write(rawData, 0, len);
-			outPutSteam.flush();
+					openLoopValueZ });
 		} catch (Exception e) {
-			setLastErr("get StagePosition ERR");
-			e.printStackTrace();
+			String msg = e.getMessage();
+			respond(socket,
+					new Object[] { CMD, 2, 1, false, msg.length(), msg });
 		}
 
 	}
 
-	private void setServoMode(Object[] para) throws Exception {
+	private void setServoMode(Object[] para, Socket socket) throws IOException {
 		if (para == null) {
 			setLastErr("paraNum undefined!");
 			return;
@@ -287,19 +307,26 @@ class TCPServer {
 		String[] props = new String[] { "X", "Y", "Z" };
 		for (int i = 0; i < props.length; i++)
 			props[i] = "ServoMode" + props[i];
-		for (Integer axis : paraMap.keySet()) {
-			String label = (axis == 2) ? zstage_ : xystage_;
-			core_.setProperty(label, props[axis],
-					(Boolean) paraMap.get(axis) ? "True" : "False");
+		try {
+			for (Integer axis : paraMap.keySet()) {
+				String label = (axis == 2) ? zstage_ : xystage_;
+				core_.setProperty(label, props[axis],
+						(Boolean) paraMap.get(axis) ? "True" : "False");
+			}
+			respond(socket, new Object[] { (byte) ECMDLIST.SVO.ordinal(), 1, 1,
+					true });
+		} catch (Exception e) {
+			String msg = e.getMessage();
+			respond(socket, new Object[] { (byte) ECMDLIST.SVO.ordinal(), 2, 1,
+					false, msg.length(), msg });
 		}
 
 	}
 
-	private void QueryServoMode(Socket socket) {
+	private void QueryServoMode(Socket socket) throws IOException {
+		byte CMD = (byte) ECMDLIST.QSVO.ordinal();
+		short paraNum = 3;
 		try {
-			byte[] rawData = new byte[BUFFER_SIZE];
-			byte CMD = (byte) ECMDLIST.QSVO.ordinal();
-			short paraNum = 3;
 
 			boolean servoModeX = core_.getProperty(xystage_, "ServoModeX")
 					.equals("True");
@@ -308,78 +335,74 @@ class TCPServer {
 			boolean servoModeZ = core_.getProperty(zstage_, "ServoModeZ")
 					.equals("True");
 
-			short paralen = 8;
+			short paralen = 1;
 
-			Object[] data = new Object[] { CMD, paraNum, paralen, servoModeX,
-					paralen, servoModeY, paralen, servoModeZ };
-			int len = packAnalyzer.packData(data, rawData);
-			OutputStream outPutSteam = socket.getOutputStream();
-			outPutSteam.write(rawData, 0, len);
-			outPutSteam.flush();
+			respond(socket, new Object[] { CMD, paraNum + 1, 1, true, paralen,
+					servoModeX, paralen, servoModeY, paralen, servoModeZ });
 		} catch (Exception e) {
-			setLastErr("get StagePosition ERR");
-			e.printStackTrace();
+			String msg = e.getMessage();
+			respond(socket,
+					new Object[] { CMD, 2, 1, false, msg.length(), msg });
 		}
 
 	}
 
-	private void QueryPLM(Socket socket) {
+	private void QueryPLM(Socket socket) throws IOException {
+		byte CMD = (byte) ECMDLIST.QPLM.ordinal();
+		short paraNum = 3;
 		try {
-			byte[] rawData = new byte[BUFFER_SIZE];
-			byte CMD = (byte) ECMDLIST.QPLM.ordinal();
-			short paraNum = 3;
 			float xAxis = 100;
 			float yAxis = 100;
 			float zAxis = 10;
 
 			short paralen = 4;
 
-			Object[] data = new Object[] { CMD, paraNum, paralen, xAxis,
-					paralen, yAxis, paralen, zAxis };
-			int len = packAnalyzer.packData(data, rawData);
-			OutputStream outPutSteam = socket.getOutputStream();
-			outPutSteam.write(rawData, 0, len);
-			outPutSteam.flush();
-
+			respond(socket, new Object[] { CMD, paraNum + 1, 1, true, paralen,
+					xAxis, paralen, yAxis, paralen, zAxis });
 		} catch (Exception e) {
-			setLastErr("QueryPLM ERR");
-			e.printStackTrace();
+			String msg = e.getMessage();
+			respond(socket,
+					new Object[] { CMD, 2, 1, false, msg.length(), msg });
 		}
-
 	}
 
-	private void QueryNLM(Socket socket) {
+	private void QueryNLM(Socket socket) throws IOException {
+		byte CMD = (byte) ECMDLIST.QNLM.ordinal();
+		short paraNum = 3;
 		try {
-			byte[] rawData = new byte[BUFFER_SIZE];
-			byte CMD = (byte) ECMDLIST.QNLM.ordinal();
-			short paraNum = 3;
-			// PARA start
 			float xAxis = 0;
 			float yAxis = 0;
 			float zAxis = 0;
 
 			short paralen = 4;
 
-			Object[] data = new Object[] { CMD, paraNum, paralen, xAxis,
-					paralen, yAxis, paralen, zAxis };
-			int len = packAnalyzer.packData(data, rawData);
-			OutputStream outPutSteam = socket.getOutputStream();
-			outPutSteam.write(rawData, 0, len);
-			outPutSteam.flush();
+			respond(socket, new Object[] { CMD, paraNum + 1, 1, true, paralen,
+					xAxis, paralen, yAxis, paralen, zAxis });
+
 		} catch (Exception e) {
-			setLastErr("QueryPLM ERR");
-			e.printStackTrace();
+			String msg = e.getMessage();
+			respond(socket,
+					new Object[] { CMD, 2, 1, false, msg.length(), msg });
 		}
 
+	}
+
+	private void respond(Socket socket, Object[] data) throws IOException {
+		byte[] rawData = new byte[BUFFER_SIZE];
+		int len = packAnalyzer.packData(data, rawData);
+		OutputStream outPutSteam = socket.getOutputStream();
+		outPutSteam.write(rawData, 0, len);
+		outPutSteam.flush();
 	}
 
 	/**
 	 * @param para
 	 * @param flag
 	 *            : true set absPosition,false:set rePostition
-	 * @throws Exception
+	 * @throws IOException
 	 */
-	private void setPositions(Object[] para, boolean flag) throws Exception {
+	private void setPositions(Object[] para, boolean flag, Socket socket)
+			throws IOException {
 		if (para == null) {
 			setLastErr("paraNum undefined!");
 			return;
@@ -390,33 +413,44 @@ class TCPServer {
 		Integer xAxis = Integer.valueOf(0);
 		Integer yAxis = Integer.valueOf(1);
 		Integer zAxis = Integer.valueOf(2);
-		if (paraMap.containsKey(zAxis)) {
-			double pos = ((Number) paraMap.get(zAxis)).doubleValue();
+		byte CMD = (byte) (flag ? ECMDLIST.MOV : ECMDLIST.MVR).ordinal();
+		try {
+			if (paraMap.containsKey(zAxis)) {
+				double pos = ((Number) paraMap.get(zAxis)).doubleValue();
+				if (flag)
+					core_.setPosition(zstage_, pos);
+				else
+					core_.setRelativePosition(zstage_, pos);
+			}
+
+			int bm = 0;
+			bm += paraMap.containsKey(xAxis) ? 1 : 0;
+			bm += paraMap.containsKey(yAxis) ? 2 : 0;
+			if (bm == 0) {
+				respond(socket, new Object[] { CMD, 1, 1, true });
+				return;
+			}
+
+			double[] xpos = new double[] { 0 };
+			double[] ypos = new double[] { 0 };
+			if (bm != 3 && flag)
+				core_.getXYPosition(xystage_, xpos, ypos);
+			if ((bm & 1) != 0)
+				xpos[0] = ((Number) paraMap.get(xAxis)).doubleValue();
+			if ((bm & 2) != 0)
+				ypos[0] = ((Number) paraMap.get(yAxis)).doubleValue();
+
 			if (flag)
-				core_.setPosition(zstage_, pos);
+				core_.setXYPosition(xystage_, xpos[0], ypos[0]);
 			else
-				core_.setRelativePosition(zstage_, pos);
+				core_.setRelativeXYPosition(xystage_, xpos[0], ypos[0]);
+
+			respond(socket, new Object[] { CMD, 1, 1, true });
+		} catch (Exception e) {
+			String msg = e.getMessage();
+			respond(socket,
+					new Object[] { CMD, 2, 1, false, msg.length(), msg });
 		}
-
-		int bm = 0;
-		bm += paraMap.containsKey(xAxis) ? 1 : 0;
-		bm += paraMap.containsKey(yAxis) ? 2 : 0;
-		if (bm == 0)
-			return;
-
-		double[] xpos = new double[] { 0 };
-		double[] ypos = new double[] { 0 };
-		if (bm != 3 && flag)
-			core_.getXYPosition(xystage_, xpos, ypos);
-		if ((bm & 1) != 0)
-			xpos[0] = ((Number) paraMap.get(xAxis)).doubleValue();
-		if ((bm & 2) != 0)
-			ypos[0] = ((Number) paraMap.get(yAxis)).doubleValue();
-
-		if (flag)
-			core_.setXYPosition(xystage_, xpos[0], ypos[0]);
-		else
-			core_.setRelativeXYPosition(xystage_, xpos[0], ypos[0]);
 	}
 
 	private HashMap<Integer, Object> extractPara(Object[] para) {
@@ -427,61 +461,50 @@ class TCPServer {
 		return paraMap;
 	}
 
-	 
-
-	private void SetCST(Object[] unpackParas) {
-		System.out.print("\r\nCall UnFullFill Function SetEST");
+	private void SetCST(Object[] unpackParas, Socket socket) throws IOException {
+		respond(socket, new Object[] { (byte) ECMDLIST.CST.ordinal(), 1, 1,
+				true, });
 	}
 
-	private void QueryCST(Socket socket) {// watch out
+	private void QueryCST(Socket socket) throws IOException {// watch out
+		byte CMD = (byte) ECMDLIST.QCST.ordinal();
+		short paraNum = 3;
 		try {
-			byte[] rawData = new byte[BUFFER_SIZE];
-			byte CMD = (byte) ECMDLIST.QCST.ordinal();
-			short paraNum = 3;
-
 			double servoModeX = 100;// Double.parseDouble(core_.getProperty(xystage_,
 			// "QCSTX"));
 			double servoModeY = 100;// Double.parseDouble(core_.getProperty(xystage_,
 			// "QCSTY"));
 			double servoModeZ = 100;// Double.parseDouble(core_.getProperty(zstage_,
 			// "QCSTZ"));
-
 			short paralen = 8;
-
-			Object[] data = new Object[] { CMD, paraNum, paralen, servoModeX,
-					paralen, servoModeY, paralen, servoModeZ };
-			int len = packAnalyzer.packData(data, rawData);
-			OutputStream outPutSteam = socket.getOutputStream();
-			outPutSteam.write(rawData, 0, len);
-			outPutSteam.flush();
-
+			respond(socket, new Object[] { CMD, paraNum + 1, 1, true, paralen,
+					servoModeX, paralen, servoModeY, paralen, servoModeZ });
 		} catch (Exception e) {
-			setLastErr("get StagePosition ERR");
-			e.printStackTrace();
+			String msg = e.getMessage();
+			respond(socket,
+					new Object[] { CMD, 2, 1, false, msg.length(), msg });
 		}
-
 	}
 
-	private void setNLM(Object[] unpackParas) {
-		System.out.print("\r\nCall UnFullFill Function SetNLM");
+	private void setNLM(Object[] unpackParas, Socket socket) throws IOException {
+		respond(socket, new Object[] { (byte) ECMDLIST.CST.ordinal(), 1, 1,
+				true, });
 	}
 
-	private void setPLM(Object[] unpackParas) {
-		System.out.print("\r\nCall UnFullFill Function SetPLM");
+	private void setPLM(Object[] unpackParas, Socket socket) throws IOException {
+		respond(socket, new Object[] { (byte) ECMDLIST.CST.ordinal(), 1, 1,
+				true, });
 	}
 
 	public boolean isRunning() {
 		return isRunning_;
 	}
 
-
 	public String getLastErr() {
 		return LastErr;
 	}
 
-
 	public void setLastErr(String errCode) {
 		LastErr = errCode;
 	}
-
 }

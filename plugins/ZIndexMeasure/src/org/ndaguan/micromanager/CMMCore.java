@@ -66,4 +66,8 @@ public class CMMCore {
 		System.out.print(String.format("\r\nCall Function setRelativeXYPosition: #xpos:%f\t#ypos:%f",d,e));
 	}
 
+	public void logMessage(String string) {
+		//System.out.print(string);
+	}
+
 }

@@ -66,21 +66,21 @@ public class TCPServerTest {
 				int len = packAnalyzer.packData(data, rawData);
 				outStream.write(rawData, 0, len);
 				outStream.flush();
-
-				if(CMD == ECMDLIST.MOV.ordinal())
-					continue;
-				if(CMD == ECMDLIST.MVR.ordinal())
-					continue;
-				if(CMD == ECMDLIST.NLM.ordinal())
-					continue;
-				if(CMD == ECMDLIST.PLM.ordinal())
-					continue;
-				if(CMD == ECMDLIST.CST.ordinal())
-					continue;
-				if(CMD == ECMDLIST.SVA.ordinal())
-					continue;
-				if(CMD == ECMDLIST.SVO.ordinal())
-					continue;
+//
+//				if(CMD == ECMDLIST.MOV.ordinal())
+//					continue;
+//				if(CMD == ECMDLIST.MVR.ordinal())
+//					continue;
+//				if(CMD == ECMDLIST.NLM.ordinal())
+//					continue;
+//				if(CMD == ECMDLIST.PLM.ordinal())
+//					continue;
+//				if(CMD == ECMDLIST.CST.ordinal())
+//					continue;
+//				if(CMD == ECMDLIST.SVA.ordinal())
+//					continue;
+//				if(CMD == ECMDLIST.SVO.ordinal())
+//					continue;
 
 
 				int[] offset = new int[1];
@@ -133,49 +133,129 @@ public class TCPServerTest {
 
 		case QPOS:
 			ret = packAnalyzer.unpackParas(rawData, offset);
-			for (int i = 0; i <(int) ret.length/2; i++) {
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nGetPosition statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 ){
+				System.out.print(String.format("\r\nGetPosition statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+				return;
+				}
+		
+			for (int i = 2; i <(int) ret.length/2-1; i++) {
+				
 				System.out.print(String.format("\r\nGetPosition of axis\t%s\tvalue\t%f", axisName[i],ret[i*2+1]) );
 			}
 			break;
 		case QSVA:
 			ret = packAnalyzer.unpackParas(rawData, offset);
-			for (int i = 0; i <(int) ret.length/2; i++) {
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nGetOpenLoopValue statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 ){
+				System.out.print(String.format("\r\nGetOpenLoopValue statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+				return;
+				}
+		
+			for (int i = 2; i <(int) ret.length/2-1; i++) {
 				System.out.print(String.format("\r\nGetOpenLoopValue at axis \t%s\tvalue\t%f", axisName[i],ret[i*2+1]) );
 			}
 			break;
 		case QSVO:
 			ret = packAnalyzer.unpackParas(rawData, offset);
-			for (int i = 0; i <(int) ret.length/2; i++) {
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nGetServoMode statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 ){
+				System.out.print(String.format("\r\nGetServoMode statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+				return;
+				}
+		
+			for (int i = 2; i <(int) ret.length/2-1; i++) {
 				System.out.print(String.format("\r\nGetServoMode at axis \t%s\tvalue\t%s", axisName[i],(boolean) ret[i*2+1]?"True":"False") );
 			}
 			break;
 		case QPLM:
 			ret = packAnalyzer.unpackParas(rawData, offset);
-			for (int i = 0; i <(int) ret.length/2; i++) {
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nGetPLM statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 ){
+				System.out.print(String.format("\r\nGetPLM statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+				return;
+				}
+			for (int i = 2; i <(int) ret.length/2-1; i++) {
 				System.out.print(String.format("\r\nGetPLM of axis\t%s\tvalue\t%f", axisName[i],ret[i*2+1]) );
 			}
 			break;
 		case QNLM:
 			ret = packAnalyzer.unpackParas(rawData, offset);
-			for (int i = 0; i <(int) ret.length/2; i++) {
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nGetNLM statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 ){
+				System.out.print(String.format("\r\nGetNLM statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+				return;
+				}
+			for (int i = 2; i <(int) ret.length/2-1; i++) {
 				System.out.print(String.format("\r\nGetNLM of axis\t%s\tvalue\t%f", axisName[i],ret[i*2+1]) );
 			}
 			break;
 		case QCST:
 			ret = packAnalyzer.unpackParas(rawData, offset);
-			for (int i = 0; i <(int) ret.length/2; i++) {
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nGetCST statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 ){
+				System.out.print(String.format("\r\nGetCST statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+				return;
+				}
+			for (int i = 2; i <(int) ret.length/2-1; i++) {
 				System.out.print(String.format("\r\nGetCST of axis\t%s\tvalue\t%f", axisName[i],ret[i*2+1]) );
 			}
 			break;
-		case MOV:			
+		case MOV:	
+			ret = packAnalyzer.unpackParas(rawData, offset);
+			if(ret == null)
+				return;
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nMov axis statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 )
+				System.out.print(String.format("\r\nMov axis statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+			
 			break;
 		case MVR:
+			ret = packAnalyzer.unpackParas(rawData, offset);
+			if(ret == null)
+				return;
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nMov axis statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 )
+				System.out.print(String.format("\r\nMov axis statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+			
 			break;		
 		case SVA:
+			ret = packAnalyzer.unpackParas(rawData, offset);
+			if(ret == null)
+				return;
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nMov axis statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 )
+				System.out.print(String.format("\r\nMov axis statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+			
 			break;
 		case SVO:
+			ret = packAnalyzer.unpackParas(rawData, offset);
+			if(ret == null)
+				return;
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nMov axis statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 )
+				System.out.print(String.format("\r\nMov axis statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+			
 			break;
 		case CST:
+			ret = packAnalyzer.unpackParas(rawData, offset);
+			if(ret == null)
+				return;
+			if(ret.length ==1 )
+				System.out.print(String.format("\r\nMov axis statue\t%s",(Boolean)(ret[0])?"True":"False") );
+			if(ret.length ==2 )
+				System.out.print(String.format("\r\nMov axis statue\t%s\r\n\t%s",(Boolean)(ret[0])?"True":"False", ret[1]));
+			
 			break;
 		default:
 			break;
