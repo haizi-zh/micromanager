@@ -1,4 +1,5 @@
 package org.ndaguan.micromanager;
+
 import ij.WindowManager;
 import ij.process.ImageProcessor;
 
@@ -15,6 +16,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
@@ -27,6 +30,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -68,7 +72,7 @@ public class myGUI {
 	private JTextField Frame2Acq = new JTextField(1);
 	private JTextField TimeIntervals = new JTextField(1);
 	private JTextField StoragePath = new JTextField(1);
-	private JTextField SavePath = new JTextField(1);
+	// private JTextField SavePath = new JTextField(1);
 	private JTextField ZScale = new JTextField(1);
 	private JTextField ZStep = new JTextField(1);
 	private JTextField DNALen = new JTextField(1);
@@ -93,22 +97,22 @@ public class myGUI {
 	public double FrameCalcForce_ = 1000;
 	public int currFrame = 1;
 	public long sleeptime_ = 20;
-	public String StoragePath_ = "E:/Users/n~daguan/AcquisitionData";
-	public String SavePath_ = "E:/Users/ResultLog.txt";
+	// public String StoragePath_ = "E:/Users/n~daguan/AcquisitionData";
+	// public String SavePath_ = "E:/Users/ResultLog.txt";
 	public int Frame2Acq_ = 100000;
 	public int TimeIntervals_ = 5;
 	public double[] calPos_;
-	public int Mstep_ = 100;//um
+	public int Mstep_ = 100;// um
 	public int F_L_Flag_ = 0;
 
-	private FileWriter FileOut = null;
 	public BufferedWriter writer = null;
-	public JFreeChart chart  = null;
+	public JFreeChart chart = null;
 	private int ChartMaxItemCount = 1000;
 	private int isPause = 0;
 	// Temp
 	private long begin;
 	final Object lock = new Object();
+	private String baseDir_;
 
 	public static myGUI getInstance() {
 		return instance_;
@@ -120,9 +124,9 @@ public class myGUI {
 		dataSeries_.setMaximumItemCount(ChartMaxItemCount);
 		dataset_ = new XYSeriesCollection();
 		dataset_.addSeries(dataSeries_);
-		chart = ChartFactory.createXYLineChart("ZIndexMeasure",
-				"-Time", "-ZPosition", dataset_, PlotOrientation.VERTICAL,
-				true, true, false);
+		chart = ChartFactory.createXYLineChart("ZIndexMeasure", "-Time",
+				"-ZPosition", dataset_, PlotOrientation.VERTICAL, true, true,
+				false);
 
 		ChartPanel panel = new ChartPanel(chart, true);
 		return panel;
@@ -166,6 +170,9 @@ public class myGUI {
 		Maininstance_ = ZIndexMeasure.getInstance();
 		roi_rectangle = new Rectangle();
 
+		// Get user home directory
+		baseDir_ = System.getProperty("user.home");
+
 		calcOpt_ = new double[] { Radius_, RInterpStep_, BitDepth_,
 				HalfQuadWindow_, Imgwidth_, Imgheight_, ZStart_, ZScale_,
 				ZStep_, DNALen_, Temperature_, DNAPersLen_, FrameCalcForce_ };
@@ -181,10 +188,10 @@ public class myGUI {
 		FrameCalcForce.setText(String.format("%f", FrameCalcForce_));
 		Frame2Acq.setText(String.format("%d", Frame2Acq_));
 		Mstep.setText(String.format("%d", Mstep_));
-		F_L_Flag.setText(String.format("%d",F_L_Flag_ ));
+		F_L_Flag.setText(String.format("%d", F_L_Flag_));
 		TimeIntervals.setText(String.format("%d", TimeIntervals_));
-		StoragePath.setText(String.format("%s", StoragePath_));
-		SavePath.setText(String.format("%s", SavePath_));
+		StoragePath.setText(String.format("%s", baseDir_));
+		// SavePath.setText(String.format("%s", baseDir_));
 
 		Msg0.setText(String.format("Radius =%f  ,Scale = %f, Step = %f",
 				Radius_, ZScale_, ZStep_));
@@ -225,15 +232,23 @@ public class myGUI {
 
 		Frame2Acq_ = Integer.parseInt(Frame2Acq.getText());
 		TimeIntervals_ = Integer.parseInt(TimeIntervals.getText());
-		StoragePath_ = StoragePath.getText();
-		SavePath_ = SavePath.getText();
+		baseDir_ = StoragePath.getText();
+		// baseDir_ = SavePath.getText();
 		Mstep_ = Integer.parseInt(Mstep.getText());
 		F_L_Flag_ = Integer.parseInt(F_L_Flag.getText());
 		try {
-			FileOut = new FileWriter(new File(SavePath_));
-			writer = new BufferedWriter(FileOut);
-			writer
-			.write("Frame, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
+			// Build the path
+			Calendar cal = new GregorianCalendar();
+
+			DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+			File dir = new File(baseDir_, dateFormat.format(cal.getTime()));
+			dir.mkdirs();
+
+			dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+			File file = new File(dir, dateFormat.format(cal.getTime()) + ".txt");
+
+			writer = new BufferedWriter(new FileWriter(file));
+			writer.write("Frame, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
 			writer.flush();
 		} catch (IOException e) {
 			log("Create File ERR  " + e.toString());
@@ -363,7 +378,7 @@ public class myGUI {
 		LeftCenter.add(new JLabel("StoragePath"));
 		LeftCenter.add(StoragePath);
 		LeftCenter.add(new JLabel("SavePath"));
-		LeftCenter.add(SavePath);
+		// LeftCenter.add(SavePath);
 
 		JPanel leftcenter = new JPanel(new BorderLayout());
 		leftcenter.add(LeftCenter);
@@ -372,9 +387,32 @@ public class myGUI {
 		JButton Set = new JButton("Set");
 		JButton Calibration = new JButton("Calibration");
 		JButton Start = new JButton("Start");
+		Start.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				log(String.format("Atempt to InstallCallback at  %s ",
+						getTime()));
+
+				Frame2Acq_ = Integer.parseInt(Frame2Acq.getText());
+				TimeIntervals_ = Integer.parseInt(TimeIntervals.getText());
+				baseDir_ = StoragePath.getText();
+
+				Maininstance_.InstallCallback();
+			}
+		});
+
 		Pause = new JButton("Pause");
 		Live = new JButton("Live");
 		JButton Stop = new JButton("Stop");
+		Stop.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				log(String.format("Atempt to UninstallCallback at  %s ",
+						getTime()));
+				Maininstance_.UninstallCallback();
+			}
+		});
+
 		JButton Save = new JButton("Save");
 
 		Box LeftBottom = Box.createVerticalBox();
@@ -409,29 +447,7 @@ public class myGUI {
 			public void actionPerformed(ActionEvent e) {
 
 				try {
-
-					if (e.getActionCommand().equals("Start")) {
-						log(String.format("Atempt to InstallCallback at  %s ",
-								getTime()));
-
-						Frame2Acq_ = Integer.parseInt(Frame2Acq.getText());
-						TimeIntervals_ = Integer.parseInt(TimeIntervals
-								.getText());
-						StoragePath_ = StoragePath.getText();
-
-						Maininstance_.InstallCallback();
-					} else if (e.getActionCommand().equals("Stop")) {
-						if (!Maininstance_.gui_.getAcquisitionEngine()
-								.isAcquisitionRunning()) {
-							log("Acquisition is not running ,abort!");
-							return;
-						} else {
-							log(String.format(
-									"Atempt to UninstallCallback at  %s ",
-									getTime()));
-							Maininstance_.UninstallCallback();
-						}
-					} else if (e.getActionCommand().equals("Pause")
+					if (e.getActionCommand().equals("Pause")
 							|| e.getActionCommand().equals("Resume")) {
 
 						if (!Maininstance_.gui_.getAcquisitionEngine()
@@ -491,20 +507,23 @@ public class myGUI {
 			}
 		};
 
-		Start.addActionListener(menuListener);
 		Live.addActionListener(menuListener);
 		Pause.addActionListener(menuListener);
 		Save.addActionListener(menuListener);
-		Stop.addActionListener(menuListener);
 		Set.addActionListener(menuListener);
 		Calibration.addActionListener(menuListener);
 
 	}
 
-	public void log(String str) {
-		LogWindow.setText(String.format("%s\r\n     %s ", LogWindow.getText(),
-				str));
-		LogWindow.setCaretPosition(LogWindow.getText().length());
+	public void log(final String str) {
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				LogWindow.setText(String.format("%s\r\n     %s ",
+						LogWindow.getText(), str));
+				LogWindow.setCaretPosition(LogWindow.getText().length());
+			}
+		});
 	}
 
 	private String getTime() {

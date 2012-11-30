@@ -3,6 +3,10 @@ package org.ndaguan.micromanager;
 import ij.IJ;
 import ij.WindowManager;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.SwingUtilities;
@@ -84,6 +88,13 @@ public class ZIndexMeasure implements MMPlugin {
 				}
 			}
 		})).start();
+	}
+
+	public static void main(String[] argv) {
+		System.out.println(System.getProperty("user.home"));
+		DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+		Calendar cal = new GregorianCalendar();
+		System.out.println(dateFormat.format(cal.getTime()));
 	}
 
 	// (new Thread(new Runnable() { @Override public void run() { test1(); }
@@ -263,7 +274,7 @@ public class ZIndexMeasure implements MMPlugin {
 
 	}
 
-	private void Testing() {// to verify if this stuff
+	private void Testing() throws Exception {// to verify if this stuff
 		// workable
 		mygui_.log("Test begin......checking out the IJ log for move infomation.");
 		IJ.log(String.format("Testing:\r\n#index,#real,#get,#detal"));
@@ -272,20 +283,15 @@ public class ZIndexMeasure implements MMPlugin {
 		int len = mygui_.calPos_.length;
 		double pos[] = new double[4];
 
-		try {
-			for (int i = 0; i < len; i++) {// get XYZPostion
-				setZPosition(mygui_.calPos_[i]);
-				double zpos = core_.getPosition(zstage_);
-				pos = getXYZPositon();
-				mygui_.dataSeries_.add(i, pos[2]);
-				IJ.log(String.format("%d,%f,%f,%f", i, zpos, pos[2], zpos
-						- pos[2]));
-			}
-			setZPosition(currzpos_);// turn back to the first
-									// place,Always 5
-		} catch (Exception e) {
-			mygui_.log("Test failed! " + e.toString());
+		for (int i = 0; i < len; i++) {// get XYZPostion
+			setZPosition(mygui_.calPos_[i]);
+			double zpos = core_.getPosition(zstage_);
+			pos = getXYZPositon();
+			mygui_.dataSeries_.add(i, pos[2]);
+			IJ.log(String.format("%d,%f,%f,%f", i, zpos, pos[2], zpos - pos[2]));
 		}
+		setZPosition(currzpos_);// turn back to the first
+								// place,Always 5
 
 		mygui_.log("Test over ");
 	}
