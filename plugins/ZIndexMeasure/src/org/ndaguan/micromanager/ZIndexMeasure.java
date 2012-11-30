@@ -42,11 +42,11 @@ public class ZIndexMeasure implements MMPlugin {
 
 	public void setApp(ScriptInterface app) {
 		gui_ = (MMStudioMainFrame) app;
-		core_ = gui_.getMMCore();
-		processor_ = new AcqAnalyzer(app);
+		core_ = gui_.getMMCore();		
 		instance_ = this;
 		mygui_ = new myGUI();
 		mygui_.GUIInitialization();
+		processor_ = new AcqAnalyzer(app,this, mygui_);
 
 		xystage_ = core_.getXYStageDevice();
 		zstage_ = core_.getFocusDevice();
@@ -194,20 +194,18 @@ public class ZIndexMeasure implements MMPlugin {
 			mygui_.log("Call back install,Start capture...");
 		}
 
-		if (!gui_.getAcquisitionEngine().isAcquisitionRunning()) {
-			gui_.getAcquisitionEngine().enableFramesSetting(true);
-			gui_.getAcquisitionEngine().setSaveFiles(true);
-			gui_.getAcquisitionEngine().setRootName(mygui_.StoragePath_);
-			gui_.getAcquisitionEngine().setFrames(mygui_.Frame2Acq_,
-					mygui_.TimeIntervals_);
-			try {
-				gui_.getAcquisitionEngine().acquire();
-			} catch (MMException e) {
-				mygui_.log("Image Acquistion False");
-			}
-		}
-//		
-//		mygui_.dataSeries_.delete(0, mygui_.dataSeries_.getItemCount() - 1);
+//			gui_.getAcquisitionEngine().enableFramesSetting(true);
+//			gui_.getAcquisitionEngine().setSaveFiles(true);
+//			gui_.getAcquisitionEngine().setRootName(mygui_.StoragePath_);
+//			gui_.getAcquisitionEngine().setFrames(mygui_.Frame2Acq_,
+//					mygui_.TimeIntervals_);
+//			try {
+//				gui_.getAcquisitionEngine().acquire();
+//			} catch (MMException e) {
+//				mygui_.log("Image Acquistion False");
+//			}
+//		}
+//		 mygui_.dataSeries_.clear();
 	}
 
 	public void UninstallCallback() {
@@ -219,7 +217,7 @@ public class ZIndexMeasure implements MMPlugin {
 		} else {
 			mygui_.log("Repeat!");
 		}
-		gui_.getAcquisitionEngine().stop(true);
+//		gui_.getAcquisitionEngine().stop(true);
 	}
 
 

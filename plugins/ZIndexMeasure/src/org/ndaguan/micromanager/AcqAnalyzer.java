@@ -15,16 +15,15 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private ZIndexMeasure main;
 	private myGUI myGUI_;
 
-	public AcqAnalyzer(ScriptInterface gui) {
+	public AcqAnalyzer(ScriptInterface gui,ZIndexMeasure main_, myGUI mygui_) {
+		myGUI_ = mygui_;
+		main = main_;
 	}
 
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
 		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON || !main.isCalibration)
 			return;
-
-		myGUI_ = myGUI.getInstance();
-		main = ZIndexMeasure.getInstance();
 		//myGUI_.start();
 		GetPosition(myGUI_.currFrame, taggedImage);
 		myGUI_.currFrame++;

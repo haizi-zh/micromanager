@@ -58,8 +58,8 @@ public class myGUI {
 	private double Imgwidth_ = 640;
 	private double Imgheight_ = 480;
 	private double ZStart_ = 0;
-	private double ZScale_ = 8;
-	private double ZStep_ = 0.1;
+	private double ZScale_ = 4;
+	private double ZStep_ = 0.5;
 
 	private JTextField Raduis = new JTextField(1);
 	private JTextField RInterpStep = new JTextField(1);
