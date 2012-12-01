@@ -1,5 +1,6 @@
 package org.ndaguan.micromanager;
 
+import java.awt.geom.Point2D;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -7,6 +8,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -20,12 +22,16 @@ import org.micromanager.MMStudioMainFrame;
 import org.micromanager.acquisition.TaggedImageQueue;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.api.TaggedImageAnalyzer;
+import org.micromanager.utils.MMScriptException;
+import org.zephyre.micromanager.OverlayRender;
+import org.zephyre.micromanager.OverlayRender.RenderItem;
 
 public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private ZIndexMeasure main;
 	private myGUI myGUI_;
 	private ScriptInterface mainWnd_;
 	private String baseDir_;
+	private static AcqAnalyzer instance_;
 
 	public void setBaseDir(String path) {
 		baseDir_ = path;
@@ -33,13 +39,22 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 
 	private Writer dataFileWriter_;
 
-	public AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, myGUI mygui_) {
+	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, myGUI mygui_) {
 		myGUI_ = mygui_;
 		main = main_;
 		mainWnd_ = gui;
+		render_ = OverlayRender.getInstance(gui);
+	}
+
+	public static AcqAnalyzer getInstance(ScriptInterface gui, ZIndexMeasure main_,
+			myGUI mygui_) {
+		if (instance_ == null)
+			instance_ = new AcqAnalyzer(gui, main_, mygui_);
+		return instance_;
 	}
 
 	public boolean clearChart_;
+	private OverlayRender render_;
 
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
@@ -62,16 +77,43 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			return;
 
 		// myGUI_.start();
+		double pos[] = null;
 		try {
-			GetPosition(myGUI_.currFrame, taggedImage);
+			pos = GetPosition(myGUI_.currFrame, taggedImage);
 		} catch (IOException | JSONException e) {
 			mainWnd_.logError(e);
+			return;
 		}
 		myGUI_.currFrame++;
 		// myGUI_.end(String.format("%d,#JAVA Cost Time",myGUI_.currFrame));
+
+		// Render the overlay
+		String acqName;
+		long index;
+		try {
+			if (!taggedImage.tags.has("FrameIndex"))
+				index = 0;
+			else
+				index = taggedImage.tags.getLong("FrameIndex");
+			acqName = taggedImage.tags.getString("AcqName");
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return;
+		}
+
+		ArrayList<RenderItem> list = new ArrayList<OverlayRender.RenderItem>();
+		list.add(RenderItem.createInstance(new Point2D.Float((float) pos[0],
+				(float) pos[1]), String.format("(%f, %f, %f)", pos[0], pos[1],
+				pos[2])));
+		boolean update = acqName.equals(MMStudioMainFrame.SIMPLE_ACQ) ? true
+				: false;
+		try {
+			render_.render(acqName, list, index, update);
+		} catch (MMScriptException e) {
+		}
 	}
 
-	public void GetPosition(final int index_, TaggedImage taggedImage)
+	public double[] GetPosition(final int index_, TaggedImage taggedImage)
 			throws IOException, JSONException {
 		Object[] dpos = main.mCalc.GetZPosition(taggedImage.pix,
 				myGUI_.calcRoi_, index_);
@@ -143,5 +185,6 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			main.PullMagnet();
 		}
 
+		return pos;
 	}
 }

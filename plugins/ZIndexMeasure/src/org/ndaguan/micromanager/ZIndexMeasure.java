@@ -3,10 +3,13 @@ package org.ndaguan.micromanager;
 import ij.IJ;
 import ij.WindowManager;
 
+import java.awt.geom.Point2D;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.SwingUtilities;
@@ -22,6 +25,9 @@ import org.micromanager.api.MMPlugin;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.api.TaggedImageAnalyzer;
 import org.micromanager.utils.MMException;
+import org.micromanager.utils.MMScriptException;
+import org.zephyre.micromanager.OverlayRender;
+import org.zephyre.micromanager.OverlayRender.RenderItem;
 
 public class ZIndexMeasure implements MMPlugin {
 	public CMMCore core_;
@@ -59,12 +65,17 @@ public class ZIndexMeasure implements MMPlugin {
 		core_ = gui_.getMMCore();
 		instance_ = this;
 
-//		gui_.getAcquisitionEngine().addImageProcessor(
-//				TestAnalyzer.getInstance(gui_));
-
-		mygui_ = new myGUI();
-		mygui_.GUIInitialization();
-		processor_ = new AcqAnalyzer(app, this, mygui_);
+		if (mygui_ == null) {
+			mygui_ = new myGUI();
+			processor_ = AcqAnalyzer.getInstance(app, this, mygui_);
+			mCalc = new myCalculator();
+			tcpServer_ = new TCPServer(core_, port_);
+			mygui_.log("tcpServer ini ok");
+			tcpServer_.start();
+			mygui_.log("mCalc ini ok");
+//			gui_.getAcquisitionEngine().addImageProcessor(
+//					TestAnalyzer.getInstance(gui_));
+		}
 
 		xystage_ = core_.getXYStageDevice();
 		zstage_ = core_.getFocusDevice();
@@ -76,12 +87,6 @@ public class ZIndexMeasure implements MMPlugin {
 		} catch (Exception e1) {
 			mygui_.log("GET POSTION ERR");
 		}
-		mCalc = new myCalculator();
-		tcpServer_ = new TCPServer(core_, port_);
-		mygui_.log("tcpServer ini ok");
-		tcpServer_.start();
-		mygui_.log("mCalc ini ok");
-
 	}
 
 	public void PullMagnet() {
@@ -172,8 +177,10 @@ public class ZIndexMeasure implements MMPlugin {
 	}
 
 	public void show() {
+		mygui_.setVisible(true);
 		if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
 				&& (!gui_.isLiveModeOn())) {
+//			gui_.snapSingleImage();
 			gui_.enableLiveMode(true);
 			mygui_.Live.setText("Stop Live");
 		}
@@ -323,11 +330,16 @@ public class ZIndexMeasure implements MMPlugin {
 
 class TestAnalyzer extends TaggedImageAnalyzer {
 	private ScriptInterface gui_;
-	private long index_;
 	private static TestAnalyzer instance_;
+	private double x_ = 320;
+	private double y_ = 240;
+	private Random rand_;
+	private OverlayRender render_;
 
 	protected TestAnalyzer(ScriptInterface gui) {
 		gui_ = gui;
+		rand_ = new Random();
+		render_ = OverlayRender.getInstance(gui);
 	}
 
 	static TestAnalyzer getInstance(ScriptInterface gui) {
@@ -340,14 +352,31 @@ class TestAnalyzer extends TaggedImageAnalyzer {
 	protected void analyze(TaggedImage taggedImage) {
 		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON)
 			return;
-		Object obj = null;
+
+		String acqName;
+		long index;
 		try {
-			obj = taggedImage.tags.get("ElapsedTime-ms");
-		} catch (JSONException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			if (!taggedImage.tags.has("FrameIndex"))
+				index = 0;
+			else
+				index = taggedImage.tags.getLong("FrameIndex");
+			x_ += rand_.nextDouble() - 0.5;
+			y_ += rand_.nextDouble() - 0.5;
+			acqName = taggedImage.tags.getString("AcqName");
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return;
 		}
-		gui_.logMessage(String.format("Test: elapsed: %s", obj));
+
+		ArrayList<RenderItem> list = new ArrayList<OverlayRender.RenderItem>();
+		list.add(RenderItem.createInstance(new Point2D.Float((float) x_,
+				(float) y_), String.format("(%f, %f)", x_, y_)));
+		boolean update = acqName.equals(MMStudioMainFrame.SIMPLE_ACQ) ? true
+				: false;
+		try {
+			render_.render(acqName, list, index, update);
+		} catch (MMScriptException e) {
+		}
 	}
 
 }

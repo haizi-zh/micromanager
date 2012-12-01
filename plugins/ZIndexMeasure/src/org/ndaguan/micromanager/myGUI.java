@@ -39,13 +39,12 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
-public class myGUI {
+public class myGUI extends JFrame{
 	// main instance
 	private ZIndexMeasure Maininstance_ = null;
 	private static myGUI instance_;
 	public int MAX_LEN = 200000;
 	// GUI
-	private JFrame f_ = new JFrame("ZIndexMeasure");
 	private JTextArea LogWindow = new JTextArea(50, 40);
 	public JTextField Msg0 = new JTextField(36);
 	public JTextField Msg1 = new JTextField(36);
@@ -172,6 +171,8 @@ public class myGUI {
 	}
 
 	public myGUI() {
+		GUIInitialization();
+		
 		instance_ = this;
 		Maininstance_ = ZIndexMeasure.getInstance();
 		roi_rectangle = new Rectangle();
@@ -438,14 +439,12 @@ public class myGUI {
 		left.add(leftbottom, BorderLayout.SOUTH);
 
 		// main frame
-		Container con = f_.getContentPane();
+		Container con = getContentPane();
 		con.setLayout(new BorderLayout());
 		con.add(left, BorderLayout.WEST);
 		con.add(middle, BorderLayout.CENTER);
 
-		f_.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-		f_.pack();
-		f_.setVisible(true);
+
 		JFrame.setDefaultLookAndFeelDecorated(false);
 
 		ActionListener menuListener = new ActionListener() {
@@ -520,6 +519,10 @@ public class myGUI {
 		Set.addActionListener(menuListener);
 		Calibration.addActionListener(menuListener);
 
+		setTitle("ZIndexMeasure");
+		pack();
+		setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+//		setVisible(true);
 	}
 
 	public void log(final String str) {

@@ -1051,7 +1051,7 @@ int DVCCamera::PushImage(int userBufferId) {
 	const int retCode = GetCoreCallback()->InsertImage(this,
 			(const unsigned char*) (userBuffers_.pBuffers[userBufferId]),
 			(unsigned int) width, (unsigned int) height,
-			(unsigned int) bytesPerPixel, md.Serialize().c_str());
+			(unsigned int) bytesPerPixel, &md);
 
 	if (!stopOnOverflow_ && retCode == DEVICE_BUFFER_OVERFLOW) {
 		LogMessage("Overflow occured.");
