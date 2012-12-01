@@ -17,6 +17,7 @@ import javax.swing.SwingUtilities;
 import mmcorej.CMMCore;
 import mmcorej.TaggedImage;
 
+import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.acquisition.TaggedImageQueue;
@@ -73,20 +74,24 @@ public class ZIndexMeasure implements MMPlugin {
 			mygui_.log("tcpServer ini ok");
 			tcpServer_.start();
 			mygui_.log("mCalc ini ok");
-//			gui_.getAcquisitionEngine().addImageProcessor(
-//					TestAnalyzer.getInstance(gui_));
+			// gui_.getAcquisitionEngine().addImageProcessor(
+			// TestAnalyzer.getInstance(gui_));
 		}
 
 		xystage_ = core_.getXYStageDevice();
 		zstage_ = core_.getFocusDevice();
 
 		try {
-			currxpos_ = core_.getXPosition(xystage_);
-			currypos_ = core_.getYPosition(xystage_);
-			currzpos_ = core_.getPosition(zstage_);
+			updatePositions();
 		} catch (Exception e1) {
 			mygui_.log("GET POSTION ERR");
 		}
+	}
+
+	public void updatePositions() throws Exception {
+		currxpos_ = core_.getXPosition(xystage_);
+		currypos_ = core_.getYPosition(xystage_);
+		currzpos_ = core_.getPosition(zstage_);
 	}
 
 	public void PullMagnet() {
@@ -128,17 +133,34 @@ public class ZIndexMeasure implements MMPlugin {
 			gui_.enableLiveMode(false);
 		}
 		double temp;
-		double detal;
+		double delta;
 		try {
 			currzpos_ = core_.getPosition(zstage_);
+
+			// Polyfit to calibrate xy axes
+			double[][] stagePos = new double[2][];
+			double[][] loc = new double[2][];
+			for (int i = 0; i < 2; i++) {
+				stagePos[i] = new double[mygui_.calPos_.length];
+				loc[i] = new double[mygui_.calPos_.length];
+			}
+
 			for (int z = 0; z < mygui_.calPos_.length; z++) {
+				// Calibration on X/Y/Z
+				core_.setXYPosition(xystage_, mygui_.calPosXY_[0][z],
+						mygui_.calPosXY_[1][z]);
 				setZPosition(mygui_.calPos_[z]);
+
 				temp = core_.getPosition(zstage_);
-				detal = mygui_.calPos_[z] - temp;
-				if (detal > 0.002 || detal < -0.002) {
+				double[] tempX = new double[1];
+				double[] tempY = new double[2];
+				core_.getXYPosition(xystage_, tempX, tempY);
+
+				delta = mygui_.calPos_[z] - temp;
+				if (delta > 0.002 || delta < -0.002) {
 					IJ.log(String.format(
 							"Warning:set z position at%f,return %f detal =%f",
-							mygui_.calPos_[z], temp, detal));
+							mygui_.calPos_[z], temp, delta));
 				}
 				IJ.log(String.format("Calibrating:%d/%d\r\n", z,
 						mygui_.calPos_.length));
@@ -152,14 +174,34 @@ public class ZIndexMeasure implements MMPlugin {
 				mygui_.reSetROI((int) outpos[0], (int) outpos[1]);
 				IJ.log(String.format("xpos:%f--ypos:%f\r\n", outpos[0],
 						outpos[1]));
+
+				// XY calibration
+				stagePos[0][z] = tempX[0] * 1000;
+				stagePos[1][z] = tempY[0] * 1000;
+				loc[0][z] = outpos[0];
+				loc[1][z] = outpos[1];
+				SimpleRegression regrX = new SimpleRegression();
+				SimpleRegression regrY = new SimpleRegression();
+				for (int i = 0; i < loc[0].length; i++) {
+					regrX.addData(loc[0][i], stagePos[0][i]);
+					regrY.addData(loc[1][i], stagePos[1][i]);
+				}
+				double[] vec = new double[4];
+				vec[0] = regrX.getIntercept();
+				vec[1] = regrX.getSlope();
+				vec[2] = regrY.getIntercept();
+				vec[3] = regrY.getSlope();
+				processor_.setPixelToPhys(vec);
 			}
+			core_.setXYPosition(xystage_, currxpos_, currypos_);
 			setZPosition(currzpos_);// turn back to the first place,Always 5
+
 			gui_.snapSingleImage();
 			mygui_.log("Calibration OK......");
 
 			Testing();
 			isCalibrated = true;
-			processor_.clearChart_ = true;
+			processor_.resetData_ = true;
 		} catch (Exception e) {
 			mygui_.log("Calibration False! god knows why......" + e.toString());
 			e.printStackTrace();
@@ -180,7 +222,7 @@ public class ZIndexMeasure implements MMPlugin {
 		mygui_.setVisible(true);
 		if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
 				&& (!gui_.isLiveModeOn())) {
-//			gui_.snapSingleImage();
+			// gui_.snapSingleImage();
 			gui_.enableLiveMode(true);
 			mygui_.Live.setText("Stop Live");
 		}
@@ -296,7 +338,7 @@ public class ZIndexMeasure implements MMPlugin {
 	private void Testing() throws Exception {// to verify if this stuff
 		// workable
 		mygui_.log("Test begin......checking out the IJ log for move infomation.");
-		IJ.log(String.format("Testing:\r\n#index,#real,#get,#detal"));
+		IJ.log(String.format("Testing:\r\n#index,#real,#get,#delta"));
 
 		mygui_.dataSeries_.clear();
 		int len = mygui_.calPos_.length;

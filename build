@@ -68,10 +68,10 @@ popd
 
 echo Building Micro-Manger Studio:
 pushd mmstudio
-ant -buildfile build32.xml clean install
+ant -buildfile build32.xml install
 popd
 
 echo Building ZIndexMeasure:
 pushd plugins/ZIndexMeasure
-ant -buildfile build.xml clean build
+ant -buildfile build.xml build
 popd

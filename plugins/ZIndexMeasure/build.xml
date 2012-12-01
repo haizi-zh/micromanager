@@ -15,6 +15,7 @@
 		<pathelement location="${third.party.dir}/classext/ij.jar" />
 		<pathelement location="${third.party.dir}/classext/jfreechart-1.0.14.jar" />		
 		<pathelement location="${third.party.dir}/classext/jcommon-1.0.17.jar" />
+		<pathelement location="${third.party.dir}/classext/commons-math3-3.0.jar" />
 		<pathelement location="../../bin_Win32/MMCoreJ.jar" />
 		<pathelement location="../../mmstudio/MMJ_.jar" />
 	</path>

@@ -39,7 +39,7 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
-public class myGUI extends JFrame{
+public class myGUI extends JFrame {
 	// main instance
 	private ZIndexMeasure Maininstance_ = null;
 	private static myGUI instance_;
@@ -62,6 +62,7 @@ public class myGUI extends JFrame{
 	private double Imgheight_ = 480;
 	private double ZStart_ = 0;
 	private double ZScale_ = 4;
+	private double xyCalRange_ = 4;
 	private double ZStep_ = 0.5;
 
 	private JTextField Raduis = new JTextField(1);
@@ -100,7 +101,9 @@ public class myGUI extends JFrame{
 	// public String SavePath_ = "E:/Users/ResultLog.txt";
 	public int Frame2Acq_ = 100000;
 	public int TimeIntervals_ = 5;
-	public double[] calPos_;
+	double[] calPos_;
+	// XY calibration positions
+	double[][] calPosXY_;
 	public int Mstep_ = 100;// um
 	public int F_L_Flag_ = 0;
 
@@ -172,7 +175,7 @@ public class myGUI extends JFrame{
 
 	public myGUI() {
 		GUIInitialization();
-		
+
 		instance_ = this;
 		Maininstance_ = ZIndexMeasure.getInstance();
 		roi_rectangle = new Rectangle();
@@ -214,6 +217,13 @@ public class myGUI extends JFrame{
 		}
 		if (WindowManager.getCurrentImage().getRoi() == null) {
 			log("please set ROI,the tool is locate in the imagej main frame");
+			return;
+		}
+
+		try {
+			Maininstance_.updatePositions();
+		} catch (Exception e) {
+			log(e.toString());
 			return;
 		}
 
@@ -275,6 +285,17 @@ public class myGUI extends JFrame{
 		calPos_ = new double[calProfiley];
 		for (int i = 0; i < calProfiley; i++) {
 			calPos_[i] = Maininstance_.currzpos_ - ZScale_ / 2 + i * ZStep_;
+		}
+
+		// Set the x/y positions
+		calPosXY_ = new double[2][];
+		double[] xyStartPoint = new double[] { Maininstance_.currxpos_,
+				Maininstance_.currypos_ };
+		for (int i = 0; i < 2; i++) {
+			calPosXY_[i] = new double[calPos_.length];
+			for (int j = 0; j < calPos_.length; j++)
+				calPosXY_[i][j] = xyStartPoint[i] + xyCalRange_
+						/ calPos_.length * j;
 		}
 
 		Maininstance_.mCalc.DataInit(calcOpt_);
@@ -444,7 +465,6 @@ public class myGUI extends JFrame{
 		con.add(left, BorderLayout.WEST);
 		con.add(middle, BorderLayout.CENTER);
 
-
 		JFrame.setDefaultLookAndFeelDecorated(false);
 
 		ActionListener menuListener = new ActionListener() {
@@ -522,7 +542,7 @@ public class myGUI extends JFrame{
 		setTitle("ZIndexMeasure");
 		pack();
 		setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-//		setVisible(true);
+		// setVisible(true);
 	}
 
 	public void log(final String str) {

@@ -17,6 +17,9 @@ import javax.swing.SwingUtilities;
 
 import mmcorej.TaggedImage;
 
+import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
+import org.apache.commons.math3.analysis.solvers.LaguerreSolver;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.acquisition.TaggedImageQueue;
@@ -32,6 +35,16 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private ScriptInterface mainWnd_;
 	private String baseDir_;
 	private static AcqAnalyzer instance_;
+	private double persistance_;
+	private double beadRadius_;
+	private double kT_;
+	private double contourLength_;
+	private int windowSize_;
+	private double[] pixelToPhys_;
+
+	public void setPixelToPhys(double[] transform) {
+		pixelToPhys_ = transform;
+	}
 
 	public void setBaseDir(String path) {
 		baseDir_ = path;
@@ -44,17 +57,29 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		main = main_;
 		mainWnd_ = gui;
 		render_ = OverlayRender.getInstance(gui);
+		stats_ = new DescriptiveStatistics[3];
+		windowSize_ = 1000;
+		for (int i = 0; i < stats_.length; i++) {
+			stats_[i] = new DescriptiveStatistics(windowSize_);
+		}
+		statCross_ = new DescriptiveStatistics(windowSize_);
+		persistance_ = 50;
+		beadRadius_ = 1400;
+		kT_ = 4.2;
+		contourLength_ = 16700;
 	}
 
-	public static AcqAnalyzer getInstance(ScriptInterface gui, ZIndexMeasure main_,
-			myGUI mygui_) {
+	public static AcqAnalyzer getInstance(ScriptInterface gui,
+			ZIndexMeasure main_, myGUI mygui_) {
 		if (instance_ == null)
 			instance_ = new AcqAnalyzer(gui, main_, mygui_);
 		return instance_;
 	}
 
-	public boolean clearChart_;
+	public boolean resetData_;
 	private OverlayRender render_;
+	private DescriptiveStatistics[] stats_;
+	private DescriptiveStatistics statCross_;
 
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
@@ -65,7 +90,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				try {
 					dataFileWriter_.close();
 					dataFileWriter_ = null;
-					clearChart_ = true;
+					resetData_ = true;
 				} catch (IOException e) {
 					mainWnd_.logError(e);
 				}
@@ -121,13 +146,30 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		// myGUI_.log(String.format("C Cost Time#%f", time[1]));
 		final double pos[] = (double[]) dpos[0];
 
-		final boolean clr = clearChart_;
+		final boolean clearChart = resetData_;
+
+		// Reset the stat container
+		if (resetData_) {
+			for (DescriptiveStatistics stat : stats_)
+				stat.clear();
+			statCross_.clear();
+			resetData_ = false;
+		}
+		double xPhys = pixelToPhys_[0] + pixelToPhys_[1] * pos[0];
+		double yPhys = pixelToPhys_[2] + pixelToPhys_[3] * pos[1];
+		stats_[0].addValue(xPhys);
+		stats_[1].addValue(yPhys);
+		stats_[2].addValue(pos[2]);
+		statCross_.addValue(xPhys * yPhys);
+		// Calculate forces
+		final double[] forces = calcForces();
+		double[] skrewness = calcSkrewness();
+
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				if (clr) {
+				if (clearChart) {
 					myGUI_.dataSeries_.clear();
-					AcqAnalyzer.this.clearChart_ = false;
 				}
 
 				myGUI_.dataSeries_.add(index_, pos[2]);
@@ -141,8 +183,8 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				myGUI_.dataSeries_.add(index_, pos[2]);
 				myGUI_.Msg0.setText(String
 						.format("index = %d # xpos = %f # ypos = %f # zpos = %f # forceX/pN=%f # forceY/pN=%f",
-								index_, pos[0], pos[1], pos[2], pos[12],
-								pos[13]));
+								index_, pos[0], pos[1], pos[2], forces[0],
+								forces[1]));
 				myGUI_.Msg1.setText(String
 						.format("# <stdx> = %f # <stdy> = %f # <stdz> = %f # meanx = %f # meany = %f # meanz = %f",
 								pos[6], pos[7], pos[8], pos[9], pos[10],
@@ -177,14 +219,44 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 
 		dataFileWriter_.write(String.format(
 				"%d,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n", index_,
-				taggedImage.tags.get("ElapsedTime-ms"), pos[0], pos[1], pos[2],
-				pos[6], pos[7], pos[8], pos[9], pos[10], pos[11], pos[12],
-				pos[13]));
+				taggedImage.tags.get("ElapsedTime-ms"), xPhys, yPhys, pos[2],
+				pos[6], pos[7], pos[8], pos[9], pos[10], pos[11], forces[0],
+				forces[1]));
 
 		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.F_L_Flag_ == 1) {
 			main.PullMagnet();
 		}
 
 		return pos;
+	}
+
+	private double[] calcSkrewness() {
+		double[] skrewness = new double[2];
+
+		double[] stds = new double[2];
+		for (int i = 0; i < stds.length; i++)
+			stds[i] = stats_[i].getStandardDeviation();
+
+		double n = statCross_.getN();
+		skrewness[0] = stds[0] / stds[1];
+		skrewness[1] = (statCross_.getMean() - stats_[0].getMean()
+				* stats_[1].getMean())
+				* n / (n - 1) / (stds[0] * stds[1]);
+		return null;
+	}
+
+	private double[] calcForces() {
+		LaguerreSolver solver = new LaguerreSolver();
+		double[] forces = new double[2];
+		for (int i = 0; i < forces.length; i++) {
+			double variance = stats_[i].getVariance();
+			double a = 4 * persistance_ * contourLength_ / variance;
+			double b = 4 * persistance_ * beadRadius_ / variance;
+			PolynomialFunction func = new PolynomialFunction(new double[] { b,
+					a - 2 * b - 6, b - 2 * a + 9, a - 4 });
+			forces[i] = (solver.solve(100, func, 0, 1, 0.8) * a + b) * kT_
+					/ (4 * persistance_);
+		}
+		return forces;
 	}
 }
