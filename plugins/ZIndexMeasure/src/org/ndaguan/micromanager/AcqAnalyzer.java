@@ -31,7 +31,7 @@ import org.zephyre.micromanager.OverlayRender.RenderItem;
 
 public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private ZIndexMeasure main;
-	private myGUI myGUI_;
+	private MyGUI myGUI_;
 	private ScriptInterface mainWnd_;
 	private String baseDir_;
 	private static AcqAnalyzer instance_;
@@ -52,7 +52,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 
 	private Writer dataFileWriter_;
 
-	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, myGUI mygui_) {
+	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, MyGUI mygui_) {
 		myGUI_ = mygui_;
 		main = main_;
 		mainWnd_ = gui;
@@ -70,7 +70,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	}
 
 	public static AcqAnalyzer getInstance(ScriptInterface gui,
-			ZIndexMeasure main_, myGUI mygui_) {
+			ZIndexMeasure main_, MyGUI mygui_) {
 		if (instance_ == null)
 			instance_ = new AcqAnalyzer(gui, main_, mygui_);
 		return instance_;

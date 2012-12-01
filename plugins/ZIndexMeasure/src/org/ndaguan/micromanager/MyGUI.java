@@ -39,10 +39,10 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
-public class myGUI extends JFrame {
+public class MyGUI extends JFrame {
 	// main instance
 	private ZIndexMeasure Maininstance_ = null;
-	private static myGUI instance_;
+	private static MyGUI instance_;
 	public int MAX_LEN = 200000;
 	// GUI
 	private JTextArea LogWindow = new JTextArea(50, 40);
@@ -122,7 +122,7 @@ public class myGUI extends JFrame {
 	// return start_ts;
 	// }
 
-	public static myGUI getInstance() {
+	public static MyGUI getInstance() {
 		return instance_;
 	}
 
@@ -173,7 +173,7 @@ public class myGUI extends JFrame {
 		WindowManager.getCurrentImage().setRoi(roi_rectangle);
 	}
 
-	public myGUI() {
+	public MyGUI() {
 		GUIInitialization();
 
 		instance_ = this;

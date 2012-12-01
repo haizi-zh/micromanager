@@ -34,7 +34,7 @@ public class ZIndexMeasure implements MMPlugin {
 	public CMMCore core_;
 	public myCalculator mCalc = null;
 	public MMStudioMainFrame gui_;
-	private myGUI mygui_;
+	private MyGUI mygui_;
 	private static ZIndexMeasure instance_;
 	private AcqAnalyzer processor_;
 
@@ -67,7 +67,7 @@ public class ZIndexMeasure implements MMPlugin {
 		instance_ = this;
 
 		if (mygui_ == null) {
-			mygui_ = new myGUI();
+			mygui_ = new MyGUI();
 			processor_ = AcqAnalyzer.getInstance(app, this, mygui_);
 			mCalc = new myCalculator();
 			tcpServer_ = new TCPServer(core_, port_);
