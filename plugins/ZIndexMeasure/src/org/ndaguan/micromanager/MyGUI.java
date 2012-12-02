@@ -39,10 +39,10 @@ import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
-public class myGUI extends JFrame {
+public class MyGUI extends JFrame {
 	// main instance
-	private ZIndexMeasure Maininstance_ = null;
-	private static myGUI instance_;
+	private ZIndexMeasure mainInstance_ = null;
+	private static MyGUI instance_;
 	public int MAX_LEN = 200000;
 	// GUI
 	private JTextArea LogWindow = new JTextArea(50, 40);
@@ -62,7 +62,7 @@ public class myGUI extends JFrame {
 	private double Imgheight_ = 480;
 	private double ZStart_ = 0;
 	private double ZScale_ = 4;
-	private double xyCalRange_ = 4;
+	private double xyCalRange_ = 2;
 	private double ZStep_ = 0.5;
 
 	private JTextField Raduis = new JTextField(1);
@@ -101,9 +101,7 @@ public class myGUI extends JFrame {
 	// public String SavePath_ = "E:/Users/ResultLog.txt";
 	public int Frame2Acq_ = 100000;
 	public int TimeIntervals_ = 5;
-	double[] calPos_;
-	// XY calibration positions
-	double[][] calPosXY_;
+
 	public int Mstep_ = 100;// um
 	public int F_L_Flag_ = 0;
 
@@ -122,7 +120,7 @@ public class myGUI extends JFrame {
 	// return start_ts;
 	// }
 
-	public static myGUI getInstance() {
+	public static MyGUI getInstance() {
 		return instance_;
 	}
 
@@ -153,7 +151,7 @@ public class myGUI extends JFrame {
 		return true;
 	}
 
-	public void reSetROI(int CenterX, int CenterY) {
+	public void resetROI(int CenterX, int CenterY) {
 
 		int ROIBounder = 10;
 		int BallSqrt = (int) ((ROIBounder + Radius_) * 2);
@@ -173,11 +171,11 @@ public class myGUI extends JFrame {
 		WindowManager.getCurrentImage().setRoi(roi_rectangle);
 	}
 
-	public myGUI() {
-		GUIInitialization();
+	public MyGUI() {
+		initGUI();
 
 		instance_ = this;
-		Maininstance_ = ZIndexMeasure.getInstance();
+		mainInstance_ = ZIndexMeasure.getInstance();
 		roi_rectangle = new Rectangle();
 
 		// Get user home directory
@@ -209,7 +207,7 @@ public class myGUI extends JFrame {
 
 	}
 
-	public void SetScale() {
+	public void setScale() {
 		log("SetScale Start......");
 		if (WindowManager.getCurrentImage() == null) {
 			log("please open an image,use the live button");
@@ -221,7 +219,7 @@ public class myGUI extends JFrame {
 		}
 
 		try {
-			Maininstance_.updatePositions();
+			mainInstance_.updatePositions();
 		} catch (Exception e) {
 			log(e.toString());
 			return;
@@ -230,7 +228,7 @@ public class myGUI extends JFrame {
 		roi_rectangle = WindowManager.getCurrentImage().getRoi().getBounds();
 		int CenterX = roi_rectangle.x + roi_rectangle.width / 2;
 		int CenterY = roi_rectangle.y + roi_rectangle.height / 2;
-		reSetROI(CenterX, CenterY);
+		resetROI(CenterX, CenterY);
 
 		currFrame = 1;
 		Radius_ = Double.parseDouble(Raduis.getText());
@@ -244,11 +242,11 @@ public class myGUI extends JFrame {
 		ZScale_ = Double.parseDouble(ZScale.getText());
 		ZStep_ = Double.parseDouble(ZStep.getText());
 		FrameCalcForce_ = Double.parseDouble(FrameCalcForce.getText());
-		ZStart_ = Maininstance_.currzpos_ - ZScale_ / 2;
+		ZStart_ = mainInstance_.currzpos_ - ZScale_ / 2;
 
 		Frame2Acq_ = Integer.parseInt(Frame2Acq.getText());
 		TimeIntervals_ = Integer.parseInt(TimeIntervals.getText());
-		Maininstance_.getProcessor().setBaseDir(StoragePath.getText());
+		mainInstance_.getProcessor().setBaseDir(StoragePath.getText());
 		// baseDir_ = SavePath.getText();
 		Mstep_ = Integer.parseInt(Mstep.getText());
 		F_L_Flag_ = Integer.parseInt(F_L_Flag.getText());
@@ -272,34 +270,38 @@ public class myGUI extends JFrame {
 		// log("Create File ERR  " + e.toString());
 		// return;
 		// }
-		reSetOpt();
+		resetOpt();
 		setCalProfile();
 
-		Maininstance_.isSetScale = true;
-		Maininstance_.isCalibrated = false;
+		mainInstance_.isSetScale = true;
+		mainInstance_.isCalibrated = false;
 
 	}
 
 	private void setCalProfile() {
-		int calProfiley = (int) (ZScale_ / ZStep_);
-		calPos_ = new double[calProfiley];
-		for (int i = 0; i < calProfiley; i++) {
-			calPos_[i] = Maininstance_.currzpos_ - ZScale_ / 2 + i * ZStep_;
+		int nSteps = (int) (ZScale_ / ZStep_);
+		double[] calPosZ = new double[nSteps];
+		double[][] calPosXY = new double[2][];
+		for (int i = 0; i < nSteps; i++) {
+			calPosZ[i] = mainInstance_.currzpos_ - ZScale_ / 2 + i * ZStep_;
 		}
 
 		// Set the x/y positions
-		calPosXY_ = new double[2][];
-		double[] xyStartPoint = new double[] { Maininstance_.currxpos_,
-				Maininstance_.currypos_ };
+		double[] xyStartPoint = new double[] { mainInstance_.currxpos_,
+				mainInstance_.currypos_ };
+		int midPoint = nSteps / 2;
 		for (int i = 0; i < 2; i++) {
-			calPosXY_[i] = new double[calPos_.length];
-			for (int j = 0; j < calPos_.length; j++)
-				calPosXY_[i][j] = xyStartPoint[i] + xyCalRange_
-						/ calPos_.length * j;
+			calPosXY[i] = new double[nSteps];
+			for (int j = 0; j < midPoint; j++)
+				calPosXY[i][j] = xyStartPoint[i] + xyCalRange_ / midPoint * j;
+			for (int j = midPoint; j < nSteps; j++)
+				calPosXY[i][j] = calPosXY[i][midPoint - 1] - xyCalRange_
+						/ midPoint * (j - midPoint);
 		}
 
-		Maininstance_.mCalc.DataInit(calcOpt_);
-		Maininstance_.isSetScale = true;
+		mainInstance_.updateCalPos(calPosXY, calPosZ);
+		mainInstance_.mCalc.DataInit(calcOpt_);
+		mainInstance_.isSetScale = true;
 		Msg0.setText(String.format("Radius =%f  ,Scale = %f, Step = %f",
 				Radius_, ZScale_, ZStep_));
 		log("Scale Seted\t");
@@ -310,7 +312,7 @@ public class myGUI extends JFrame {
 	// opt_[13]
 	// :radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep
 	// ��DNALen��Temperature��DNAPersLen,frame2calcForce
-	private void reSetOpt() {
+	private void resetOpt() {
 		calcOpt_[0] = Radius_;
 		calcOpt_[1] = RInterpStep_;
 		calcOpt_[2] = BitDepth_;
@@ -327,7 +329,7 @@ public class myGUI extends JFrame {
 		calcOpt_[12] = FrameCalcForce_;
 	}
 
-	public void GUIInitialization() {
+	public void initGUI() {
 
 		// Add GUI DATA
 		JSeparator s1 = new JSeparator(JSeparator.HORIZONTAL);
@@ -424,8 +426,8 @@ public class myGUI extends JFrame {
 
 				Frame2Acq_ = Integer.parseInt(Frame2Acq.getText());
 				TimeIntervals_ = Integer.parseInt(TimeIntervals.getText());
-				Maininstance_.getProcessor().setBaseDir(StoragePath.getText());
-				Maininstance_.InstallCallback();
+				mainInstance_.getProcessor().setBaseDir(StoragePath.getText());
+				mainInstance_.InstallCallback();
 			}
 		});
 
@@ -437,7 +439,7 @@ public class myGUI extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				log(String.format("Atempt to UninstallCallback at  %s ",
 						getTime()));
-				Maininstance_.UninstallCallback();
+				mainInstance_.UninstallCallback();
 			}
 		});
 
@@ -475,21 +477,21 @@ public class myGUI extends JFrame {
 					if (e.getActionCommand().equals("Pause")
 							|| e.getActionCommand().equals("Resume")) {
 
-						if (!Maininstance_.gui_.getAcquisitionEngine()
+						if (!mainInstance_.gui_.getAcquisitionEngine()
 								.isAcquisitionRunning()) {
 							log("Acquisition is not running ,abort!");
 							return;
 						}
 
 						if (isPause == 0) {
-							Maininstance_.gui_.getAcquisitionEngine().setPause(
+							mainInstance_.gui_.getAcquisitionEngine().setPause(
 									true);
 							Pause.setText("Resume");
 							log(String.format("Atempt to Pause at  %s ",
 									getTime()));
 							isPause = 1;
 						} else {
-							Maininstance_.gui_.getAcquisitionEngine().setPause(
+							mainInstance_.gui_.getAcquisitionEngine().setPause(
 									false);
 							Pause.setText("Pause");
 							log(String.format("Atempt to Resume at  %s ",
@@ -498,31 +500,31 @@ public class myGUI extends JFrame {
 						}
 					} else if (e.getActionCommand().equals("Live")
 							|| e.getActionCommand().equals("Stop Live")) {
-						if (Maininstance_.gui_.getAcquisitionEngine()
+						if (mainInstance_.gui_.getAcquisitionEngine()
 								.isAcquisitionRunning()) {
 							log("Acquistion is running,mission abort!");
 							return;
 						}
-						if (Maininstance_.gui_.isLiveModeOn()) {
-							Maininstance_.gui_.enableLiveMode(false);
+						if (mainInstance_.gui_.isLiveModeOn()) {
+							mainInstance_.gui_.enableLiveMode(false);
 							Live.setText("Live");
 						} else {
 							Live.setText("Stop Live");
-							Maininstance_.gui_.enableLiveMode(true);
+							mainInstance_.gui_.enableLiveMode(true);
 						}
 					} else if (e.getActionCommand().equals("Set")) {
 						log(String.format("Atempt to SetScale at %s ",
 								getTime()));
-						SetScale();
+						setScale();
 					} else if (e.getActionCommand().equals("Calibration")) {
 						log(String.format("Atempt to StartCalibration at %s ",
 								getTime()));
-						SetScale();
+						setScale();
 						(new Thread(new Runnable() {
 							@Override
 							public void run() {
-								Maininstance_.StartCalibration();
-								Maininstance_.InstallCallback();
+								mainInstance_.StartCalibration();
+								mainInstance_.InstallCallback();
 							}
 						})).start();
 

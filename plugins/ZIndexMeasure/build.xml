@@ -7,6 +7,7 @@
 	<property name="build.dir" value="build" />
 	<property name="src.dir" value="src" />
 	<property name="dist.dir" value="../../Install_Win32/micro-manager" />
+	<property name="bin.dir" value="../../bin_Win32" />
 	<property name="target.name" value="ZIndexMeasure" />
 	
 	<property name="third.party.dir" value="../../../3rdpartypublic" />
@@ -37,6 +38,7 @@
 				<attribute name="Built-By" value="${user.name}" />
 			</manifest>
 		</jar>
+		<copy file="${target.name}.jar" toDir="${bin.dir}" preservelastmodified="true" />
 		<copy file="${target.name}.jar" toDir="${dist.dir}/mmplugins" preservelastmodified="true" />
 	</target>
 

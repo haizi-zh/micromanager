@@ -19,6 +19,7 @@ import mmcorej.TaggedImage;
 
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.analysis.solvers.LaguerreSolver;
+import org.apache.commons.math3.exception.NoBracketingException;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
@@ -30,8 +31,9 @@ import org.zephyre.micromanager.OverlayRender;
 import org.zephyre.micromanager.OverlayRender.RenderItem;
 
 public class AcqAnalyzer extends TaggedImageAnalyzer {
+	private static final long minAnalyzeWindow = 100;
 	private ZIndexMeasure main;
-	private myGUI myGUI_;
+	private MyGUI myGUI_;
 	private ScriptInterface mainWnd_;
 	private String baseDir_;
 	private static AcqAnalyzer instance_;
@@ -52,7 +54,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 
 	private Writer dataFileWriter_;
 
-	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, myGUI mygui_) {
+	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, MyGUI mygui_) {
 		myGUI_ = mygui_;
 		main = main_;
 		mainWnd_ = gui;
@@ -66,11 +68,11 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		persistance_ = 50;
 		beadRadius_ = 1400;
 		kT_ = 4.2;
-		contourLength_ = 16700;
+		contourLength_ = 2000;
 	}
 
 	public static AcqAnalyzer getInstance(ScriptInterface gui,
-			ZIndexMeasure main_, myGUI mygui_) {
+			ZIndexMeasure main_, MyGUI mygui_) {
 		if (instance_ == null)
 			instance_ = new AcqAnalyzer(gui, main_, mygui_);
 		return instance_;
@@ -80,6 +82,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private OverlayRender render_;
 	private DescriptiveStatistics[] stats_;
 	private DescriptiveStatistics statCross_;
+	private long startTs_;
 
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
@@ -128,13 +131,14 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 
 		ArrayList<RenderItem> list = new ArrayList<OverlayRender.RenderItem>();
 		list.add(RenderItem.createInstance(new Point2D.Float((float) pos[0],
-				(float) pos[1]), String.format("(%f, %f, %f)", pos[0], pos[1],
-				pos[2])));
+				(float) pos[1]), String.format("(%.3f, %.3f, %.3f)", pos[3],
+				pos[4], pos[2])));
 		boolean update = acqName.equals(MMStudioMainFrame.SIMPLE_ACQ) ? true
 				: false;
 		try {
 			render_.render(acqName, list, index, update);
 		} catch (MMScriptException e) {
+			mainWnd_.logError(e);
 		}
 	}
 
@@ -154,13 +158,20 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				stat.clear();
 			statCross_.clear();
 			resetData_ = false;
+			startTs_ = System.nanoTime();
 		}
-		double xPhys = pixelToPhys_[0] + pixelToPhys_[1] * pos[0];
-		double yPhys = pixelToPhys_[2] + pixelToPhys_[3] * pos[1];
-		stats_[0].addValue(xPhys);
-		stats_[1].addValue(yPhys);
+		final double xPhys = pixelToPhys_[0] + pixelToPhys_[1] * pos[0];
+		final double yPhys = pixelToPhys_[2] + pixelToPhys_[3] * pos[1];
+
+		stats_[0].addValue(xPhys * 1000);
+		stats_[1].addValue(yPhys * 1000);
+		// if (stats_[0].getN() > 2)
+		// mainWnd_.logMessage(String.format(
+		// "(%.1f,%.1f) => (%.3f, %.3f), variance: (%f, %f)", pos[0],
+		// pos[1], xPhys, yPhys, stats_[0].getVariance(),
+		// stats_[1].getVariance()));
 		stats_[2].addValue(pos[2]);
-		statCross_.addValue(xPhys * yPhys);
+		statCross_.addValue(xPhys * yPhys * 1e6);
 		// Calculate forces
 		final double[] forces = calcForces();
 		double[] skrewness = calcSkrewness();
@@ -182,14 +193,14 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				}
 				myGUI_.dataSeries_.add(index_, pos[2]);
 				myGUI_.Msg0.setText(String
-						.format("index = %d # xpos = %f # ypos = %f # zpos = %f # forceX/pN=%f # forceY/pN=%f",
-								index_, pos[0], pos[1], pos[2], forces[0],
+						.format("index = %d # xpos = %.3f # ypos = %.3f # zpos = %.3f # forceX/pN=%f # forceY/pN=%f",
+								index_, xPhys, yPhys, pos[2], forces[0],
 								forces[1]));
 				myGUI_.Msg1.setText(String
 						.format("# <stdx> = %f # <stdy> = %f # <stdz> = %f # meanx = %f # meany = %f # meanz = %f",
 								pos[6], pos[7], pos[8], pos[9], pos[10],
 								pos[11]));
-				myGUI_.reSetROI((int) pos[0], (int) pos[1]);
+				myGUI_.resetROI((int) pos[0], (int) pos[1]);
 
 			}
 		});
@@ -214,28 +225,35 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 					+ nameComp + ".txt");
 			dataFileWriter_ = new BufferedWriter(new FileWriter(file));
 			dataFileWriter_
-					.write("Frame, Timestamp, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
+					.write("Frame, Timestamp, XPos/pixel, YPos/pixel, XPos/um, YPos/um, ZPos/um,<StdXPos>/nm,<StdYPos>/nm,<StdZPos>/nm,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
 		}
 
+		double elapsed;
+		if (taggedImage.tags.has("ElapsedTime-ms"))
+			elapsed = taggedImage.tags.getDouble("ElapsedTime-ms");
+		else
+			elapsed = (System.nanoTime() - startTs_) / 1e6;
 		dataFileWriter_.write(String.format(
-				"%d,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n", index_,
-				taggedImage.tags.get("ElapsedTime-ms"), xPhys, yPhys, pos[2],
-				pos[6], pos[7], pos[8], pos[9], pos[10], pos[11], forces[0],
-				forces[1]));
+				"%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n", index_,
+				elapsed, pos[0], pos[1], xPhys, yPhys, pos[2], pos[6], pos[7],
+				pos[8], pos[9], pos[10], pos[11], forces[0], forces[1]));
 
 		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.F_L_Flag_ == 1) {
 			main.PullMagnet();
 		}
 
-		return pos;
+		return new double[] { pos[0], pos[1], pos[2], xPhys, yPhys };
 	}
 
 	private double[] calcSkrewness() {
 		double[] skrewness = new double[2];
 
 		double[] stds = new double[2];
-		for (int i = 0; i < stds.length; i++)
+		for (int i = 0; i < stds.length; i++) {
+			if (stats_[i].getN() < minAnalyzeWindow)
+				continue;
 			stds[i] = stats_[i].getStandardDeviation();
+		}
 
 		double n = statCross_.getN();
 		skrewness[0] = stds[0] / stds[1];
@@ -249,13 +267,25 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		LaguerreSolver solver = new LaguerreSolver();
 		double[] forces = new double[2];
 		for (int i = 0; i < forces.length; i++) {
+			if (stats_[i].getN() < minAnalyzeWindow)
+				continue;
 			double variance = stats_[i].getVariance();
+			mainWnd_.logMessage(String.format("Variance: %f", variance));
 			double a = 4 * persistance_ * contourLength_ / variance;
 			double b = 4 * persistance_ * beadRadius_ / variance;
 			PolynomialFunction func = new PolynomialFunction(new double[] { b,
 					a - 2 * b - 6, b - 2 * a + 9, a - 4 });
-			forces[i] = (solver.solve(100, func, 0, 1, 0.8) * a + b) * kT_
-					/ (4 * persistance_);
+			try {
+				forces[i] = (solver.solve(100, func, 0, 1, 0.8) * a + b) * kT_
+						/ (4 * persistance_);
+			} catch (NoBracketingException e) {
+				mainWnd_.logError(String.format("a=%f, b=%f, message: %s", a,
+						b, e.toString()));
+			} finally {
+				mainWnd_.logMessage(String.format(
+						"%s: a=%f, b=%f, variance=%f, force=%f", i == 0 ? "x"
+								: "y", a, b, variance, forces[i]));
+			}
 		}
 		return forces;
 	}

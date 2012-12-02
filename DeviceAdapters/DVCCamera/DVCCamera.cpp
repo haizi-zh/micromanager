@@ -1054,7 +1054,7 @@ int DVCCamera::PushImage(int userBufferId) {
 			(unsigned int) bytesPerPixel, &md);
 
 	if (!stopOnOverflow_ && retCode == DEVICE_BUFFER_OVERFLOW) {
-		LogMessage("Overflow occured.");
+//		LogMessage("Overflow occured.");
 		// do not stop on overflow - just reset the buffer
 		GetCoreCallback()->ClearImageBuffer(this);
 		return GetCoreCallback()->InsertImage(this,
