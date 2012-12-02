@@ -1,7 +1,6 @@
 package org.ndaguan.micromanager;
 
 import ij.IJ;
-import ij.WindowManager;
 
 import java.awt.geom.Point2D;
 import java.text.DateFormat;
@@ -12,20 +11,17 @@ import java.util.GregorianCalendar;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import javax.swing.SwingUtilities;
-
 import mmcorej.CMMCore;
 import mmcorej.TaggedImage;
 
 import org.apache.commons.math3.stat.regression.SimpleRegression;
+import org.jfree.data.xy.XYSeries;
 import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.acquisition.TaggedImageQueue;
-import org.micromanager.api.DataProcessor;
 import org.micromanager.api.MMPlugin;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.api.TaggedImageAnalyzer;
-import org.micromanager.utils.MMException;
 import org.micromanager.utils.MMScriptException;
 import org.zephyre.micromanager.OverlayRender;
 import org.zephyre.micromanager.OverlayRender.RenderItem;
@@ -56,6 +52,7 @@ public class ZIndexMeasure implements MMPlugin {
 	public boolean isCalibrated = false;
 	private TCPServer tcpServer_;
 	private int port_ = 50501;
+	private XYSeries zDataSeries_;
 
 	public static ZIndexMeasure getInstance() {
 		return instance_;
@@ -67,13 +64,14 @@ public class ZIndexMeasure implements MMPlugin {
 		instance_ = this;
 
 		if (mygui_ == null) {
-			mygui_ = new MyGUI();
+			mygui_ = new MyGUI(this);
+			zDataSeries_ = mygui_.myForm_.getDataSeries_().get("Z-Chart");
 			processor_ = AcqAnalyzer.getInstance(app, this, mygui_);
 			mCalc = new myCalculator();
 			tcpServer_ = new TCPServer(core_, port_);
-			mygui_.log("tcpServer ini ok");
+			mygui_.myForm_.log("tcpServer ini ok");
 			tcpServer_.start();
-			mygui_.log("mCalc ini ok");
+			mygui_.myForm_.log("mCalc ini ok");
 			// gui_.getAcquisitionEngine().addImageProcessor(
 			// TestAnalyzer.getInstance(gui_));
 		}
@@ -84,7 +82,7 @@ public class ZIndexMeasure implements MMPlugin {
 		try {
 			updatePositions();
 		} catch (Exception e1) {
-			mygui_.log("GET POSTION ERR");
+			mygui_.myForm_.log("GET POSTION ERR");
 		}
 	}
 
@@ -102,10 +100,10 @@ public class ZIndexMeasure implements MMPlugin {
 					double currMP285zpos = core_.getPosition("MP285 Z Stage");
 					core_.setPosition("MP285 Z Stage", currMP285zpos
 							- mygui_.Mstep_);
-					mygui_.log(String.format("Set MP285 ZStage to:%f",
+					mygui_.myForm_.log(String.format("Set MP285 ZStage to:%f",
 							currMP285zpos - mygui_.Mstep_));
 				} catch (Exception e) {
-					mygui_.log("Set MP285 ZStage ERR" + e.toString());
+					mygui_.myForm_.log("Set MP285 ZStage ERR" + e.toString());
 				}
 			}
 		})).start();
@@ -121,9 +119,9 @@ public class ZIndexMeasure implements MMPlugin {
 	// (new Thread(new Runnable() { @Override public void run() { test1(); }
 	// })).start();
 	public void StartCalibration() {
-		mygui_.log("Calibration Start......Checking up in IJ log for more infomation");
+		mygui_.myForm_.log("Calibration Start......Checking up in IJ log for more infomation");
 		if (!isSetScale) {
-			mygui_.log("Setscale first!");
+			mygui_.myForm_.log("Setscale first!");
 			return;
 		}
 		if (gui_.getAcquisitionEngine().isAcquisitionRunning()) {
@@ -197,13 +195,13 @@ public class ZIndexMeasure implements MMPlugin {
 			setZPosition(currzpos_);// turn back to the first place,Always 5
 
 			gui_.snapSingleImage();
-			mygui_.log("Calibration OK......");
+			mygui_.myForm_.log("Calibration OK......");
 
 			Testing();
 			isCalibrated = true;
 			processor_.resetData_ = true;
 		} catch (Exception e) {
-			mygui_.log("Calibration False! god knows why......" + e.toString());
+			mygui_.myForm_.log("Calibration False! god knows why......" + e.toString());
 			e.printStackTrace();
 		}
 	}
@@ -213,18 +211,18 @@ public class ZIndexMeasure implements MMPlugin {
 		if (isInstalCallback) {
 			gui_.getAcquisitionEngine().removeImageProcessor(processor_);
 			isInstalCallback = false;
-			mygui_.log("Processor dettached.");
+			mygui_.myForm_.log("Processor dettached.");
 		}
 
 	}
 
 	public void show() {
-		mygui_.setVisible(true);
+// 		mygui_.setVisible(true);
 		if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
 				&& (!gui_.isLiveModeOn())) {
 			// gui_.snapSingleImage();
 			gui_.enableLiveMode(true);
-			mygui_.Live.setText("Stop Live");
+//			mygui_.Live.setText("Stop Live");
 		}
 	}
 
@@ -254,16 +252,16 @@ public class ZIndexMeasure implements MMPlugin {
 	public void InstallCallback() {
 
 		if (!isCalibrated) {
-			mygui_.log("Start Calibration first!");
+			mygui_.myForm_.log("Start Calibration first!");
 			return;
 		}
 
 		if (isInstalCallback) {
-			mygui_.log("Call back is installed! mission abort");
+			mygui_.myForm_.log("Call back is installed! mission abort");
 		} else {
 			gui_.getAcquisitionEngine().addImageProcessor(processor_);
 			isInstalCallback = true;
-			mygui_.log("Call back install,Start capture...");
+			mygui_.myForm_.log("Call back install,Start capture...");
 		}
 
 		// gui_.getAcquisitionEngine().enableFramesSetting(true);
@@ -274,7 +272,7 @@ public class ZIndexMeasure implements MMPlugin {
 		// try {
 		// gui_.getAcquisitionEngine().acquire();
 		// } catch (MMException e) {
-		// mygui_.log("Image Acquistion False");
+		// mygui_.myForm_.log("Image Acquistion False");
 		// }
 		// }
 		// mygui_.dataSeries_.clear();
@@ -285,9 +283,9 @@ public class ZIndexMeasure implements MMPlugin {
 		if (isInstalCallback) {
 			gui_.getAcquisitionEngine().removeImageProcessor(processor_);
 			isInstalCallback = false;
-			mygui_.log("Call back uninstal,Stop capture");
+			mygui_.myForm_.log("Call back uninstal,Stop capture");
 		} else {
-			mygui_.log("Repeat!");
+			mygui_.myForm_.log("Repeat!");
 		}
 		// gui_.getAcquisitionEngine().stop(true);
 	}
@@ -337,10 +335,10 @@ public class ZIndexMeasure implements MMPlugin {
 
 	private void Testing() throws Exception {// to verify if this stuff
 		// workable
-		mygui_.log("Test begin......checking out the IJ log for move infomation.");
+		mygui_.myForm_.log("Test begin......checking out the IJ log for move infomation.");
 		IJ.log(String.format("Testing:\r\n#index,#real,#get,#delta"));
 
-		mygui_.dataSeries_.clear();
+		zDataSeries_.clear();
 		int len = mygui_.calPos_.length;
 		double pos[] = new double[4];
 
@@ -348,7 +346,7 @@ public class ZIndexMeasure implements MMPlugin {
 			setZPosition(mygui_.calPos_[i]);
 			double zpos = core_.getPosition(zstage_);
 			pos = getXYZPositon();
-			mygui_.dataSeries_.add(zpos, pos[2]);
+			zDataSeries_.add(zpos, pos[2]);
 			// mygui_.dataSeries_.add(zpos, zpos - pos[2]);
 			IJ.log(String.format("i=%d, zpos=%f, pos[2]=%f, delta=%f", i, zpos,
 					pos[2], zpos - pos[2]));
@@ -356,7 +354,7 @@ public class ZIndexMeasure implements MMPlugin {
 		setZPosition(currzpos_);// turn back to the first
 								// place,Always 5
 
-		mygui_.log("Test over ");
+		mygui_.myForm_.log("Test over ");
 	}
 
 	// -----------------------------------------------------------------------------------------DEBUG

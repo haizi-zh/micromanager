@@ -20,6 +20,7 @@ import mmcorej.TaggedImage;
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.analysis.solvers.LaguerreSolver;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.jfree.data.xy.XYSeries;
 import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.acquisition.TaggedImageQueue;
@@ -51,11 +52,13 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	}
 
 	private Writer dataFileWriter_;
+	private XYSeries zDataSeries_;
 
 	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, MyGUI mygui_) {
 		myGUI_ = mygui_;
 		main = main_;
 		mainWnd_ = gui;
+		zDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Z-Chart");
 		render_ = OverlayRender.getInstance(gui);
 		stats_ = new DescriptiveStatistics[3];
 		windowSize_ = 1000;
@@ -64,9 +67,9 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		}
 		statCross_ = new DescriptiveStatistics(windowSize_);
 		persistance_ = 50;
-		beadRadius_ = 1400;
+		beadRadius_ = mygui_.getRadius_()*1000;//1400;//
 		kT_ = 4.2;
-		contourLength_ = 16700;
+		contourLength_ = mygui_.getDNALen_()*1000;//16700;//
 	}
 
 	public static AcqAnalyzer getInstance(ScriptInterface gui,
@@ -101,7 +104,6 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				|| !main.isCalibrated)
 			return;
 
-		// myGUI_.start();
 		double pos[] = null;
 		try {
 			pos = GetPosition(myGUI_.currFrame, taggedImage);
@@ -110,8 +112,6 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			return;
 		}
 		myGUI_.currFrame++;
-		// myGUI_.end(String.format("%d,#JAVA Cost Time",myGUI_.currFrame));
-
 		// Render the overlay
 		String acqName;
 		long index;
@@ -129,7 +129,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		ArrayList<RenderItem> list = new ArrayList<OverlayRender.RenderItem>();
 		list.add(RenderItem.createInstance(new Point2D.Float((float) pos[0],
 				(float) pos[1]), String.format("(%f, %f, %f)", pos[0], pos[1],
-				pos[2])));
+						pos[2])));
 		boolean update = acqName.equals(MMStudioMainFrame.SIMPLE_ACQ) ? true
 				: false;
 		try {
@@ -169,26 +169,25 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			@Override
 			public void run() {
 				if (clearChart) {
-					myGUI_.dataSeries_.clear();
+					
+					zDataSeries_.clear();
 				}
 
-				myGUI_.dataSeries_.add(index_, pos[2]);
-
-				if (pos[11] != 0) {
-					double p = Math.pow(10, 2);
-					double center = Math.round(pos[11] * p) / p;
-					myGUI_.chart.getXYPlot().getRangeAxis()
-							.setRange(center - 0.06, center + 0.06);
-				}
-				myGUI_.dataSeries_.add(index_, pos[2]);
-				myGUI_.Msg0.setText(String
-						.format("index = %d # xpos = %f # ypos = %f # zpos = %f # forceX/pN=%f # forceY/pN=%f",
-								index_, pos[0], pos[1], pos[2], forces[0],
-								forces[1]));
-				myGUI_.Msg1.setText(String
-						.format("# <stdx> = %f # <stdy> = %f # <stdz> = %f # meanx = %f # meany = %f # meanz = %f",
-								pos[6], pos[7], pos[8], pos[9], pos[10],
-								pos[11]));
+				//				if (pos[11] != 0) {
+				//					double p = Math.pow(10, 2);
+				//					double center = Math.round(pos[11] * p) / p;
+				//					myGUI_.chart.getXYPlot().getRangeAxis()
+				//							.setRange(center - 0.06, center + 0.06);
+				//				}
+				zDataSeries_.add(index_, pos[2]);
+				//				myGUI_.Msg0.setText(String
+				//						.format("index = %d # xpos = %f # ypos = %f # zpos = %f # forceX/pN=%f # forceY/pN=%f",
+				//								index_, pos[0], pos[1], pos[2], forces[0],
+				//								forces[1]));
+				//				myGUI_.Msg1.setText(String
+				//						.format("# <stdx> = %f # <stdy> = %f # <stdz> = %f # meanx = %f # meany = %f # meanz = %f",
+				//								pos[6], pos[7], pos[8], pos[9], pos[10],
+				//								pos[11]));
 				myGUI_.reSetROI((int) pos[0], (int) pos[1]);
 
 			}
@@ -214,7 +213,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 					+ nameComp + ".txt");
 			dataFileWriter_ = new BufferedWriter(new FileWriter(file));
 			dataFileWriter_
-					.write("Frame, Timestamp, XPos/pixel, YPos/pixel, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
+			.write("Frame, Timestamp, XPos/uM, YPos/uM, ZPos/uM,<StdXPos>/nM,<StdYPos>/nM,<StdZPos>/nM,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
 		}
 
 		dataFileWriter_.write(String.format(
@@ -223,7 +222,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				pos[6], pos[7], pos[8], pos[9], pos[10], pos[11], forces[0],
 				forces[1]));
 
-		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.F_L_Flag_ == 1) {
+		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.F_L_Flag_) {
 			main.PullMagnet();
 		}
 
