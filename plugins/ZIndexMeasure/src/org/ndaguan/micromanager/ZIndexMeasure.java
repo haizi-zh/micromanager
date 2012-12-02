@@ -12,6 +12,8 @@ import java.util.GregorianCalendar;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import javax.swing.SwingUtilities;
+
 import mmcorej.CMMCore;
 import mmcorej.TaggedImage;
 
@@ -187,7 +189,7 @@ public class ZIndexMeasure implements MMPlugin {
 				ret_ = mCalc.Calibration(pix, mygui_.calcRoi_, z);
 				outpos[0] = ((double[]) ret_[0])[0];
 				outpos[1] = ((double[]) ret_[0])[1];
-				mygui_.resetROI((int) outpos[0], (int) outpos[1]);
+				mygui_.reSetROI((int) outpos[0], (int) outpos[1]);
 				IJ.log(String.format("xpos:%f--ypos:%f\r\n", outpos[0],
 						outpos[1]));
 

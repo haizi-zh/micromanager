@@ -16,7 +16,7 @@ import javax.swing.SwingUtilities;
 
 import org.jfree.chart.JFreeChart;
 import org.jfree.data.xy.XYSeries;
-import org.ndaguan.study.std_MyGUI;
+//import org.ndaguan.study.std_MyGUI;
 
 public class MyGUI {
 	// main instance
@@ -164,7 +164,7 @@ public class MyGUI {
 			Imgheight_ = 480;
 			ZStart_ = 0;
 			ZScale_ = 4;
-			xyCalRange_ = 4;
+			xyCalRange_ = 2;
 			ZStep_ = 0.5;
 
 			// calculate force
@@ -222,27 +222,30 @@ public class MyGUI {
 	}
 
 	private void setCalProfile() {
-		int calProfiley = (int) (ZScale_ / ZStep_);
-		calPos_ = new double[calProfiley];
-		for (int i = 0; i < calProfiley; i++) {
-			calPos_[i] = mainInstance_.currzpos_ - ZScale_ / 2 + i * ZStep_;
+		int nSteps = (int) (ZScale_ / ZStep_);
+		double[] calPosZ = new double[nSteps];
+		double[][] calPosXY = new double[2][];
+		for (int i = 0; i < nSteps; i++) {
+			calPosZ[i] = mainInstance_.currzpos_ - ZScale_ / 2 + i * ZStep_;
 		}
 
 		// Set the x/y positions
-		calPosXY_ = new double[2][];
 		double[] xyStartPoint = new double[] { mainInstance_.currxpos_,
 				mainInstance_.currypos_ };
+		int midPoint = nSteps / 2;
 		for (int i = 0; i < 2; i++) {
-			calPosXY_[i] = new double[calPos_.length];
-			for (int j = 0; j < calPos_.length; j++)
-				calPosXY_[i][j] = xyStartPoint[i] + xyCalRange_
-				/ calPos_.length * j;
+			calPosXY[i] = new double[nSteps];
+			for (int j = 0; j < midPoint; j++)
+				calPosXY[i][j] = xyStartPoint[i] + xyCalRange_ / midPoint * j;
+			for (int j = midPoint; j < nSteps; j++)
+				calPosXY[i][j] = calPosXY[i][midPoint - 1] - xyCalRange_
+						/ midPoint * (j - midPoint);
 		}
 
+		mainInstance_.updateCalPos(calPosXY, calPosZ);
 		mainInstance_.mCalc.DataInit(calcOpt_);
-
 	}
-
+	
 	// opt_[13]
 	// :radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep
 	// ��DNALen��Temperature��DNAPersLen,frame2calcForce
