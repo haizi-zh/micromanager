@@ -71,6 +71,8 @@ public class MyGUI {
 	private long begin;
 	final Object lock = new Object();
 	public MyForm myForm_;
+	private double ballRadiusPix = 100.0;
+	private boolean isInstall = false;
 
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -91,9 +93,9 @@ public class MyGUI {
 			return false;
 		if (roi_rectangle.y <= 5)
 			return false;
-		if (roi_rectangle.x + getRadius_() * 2 + 5 >= this.Imgwidth_)
+		if (roi_rectangle.x + 2*getRadius_()*ballRadiusPix + 5 >= this.Imgwidth_)
 			return false;
-		if (roi_rectangle.y + getRadius_() * 2 + 5 >= this.Imgheight_)
+		if (roi_rectangle.y + 2*getRadius_()*ballRadiusPix + 5 >= this.Imgheight_)
 			return false;
 
 		return true;
@@ -102,7 +104,7 @@ public class MyGUI {
 	public void reSetROI(int CenterX, int CenterY) {
 
 		int ROIBounder = 10;
-		int BallSqrt = (int) ((ROIBounder + getRadius_()) * 2);
+		int BallSqrt = (int) ((ROIBounder + getRadius_()*ballRadiusPix ) * 2);
 		roi_rectangle.width = BallSqrt;
 		roi_rectangle.height = BallSqrt;
 		roi_rectangle.x = (int) (CenterX - BallSqrt / 2);
@@ -127,9 +129,8 @@ public class MyGUI {
 		myForm_ = new MyForm(this);
 		myForm_.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);	
 		myForm_.setVisible(true);
-		
+
 		setDefaultPrefer(myForm_.preferDailogBox.getPreferData());
-		SetScale(myForm_.preferDailogBox.getPreferData());
 		roi_rectangle = new Rectangle();
 		calcOpt_ = new double[] { getRadius_(), RInterpStep_, BitDepth_,
 				HalfQuadWindow_, Imgwidth_, Imgheight_, ZStart_, ZScale_,
@@ -143,18 +144,16 @@ public class MyGUI {
 		if(preferData != null){
 			setRadius_(preferData.get("BallRadius"));
 			RInterpStep_ = preferData.get("RinterStep");
-
-
-			HalfQuadWindow_ = preferData.get("HalfCorrWin");
-		 
+			HalfQuadWindow_ = preferData.get("HalfCorrWin");		 
 			ZScale_ = preferData.get("ZCalScale");
-
 			ZStep_ = preferData.get("ZCalStep");
 			setDNALen_(preferData.get("DNALength"));		
 			FrameCalcForce_ = preferData.get("FrameCalcF");
 			Temperature_ = 300;// K
 			DNAPersLen_ = 50;// nm
-
+			ballRadiusPix = preferData.get("ITEM2");
+			ZStart_ = 0;
+			xyCalRange_ = 2;
 		}else{	  
 			setRadius_(75);
 			RInterpStep_ = 0.5;
@@ -166,25 +165,25 @@ public class MyGUI {
 			ZScale_ = 4;
 			xyCalRange_ = 2;
 			ZStep_ = 0.5;
-
-			// calculate force
 			setDNALen_(2.4);// um
 			Temperature_ = 300;// K
 			DNAPersLen_ = 50;// nm
+			FrameCalcForce_ = 500;
+			ballRadiusPix = 50.0;
 		}
 
 
 	}
 
 
-	public void SetScale(HashMap<String, Double> hashMap) {
+	public void SetScale() {
 		myForm_.log("SetScale Start......");
 		if (WindowManager.getCurrentImage() == null) {
 			myForm_.log("god work without image");
 			return;
 		}
 		if (WindowManager.getCurrentImage().getRoi() == null) {
-			myForm_.log("please set ROI,the tool is locate in the imagej main frame");
+			myForm_.log("please set ROI");
 			return;
 		}
 
@@ -201,7 +200,7 @@ public class MyGUI {
 		reSetROI(CenterX, CenterY);
 
 		currFrame = 1;
-
+		setDefaultPrefer(myForm_.preferDailogBox.getPreferData());
 		ImageProcessor ip = WindowManager.getCurrentImage().getProcessor();
 		Imgwidth_ = ip.getWidth();
 		Imgheight_ = ip.getHeight();
@@ -239,13 +238,13 @@ public class MyGUI {
 				calPosXY[i][j] = xyStartPoint[i] + xyCalRange_ / midPoint * j;
 			for (int j = midPoint; j < nSteps; j++)
 				calPosXY[i][j] = calPosXY[i][midPoint - 1] - xyCalRange_
-						/ midPoint * (j - midPoint);
+				/ midPoint * (j - midPoint);
 		}
 
 		mainInstance_.updateCalPos(calPosXY, calPosZ);
 		mainInstance_.mCalc.DataInit(calcOpt_);
 	}
-	
+
 	// opt_[13]
 	// :radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep
 	// ��DNALen��Temperature��DNAPersLen,frame2calcForce
@@ -265,7 +264,7 @@ public class MyGUI {
 		calcOpt_[11] = DNAPersLen_;
 		calcOpt_[12] = FrameCalcForce_;
 	}
-	
+
 	public double getCurrCenter(int currTab) {
 		// TODO Auto-generated method stub
 		return 0;
@@ -313,6 +312,19 @@ public class MyGUI {
 
 	public double getDNALen_() {
 		return DNALen_;
+	}
+	public void installCallback() {
+		if(!isInstall ){
+			myForm_.log("Install");
+			mainInstance_.InstallCallback();
+			isInstall = true;
+		}
+		else
+		{	
+			myForm_.log("UnInstall");
+			mainInstance_.UninstallCallback();
+			isInstall = false;
+		}
 	}
 
 

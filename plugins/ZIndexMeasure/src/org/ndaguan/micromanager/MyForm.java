@@ -1,5 +1,7 @@
 package org.ndaguan.micromanager;
 
+import ij.gui.Toolbar;
+
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Image;
@@ -161,7 +163,7 @@ public class MyForm extends JFrame {
 		menuBar.add(Operation);
 		menuBar.add(Option);
 		
-		final int toolItemWidth = 20;
+		final int toolItemWidth = 120;
 		final int toolItemHeight = 20;
 		final int toolbarheight = toolItemHeight+10;
 		final JToolBar toolBar = new JToolBar();
@@ -174,51 +176,146 @@ public class MyForm extends JFrame {
 		final	Image imgM = kit.getImage("Z:/M.gif");
 		final	Image imgS = kit.getImage("Z:/S.gif");
 		final	Image imgH = kit.getImage("Z:/H.gif");
+		final	Image imgSet = kit.getImage("Z:/set.gif");
+		final	Image imgI = kit.getImage("Z:/I.gif");
+			
 		JButton butC = new JButton();
 		JButton butL = new JButton();
 		JButton butM = new JButton();
 		JButton butS = new JButton();
+		JButton butSet = new JButton();
 		JButton butH = new JButton();
+		JButton butI = new JButton();
 		 
 
-		int offsetx = 0;
+		int offsety = 0;
+		butI.setIcon(new javax.swing.ImageIcon(imgI)); // NOI18N
+		butI.setToolTipText("Install callback");
+		butI.setFocusable(false);
+		butI.setBounds(offsety,0, toolItemWidth, toolItemHeight);
+		offsety += toolItemWidth;	
+		
+		butSet.setIcon(new javax.swing.ImageIcon(imgSet)); // NOI18N
+		butSet.setToolTipText("Set up");
+		butSet.setFocusable(false);
+		butSet.setBounds(offsety,0, toolItemWidth, toolItemHeight);
+		offsety += toolItemWidth;
+ 
+
+
+ 
 		butC.setIcon(new javax.swing.ImageIcon(imgC)); // NOI18N
 		butC.setToolTipText("Calibrate");
 		butC.setFocusable(false);
-		butC.setBounds(0, offsetx, toolItemWidth, toolItemHeight);
-		offsetx += toolItemWidth;
-		
+		butC.setBounds(offsety,0, toolItemWidth, toolItemHeight);
+		offsety += toolItemWidth;
+
 		butL.setIcon(new javax.swing.ImageIcon(imgL)); // NOI18N
-		butL.setToolTipText("Calibrate");
+		butL.setToolTipText("Live view");
 		butL.setFocusable(false);
-		butL.setBounds(0, offsetx, toolItemWidth, toolItemHeight);
-		offsetx += toolItemWidth;
+		butL.setBounds(offsety,0, toolItemWidth, toolItemHeight);
+		offsety += toolItemWidth;
 		
 		butM.setIcon(new javax.swing.ImageIcon(imgM)); // NOI18N
-		butM.setToolTipText("Calibrate");
+		butM.setToolTipText("Mutil-ACQ with the default preferences");
 		butM.setFocusable(false);
-		butM.setBounds(0, offsetx, toolItemWidth, toolItemHeight);
-		offsetx += toolItemWidth;
+		butM.setBounds(offsety,0, toolItemWidth, toolItemHeight);
+		offsety += toolItemWidth;
 		
 		butS.setIcon(new javax.swing.ImageIcon(imgS)); // NOI18N
-		butS.setToolTipText("Calibrate");
+		butS.setToolTipText("Rectangle tool for select a ROI");
 		butS.setFocusable(false);
-		butS.setBounds(0, offsetx, toolItemWidth, toolItemHeight);
-		offsetx += toolItemWidth;
+		butS.setBounds(offsety,0, toolItemWidth, toolItemHeight);
+		offsety += toolItemWidth;
 
 		butH.setIcon(new javax.swing.ImageIcon(imgH)); // NOI18N
-		butH.setToolTipText("Calibrate");
+		butH.setToolTipText("Hand tool for moving the xyStage");
 		butH.setFocusable(false);
-		butH.setBounds(0, offsetx, toolItemWidth, toolItemHeight);
-		offsetx += toolItemWidth;
+		butH.setBounds(offsety,0, toolItemWidth, toolItemHeight);
+		offsety += toolItemWidth;
 
+		butL.addActionListener(new ActionListener(){
 
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				mygui_.live();
+			}
+			
+		});
+		butC.addActionListener(new ActionListener(){
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				mygui_.calibrate();
+			}
+			
+		});
+		butM.addActionListener(new ActionListener(){
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				mygui_.MultiAcq();
+			}
+			
+			
+		});
+		butSet.addActionListener(new ActionListener(){
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				mygui_.SetScale();
+			}
+			
+			
+		});
+		butS.addActionListener(new ActionListener(){
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				if (Toolbar.getInstance() == null)
+					return;
+			 
+				Toolbar.getInstance().setTool(Toolbar.RECTANGLE);
+			}
+			
+		});
+		butH.addActionListener(new ActionListener(){
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				if (Toolbar.getInstance() == null)
+					return;
+				Toolbar.getInstance().setTool(Toolbar.HAND);
+			}
+			
+		});
+		butI.addActionListener(new ActionListener(){
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				if (Toolbar.getInstance() == null)
+					return;
+				mygui_.installCallback();
+			}
+			
+		});
+		toolBar.add(butI);
+		toolBar.add(butSet);
 		toolBar.add(butL);
 		toolBar.add(butC);
 		toolBar.add(butM);
 		toolBar.add(butS);
 		toolBar.add(butH);
 		getContentPane().add(toolBar);
+		
+		butL.addActionListener(menuListener);	
 		//tabbedPane
 		final JTabbedPane tabbedPane = new JTabbedPane();
 		tabbedPane.setBounds(0,toolbarheight, tapSize[0], (int)(tapSize[0]*0.52));
@@ -367,6 +464,7 @@ public class MyForm extends JFrame {
 		return panel;
 	}
 	private void PhraseActionEvent(ActionEvent e){
+		String cmdString = e.getActionCommand();
 		if (e.getActionCommand().equals("Preferences")) {
 			(new Thread(new Runnable() {
 				@Override
@@ -377,7 +475,7 @@ public class MyForm extends JFrame {
 			})).start();
 
 		}
-		if (e.getActionCommand().equals("Calibrate")) {
+		if (cmdString.equals("Calibrate") ) {
 			(new Thread(new Runnable() {
 				@Override
 				public void run() {
@@ -840,7 +938,7 @@ public class MyForm extends JFrame {
 					@Override
 					public void run() {
 						myform_.log(String.format("Preferences Change,reCalibrate is recommend ."));
-						mygui_.SetScale(getPreferData());
+						mygui_.SetScale();
 						UpdateData(true);//flush
 						frame.setVisible(false);
 					}

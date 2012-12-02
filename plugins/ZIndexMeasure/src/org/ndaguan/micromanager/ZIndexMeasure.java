@@ -322,7 +322,7 @@ public class ZIndexMeasure implements MMPlugin {
 			isInstalCallback = false;
 			mygui_.myForm_.log("Call back uninstal,Stop capture");
 		} else {
-			mygui_.myForm_.log("Repeat!");
+			mygui_.myForm_.log("UnInstall Callback false");
 		}
 		// gui_.getAcquisitionEngine().stop(true);
 	}
