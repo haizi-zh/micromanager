@@ -17,6 +17,8 @@ import javax.swing.SwingUtilities;
 import org.jfree.chart.JFreeChart;
 import org.jfree.data.xy.XYSeries;
 //import org.ndaguan.study.std_MyGUI;
+import org.micromanager.MMStudioMainFrame;
+import org.micromanager.utils.MMException;
 
 public class MyGUI {
 	// main instance
@@ -73,11 +75,12 @@ public class MyGUI {
 	public MyForm myForm_;
 	private double ballRadiusPix = 100.0;
 	private boolean isInstall = false;
+	private MMStudioMainFrame gui_;
 
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
-				MyGUI frame = new MyGUI(mainInstance_);				 			 
+				//	MyGUI frame = new MyGUI(mainInstance_,gui_);				 			 
 			}
 		});
 
@@ -109,7 +112,7 @@ public class MyGUI {
 		roi_rectangle.height = BallSqrt;
 		roi_rectangle.x = (int) (CenterX - BallSqrt / 2);
 		roi_rectangle.y = (int) (CenterY - BallSqrt / 2);
-
+	
 		if (!this.IsBallInImg()) {
 			myForm_.log("THE BALL IS OUT OF THIS IMAGE,I GONA GIVE UP TRACKING....");
 			return;
@@ -121,9 +124,10 @@ public class MyGUI {
 		WindowManager.getCurrentImage().setRoi(roi_rectangle);
 	}
 
-	public MyGUI(ZIndexMeasure mainInstance) {
+	public MyGUI(ZIndexMeasure mainInstance,MMStudioMainFrame gui) {
 		//GUIInitialization();
 		mainInstance_ = mainInstance;
+		gui_ = (MMStudioMainFrame) gui;
 		instance_ = this;
 
 		myForm_ = new MyForm(this);
@@ -194,10 +198,7 @@ public class MyGUI {
 			return;
 		}
 
-		roi_rectangle = WindowManager.getCurrentImage().getRoi().getBounds();
-		int CenterX = roi_rectangle.x + roi_rectangle.width / 2;
-		int CenterY = roi_rectangle.y + roi_rectangle.height / 2;
-		reSetROI(CenterX, CenterY);
+	
 
 		currFrame = 1;
 		setDefaultPrefer(myForm_.preferDailogBox.getPreferData());
@@ -211,7 +212,12 @@ public class MyGUI {
 		mainInstance_.getProcessor().setBaseDir(myForm_.preferDailogBox.getDataDir_());
 
 		F_L_Flag_ = myForm_.isMagnetAuto();
-
+		
+		roi_rectangle = WindowManager.getCurrentImage().getRoi().getBounds();
+		int CenterX = roi_rectangle.x + roi_rectangle.width / 2;
+		int CenterY = roi_rectangle.y + roi_rectangle.height / 2;
+		reSetROI(CenterX, CenterY);
+		
 		reSetOpt();
 		setCalProfile();
 
@@ -295,8 +301,19 @@ public class MyGUI {
 	}
 
 	public void MultiAcq() {
-		// TODO Auto-generated method stub
-		print(String.format("MultiAcq--%s",this.myForm_.isMagnetAuto()?"True":"False"));
+		gui_.getAcquisitionEngine().enableFramesSetting(true);
+		gui_.getAcquisitionEngine().setSaveFiles(true);
+		//		gui_.getAcquisitionEngine().setRootName(mygui_.StoragePath_);
+		//		gui_.getAcquisitionEngine().setFrames(mygui_.Frame2Acq_,
+		//				mygui_.TimeIntervals_);
+
+		try {
+			gui_.getAcquisitionEngine().acquire();
+		} catch (MMException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 

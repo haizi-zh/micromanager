@@ -171,13 +171,13 @@ public class MyForm extends JFrame {
 		toolBar.setBounds(0,0, toolItemWidth*itemNum , toolbarheight);
 		
 		Toolkit kit = Toolkit.getDefaultToolkit();
-		final	Image imgC = kit.getImage("Z:/C.gif");
-		final	Image imgL = kit.getImage("Z:/L.gif");
-		final	Image imgM = kit.getImage("Z:/M.gif");
-		final	Image imgS = kit.getImage("Z:/S.gif");
-		final	Image imgH = kit.getImage("Z:/H.gif");
-		final	Image imgSet = kit.getImage("Z:/set.gif");
-		final	Image imgI = kit.getImage("Z:/I.gif");
+		final	Image imgC = kit.getImage("icon/C.gif");
+		final	Image imgL = kit.getImage("icon/L.gif");
+		final	Image imgM = kit.getImage("icon/M.gif");
+		final	Image imgS = kit.getImage("icon/S.gif");
+		final	Image imgH = kit.getImage("icon/H.gif");
+		final	Image imgSet = kit.getImage("icon/set.gif");
+		final	Image imgI = kit.getImage("icon/I.gif");
 			
 		JButton butC = new JButton();
 		JButton butL = new JButton();
@@ -707,7 +707,7 @@ public class MyForm extends JFrame {
 				FrameCalcF_ = 500;
 				ITEM0_ = -1;
 				ITEM1_ = -1;
-				ITEM2_ = -1;
+				ITEM2_ = 60;
 				this.dataDir_ = System.getProperty("user.home");
 			}else{
 				BallRadius_ = data[0];

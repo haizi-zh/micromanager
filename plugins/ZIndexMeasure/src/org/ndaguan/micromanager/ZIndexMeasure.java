@@ -83,7 +83,7 @@ public class ZIndexMeasure implements MMPlugin {
 		instance_ = this;
 
 		if (mygui_ == null) {
-			mygui_ = new MyGUI(this);
+			mygui_ = new MyGUI(this,gui_);
 			zDataSeries_ = mygui_.myForm_.getDataSeries_().get("Z-Chart");
 			processor_ = AcqAnalyzer.getInstance(app, this, mygui_);
 			mCalc = new myCalculator();
@@ -300,19 +300,7 @@ public class ZIndexMeasure implements MMPlugin {
 			isInstalCallback = true;
 			mygui_.myForm_.log("Call back install,Start capture...");
 		}
-
-		// gui_.getAcquisitionEngine().enableFramesSetting(true);
-		// gui_.getAcquisitionEngine().setSaveFiles(true);
-		// gui_.getAcquisitionEngine().setRootName(mygui_.StoragePath_);
-		// gui_.getAcquisitionEngine().setFrames(mygui_.Frame2Acq_,
-		// mygui_.TimeIntervals_);
-		// try {
-		// gui_.getAcquisitionEngine().acquire();
-		// } catch (MMException e) {
-		// mygui_.myForm_.log("Image Acquistion False");
-		// }
-		// }
-		// mygui_.dataSeries_.clear();
+		
 	}
 
 	public void UninstallCallback() {
