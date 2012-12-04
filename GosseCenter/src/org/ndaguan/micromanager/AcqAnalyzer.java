@@ -37,7 +37,7 @@ import org.zephyre.micromanager.OverlayRender.RenderItem;
 public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private static final long minAnalyzeWindow = 100;
 	private static final int DRAWWINDOW = 5000;
-	private ZIndexMeasure main;
+	private GosseCenter main;
 	private MyGUI myGUI_;
 	private ScriptInterface mainWnd_;
 	private String baseDir_;
@@ -61,7 +61,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private XYSeries zDataSeries_;
 	private JFreeChart zDataChart;
 
-	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, MyGUI mygui_) {
+	protected AcqAnalyzer(ScriptInterface gui, GosseCenter main_, MyGUI mygui_) {
 		myGUI_ = mygui_;
 		main = main_;
 		mainWnd_ = gui;
@@ -83,7 +83,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	}
 
 	public static AcqAnalyzer getInstance(ScriptInterface gui,
-			ZIndexMeasure main_, MyGUI mygui_) {
+			GosseCenter main_, MyGUI mygui_) {
 		if (instance_ == null)
 			instance_ = new AcqAnalyzer(gui, main_, mygui_);
 		return instance_;
@@ -114,8 +114,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			}
 		}
 
-		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON
-				|| !main.isCalibrated)
+		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON)
 			return;
 
 		double pos[] = null;
@@ -231,9 +230,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				elapsed, pos[0], pos[1], xPhys, yPhys, pos[2], pos[6], pos[7],
 				pos[8], pos[9], pos[10], pos[11], forces[0], forces[1]));
 
-		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.myForm_.isMagnetAuto()) {
-			main.PullMagnet();
-		}
+		 
 
 		return new double[] { pos[0], pos[1], pos[2], xPhys, yPhys, forces[0], forces[1] };
 	}

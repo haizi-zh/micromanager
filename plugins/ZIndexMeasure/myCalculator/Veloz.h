@@ -16,8 +16,8 @@ static double * LAST_ERR;
 static double * sCalProfile ;
 static double * sCalPos;
 static double * sOpt;
-static double* LastMean;
-static double* LastSTD;
+static double* sum;
+static double* sum2;
 
 typedef list<double> LISTDOUBLE;
 static  LISTDOUBLE  myXpos;
@@ -64,7 +64,7 @@ namespace DeadNight
 		};
 		
 		void getForce(double* pos,int index_);
-		void gosse(JNIEnv * env_, jobject image_,int*  roi_, double*  result);
+		void gosse(JNIEnv * env_, jobject image_,int*  roi_, double*  result,int * opt);
 		void GetCalProfile(JNIEnv * env_, jobject image_, int* roi_,  int zX_, double* pos,double* calProfile);
 		void GetZPosition(JNIEnv * env_, jobject image_,int index_,int*  roi_,double* pos);
 		void StartCounter();

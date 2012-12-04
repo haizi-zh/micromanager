@@ -46,54 +46,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_ndaguan_micromanager_myCalculator_Calibr
 JNIEXPORT jdoubleArray JNICALL Java_org_ndaguan_micromanager_myCalculator_GetForce
   (JNIEnv * env_, jobject _obj,jdoubleArray data_,jdoubleArray Opt_)
 {
-	StartCounter();
-	double* pData_= env_->GetDoubleArrayElements((jdoubleArray)data_, JNI_FALSE);
-	double* pOpt_= env_->GetDoubleArrayElements(Opt_, JNI_FALSE);
-
-	double  L = pOpt_[0]*pow(10.0,-6.0);  
-	double  T = pOpt_[1];
-	double  P = pOpt_[2]*pow(10.0,-9.0); 
-	int     len = (int)pOpt_[3];
-	double  Kb = 1.3806505 * pow(10.0,-23.0); 
-    double* temp = new double[len];
-	double mean = 0;
-	double std = 0;
-
-	for(int i = 0;i<len;i++){
-		temp[i] = pData_[i]*74*pow(10.0,-9.0);//nM  1piexl = 74nm(7.4um/piexl/100)  
-		mean +=temp[i];
-	}
-	mean /=len;
- 
-	for(int i = 0;i<len;i++){
-		std +=(temp[i]-mean)*(temp[i]-mean);
-	}
-	std = (std/len);
-	delete[] temp;	
-	env_->ReleaseDoubleArrayElements(data_,pData_,JNI_ABORT);
-	env_->ReleaseDoubleArrayElements(Opt_,pOpt_,JNI_ABORT);
-	 
-	double	theta = 1/(Kb*T);
-	double  A = theta*std/L;  
-	double  B = 4*P*theta-4*A;
-  
-	double    a = (A*A)*B;
-	double    b = A - 2*A*B;
-	double    c = B -2*A;
-	double    detal =b*b - 4*a*c; 
-	double Force = -1;
-	if (detal > 0 ){
-		Force = ( -b - sqrt(detal))/(2*a) ;
-		Force *=pow(10.0,12);//N->pN
-	} 
- 
-	double* ret = new double[2];
-	ret[0] = Force;
-	ret[1] = GetCounter();
-	jdoubleArray jret = env_->NewDoubleArray(2);  
-    env_->SetDoubleArrayRegion(jret, 0,2, (const jdouble*)ret); 
-	delete[] ret;
-	return jret ;  
+	return NULL;
  
 }
  
@@ -103,14 +56,14 @@ JNIEXPORT jobjectArray JNICALL Java_org_ndaguan_micromanager_myCalculator_GetZPo
 { 	
 	int* pRoi_ =(int*)env_->GetIntArrayElements(roi_, JNI_FALSE);	
 	//opt:Radius,RInterstep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zX,zN,zlen,zSize 
-	double * pos = new double[14];
-	//pos 0~5 x y z dx dy dz  6~11  <x>^2 <y>^2 <z>^2 mean(x) mean(y) mean(z) 12 forcex 13 forcey
-	memset(pos,-1,14*sizeof(double)); 
+	double * pos = new double[12];
+	//pos 0~5 x y z dx dy dz  6~11  <x>^2 <y>^2 <z>^2 mean(x) mean(y) mean(z) 
+	memset(pos,-1,12*sizeof(double)); 
 	GetZPosition(env_,image_,index_,pRoi_,pos);
 	env_->ReleaseIntArrayElements(roi_,(jint*)pRoi_,JNI_ABORT);
 	
-	jdoubleArray jpos = env_->NewDoubleArray(14);  
-    env_->SetDoubleArrayRegion(jpos, 0,14, (const jdouble*)pos); 
+	jdoubleArray jpos = env_->NewDoubleArray(12);  
+    env_->SetDoubleArrayRegion(jpos, 0,12, (const jdouble*)pos); 
 	delete[] pos;
 	pos =NULL;
 	jdoubleArray jErr_Code = env_->NewDoubleArray(2);
@@ -134,16 +87,18 @@ JNIEXPORT jobjectArray JNICALL Java_org_ndaguan_micromanager_myCalculator_GetZPo
  * Signature: ([F[D[D)[D
  */
 JNIEXPORT jobjectArray JNICALL Java_org_ndaguan_micromanager_myCalculator_GosseCenter
-  (JNIEnv * env_, jobject obj_, jobject image_, jintArray roi_)
+  (JNIEnv * env_, jobject obj_, jobject image_, jintArray roi_,jintArray opt_)
 {  	
 	
 	int* pRoi_ =(int*)env_->GetIntArrayElements(roi_, JNI_FALSE);	
+	int* popt_ =(int*)env_->GetIntArrayElements(opt_, JNI_FALSE);	
 
 	//Pos_:x,yPosition,rx,ry
 	double* Pos_ = new double[6];
 	memset(Pos_,-1,6*sizeof(double));
 		
-	gosse(env_,image_,pRoi_,Pos_);
+
+	gosse(env_,image_,pRoi_,Pos_,popt_);
 	env_->ReleaseIntArrayElements(roi_,(jint*)pRoi_,JNI_ABORT);
 
 	jdoubleArray jPos_ = env_->NewDoubleArray(6);  

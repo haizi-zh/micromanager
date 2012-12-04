@@ -45,9 +45,11 @@ namespace DeadNight
 			LAST_ERR =  new double[2];
 			sCalPos =  new double[zLen];
 			sCalProfile = new double[zLen*zSize];
-			LastMean = new double[3];//x y z
-			LastSTD = new double[3];//x y z
+			sum = new double[3];//x y z
+			sum2 = new double[3];//x y z
 			memset(sCalProfile,0,zLen*zSize*sizeof(double));
+			memset(sum,0,3*sizeof(double));
+			memset(sum2,0,3*sizeof(double));
 
 			LAST_ERR[0]  = ERR_OK;
 
@@ -161,15 +163,15 @@ namespace DeadNight
 				delete[] sOpt;
 			if(LAST_ERR)
 				delete[] LAST_ERR;
-			if(LastMean)
-				delete[] LastMean;
-			if( LastSTD)
-				delete[]  LastSTD;
+			if(sum)
+				delete[] sum;
+			if( sum2)
+				delete[]  sum2;
 		}
 		void SetBitDepth(int bitDepth_){
 			sOpt[2] = bitDepth_;
 		}
-		void gosse(JNIEnv * env_, jobject image_,int*  roi_, double* result)
+		void gosse(JNIEnv * env_, jobject image_,int*  roi_, double* result,int * opt)
 		{
 
 			//roi:x,y,width,height
@@ -180,14 +182,21 @@ namespace DeadNight
 			int roiWidth = roi_[2];
 			int roiHeight = roi_[3];
 
-			Option opt;
-			getOption(opt);
-			int bitDepth = opt.bitDepth;
-			int halfQuadWindow = opt.halfQuadWidth;
-			int imgwidth = opt.imgWidth;
-			int imgheight = opt.imgHeight;
-			assert(roiX+roiWidth<=imgwidth); 
-			assert(roiY+roiHeight<=imgheight);
+			//Option opt;
+			//getOption(opt);
+			//int bitDepth = opt.bitDepth;
+			//int halfQuadWindow = opt.halfQuadWidth;
+			//int imgwidth = opt.imgWidth;
+			//int imgheight = opt.imgHeight;
+			//assert(roiX+roiWidth<=imgwidth); 
+			//assert(roiY+roiHeight<=imgheight);
+
+			//Opt:bitDepth,halfQuadWidth,imgWidth,imgHeight
+			int bitDepth = opt[0];
+			int halfQuadWindow = opt[1];
+			int imgwidth = opt[2];
+			int imgheight = opt[3];
+
 			// Calculate the 1-D arrays
 			double* pSumX = new double[roiWidth];
 			double* pSumY = new double[roiHeight];		
@@ -347,9 +356,14 @@ namespace DeadNight
 			int imgwidth = opt.imgWidth;
 			int imgheight = opt.imgHeight;
 			int len = (int)(radius/step);
-
-			gosse(env_,image_,roi_,pos);
-
+			//Opt:bitDepth,halfQuadWidth,imgWidth,imgHeight
+			int* iopt = new int[4];
+			iopt[0] = bitDepth;
+			iopt[1] = opt.halfQuadWidth;
+			iopt[2] = imgwidth;
+			iopt[3] = imgheight;
+			gosse(env_,image_,roi_,pos,iopt);
+			delete[] iopt;
 			double xpos = pos[0],ypos = pos[1];	 
 
 			if(IsBallOutOfImage(xpos,ypos,radius,imgwidth,imgheight))
@@ -471,106 +485,64 @@ namespace DeadNight
 			mean = (mean/len);
 			return  mean;
 		}
-		void getForce(double* pos,int index_){
+		void getForce(double* pos){
 			Option opt;					
 			getOption(opt);			 
 			int len = opt.frame2calcForce;
-			double xpos = pos[0]*75*pow(10.0,-9);//1 pixel = 75 *10^(-9) m
-			double ypos = pos[1]*75*pow(10.0,-9);
+			double xpos = pos[0];
+			double ypos = pos[1];
 			double zpos = pos[2];
-			if(index_ < len){//save since data is not enough 
-				myXpos.push_back (xpos);
-				myYpos.push_back (ypos);
-				myZpos.push_back (zpos);
-				
-				pos[6] = 0;
-				pos[7] = 0;
-				pos[8] = 0;
-				pos[9] =0;
-				pos[10] = 0;
-				pos[11] = 0;
-				pos[12] = -1;
-				pos[13] = -1;
-				return;
+
+			myXpos.push_back (xpos);
+			myYpos.push_back (ypos);
+			myZpos.push_back (zpos);
+
+			int currListSize = myXpos.size();
+			if(currListSize <= len){//save since data is not enough 			
+				sum[0] += xpos;
+				sum[1] += ypos;
+				sum[2] += zpos;
+								
+				sum2[0] += xpos*xpos;
+				sum2[1] += ypos*ypos;
+				sum2[2] += zpos*zpos;
+
+				pos[9] = sum[0]/currListSize;
+				pos[10] = sum[1]/currListSize;
+				pos[11] = sum[2]/currListSize;	
+
+				pos[6] = sqrt(sum2[0]/currListSize - pos[9]*pos[9]);
+				pos[7] = sqrt(sum2[1]/currListSize - pos[10]*pos[10]);
+				pos[8] = sqrt(sum2[2]/currListSize - pos[11]*pos[11]);				
 			}			
-
-			double mean = 0;
-			double std = 0;
-			if(index_ == len){//first time	
-
-				myXpos.push_back (xpos);
-				myYpos.push_back (ypos);
-				myZpos.push_back (zpos);
-
-				mean  =getMean(myXpos,len);
-				LastMean[0] = mean;
-				LastSTD[0] = getSTD(myXpos,mean,len);
-				
-				mean  =getMean(myYpos,len);		
-				LastMean[1] = mean;
-				LastSTD[1] = getSTD(myYpos,mean,len);
-				
-				//mean = accumulate(myZpos.begin(), myZpos.end(),0);
-				//mean /= len;	
-				mean  =getMean(myZpos,len);
-				LastMean[2] = mean;
-				LastSTD[2] = getSTD(myZpos,mean,len);					 
-			}
-
-			if(index_ > len){//the rest
-
-				LastMean[0] = LastMean[0] + (xpos - myXpos.front())/len;
-				LastMean[1] = LastMean[1] + (ypos - myYpos.front())/len;
-				LastMean[2] = LastMean[2] + (zpos - myZpos.front())/len;
+			else{//the rest			 
+				double xfirst = myXpos.front();
+				double yfirst = myYpos.front();
+				double zfirst = myZpos.front();
 
 				myXpos.pop_front();
 				myYpos.pop_front();
 				myZpos.pop_front();
+				 
 
-				myXpos.push_back (xpos);
-				myYpos.push_back (ypos);
-				myZpos.push_back (zpos);
+				sum[0] += (xpos-xfirst);
+				sum[1] += (ypos-yfirst);
+				sum[2] += (zpos-zfirst);
+								
+			 					
+				sum2[0] += (xpos*xpos-xfirst*xfirst);
+				sum2[1] += (ypos*ypos-yfirst*yfirst);
+				sum2[2] += (zpos*zpos-zfirst*zfirst);
 
-				LastSTD[0] = getSTD(myXpos,LastMean[0],len);
-				LastSTD[1] = getSTD(myYpos,LastMean[1],len);
-				LastSTD[2] = getSTD(myZpos,LastMean[2],len);
+				pos[9] = sum[0]/(currListSize-1);
+				pos[10] = sum[1]/(currListSize-1);
+				pos[11] = sum[2]/(currListSize-1);	
 
+				pos[6] = sqrt(sum2[0]/(currListSize-1) - pos[9]*pos[9]);
+				pos[7] = sqrt(sum2[1]/(currListSize-1) - pos[10]*pos[10]);
+				pos[8] = sqrt(sum2[2]/(currListSize-1) - pos[11]*pos[11]);
 			}
-				pos[6] = LastSTD[0]*pow(10.0,9);
-				pos[7] = LastSTD[1]*pow(10.0,9);//m2nM
-				pos[8] = LastSTD[2]*pow(10.0,3);//um2 to nm2
-				pos[9] = LastMean[0]*pow(10.0,9)/75;
-				pos[10] = LastMean[1]*pow(10.0,9)/75;
-				pos[11] = LastMean[2];//m2nm
-				pos[12] = -1;
-				pos[13] = -1;
-				//getForceX
-				double  L = opt.DNALen*pow(10.0,-6);  
-				double  T = opt.Temperature;
-				double  P = opt.DNAPersLen*pow(10.0,-9);  
-				double  Kb = 1.3806505*pow(10.0,-23); 
-				double  theta = 1/(Kb*T);
 				
-				double  A = theta*LastSTD[0]*LastSTD[0]/L;  
-				double  B = 4*P*theta-4*A; 
-				double  a = (A*A)*B;
-				double  b = A - 2*A*B;
-				double  c = B -2*A;
-				double  detal =b*b - 4*a*c; 
-				if (detal > 0 ){
-					pos[12] = pow(10.0,12) *( -b - sqrt(detal))/(2*a) ;
-				} 
-				//getForceY
-				A = theta* LastSTD[1]*LastSTD[1]/L;  
-				B = 4*P*theta-4*A;
-				a = (A*A)*B;
-				b = A - 2*A*B;
-				c = B -2*A;
-				detal =b*b - 4*a*c; 
-				if (detal > 0 ){
-					pos[13]  = pow(10.0,12) *( -b - sqrt(detal))/(2*a) ;
-				} 
-
 		}
 		void  GetZPosition(JNIEnv * env_, jobject image_,int index_,int*  roi_,double* pos){
 			StartCounter();
@@ -624,7 +596,7 @@ namespace DeadNight
 			pos[2] = - para[1] /(2 * para[0]);
 			pos[5] = para[2];
 			if(index_ != -1){			
-				getForce(pos,index_);
+				getForce(pos);
 			}
 			LAST_ERR[1] = GetCounter();
 
