@@ -1,5 +1,7 @@
 package org.ndaguan.micromanager;
 
+import ij.IJ;
+
 import java.awt.geom.Point2D;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -21,6 +23,7 @@ import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import org.apache.commons.math3.analysis.solvers.LaguerreSolver;
 import org.apache.commons.math3.exception.NoBracketingException;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.jfree.chart.JFreeChart;
 import org.jfree.data.xy.XYSeries;
 import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
@@ -33,6 +36,7 @@ import org.zephyre.micromanager.OverlayRender.RenderItem;
 
 public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private static final long minAnalyzeWindow = 100;
+	private static final int DRAWWINDOW = 5000;
 	private ZIndexMeasure main;
 	private MyGUI myGUI_;
 	private ScriptInterface mainWnd_;
@@ -55,12 +59,14 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 
 	private Writer dataFileWriter_;
 	private XYSeries zDataSeries_;
+	private JFreeChart zDataChart;
 
 	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, MyGUI mygui_) {
 		myGUI_ = mygui_;
 		main = main_;
 		mainWnd_ = gui;
-		zDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Z-Chart");
+		zDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-Z");
+		zDataChart = myGUI_.myForm_.getChartSeries_().get("Chart-Z");
 		render_ = OverlayRender.getInstance(gui);
 		stats_ = new DescriptiveStatistics[3];
 		windowSize_ = 1000;
@@ -72,6 +78,8 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		beadRadius_ = mygui_.getRadius_()*1000;//1400;//
 		kT_ = 4.2;
 		contourLength_ = mygui_.getDNALen_()*1000;//16700;//
+		sum =0;
+		sum2=0;
 	}
 
 	public static AcqAnalyzer getInstance(ScriptInterface gui,
@@ -86,6 +94,9 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private DescriptiveStatistics[] stats_;
 	private DescriptiveStatistics statCross_;
 	private long startTs_;
+	private int DRAW;
+	private double sum ;
+	private double sum2;
 
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
@@ -131,8 +142,8 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 
 		ArrayList<RenderItem> list = new ArrayList<OverlayRender.RenderItem>();
 		list.add(RenderItem.createInstance(new Point2D.Float((float) pos[0],
-				(float) pos[1]), String.format("(%.3f, %.3f, %.3f)", pos[3],
-				pos[4], pos[2])));
+				(float) pos[1]), String.format("(%.3f, %.3f, %.3f)(%.3f,%.3f)", pos[3],
+						pos[4], pos[2], pos[5], pos[6])));
 		boolean update = acqName.equals(MMStudioMainFrame.SIMPLE_ACQ) ? true
 				: false;
 		try {
@@ -144,14 +155,11 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 
 	public double[] GetPosition(final int index_, TaggedImage taggedImage)
 			throws IOException, JSONException {
+		//pos 0~5 x y z dx dy dz  6~11  <x2> <y2> <z2> <x> <y> <z>
 		Object[] dpos = main.mCalc.GetZPosition(taggedImage.pix,
 				myGUI_.calcRoi_, index_);
-		// double[] time = (double[]) dpos[1];
-		// myGUI_.log(String.format("C Cost Time#%f", time[1]));
 		final double pos[] = (double[]) dpos[0];
-
 		final boolean clearChart = resetData_;
-
 		// Reset the stat container
 		if (resetData_) {
 			for (DescriptiveStatistics stat : stats_)
@@ -159,46 +167,33 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			statCross_.clear();
 			resetData_ = false;
 			startTs_ = System.nanoTime();
+			myGUI_.currFrame = 1;
 		}
 		final double xPhys = pixelToPhys_[0] + pixelToPhys_[1] * pos[0];
 		final double yPhys = pixelToPhys_[2] + pixelToPhys_[3] * pos[1];
 
 		stats_[0].addValue(xPhys * 1000);
 		stats_[1].addValue(yPhys * 1000);
-		// if (stats_[0].getN() > 2)
-		// mainWnd_.logMessage(String.format(
-		// "(%.1f,%.1f) => (%.3f, %.3f), variance: (%f, %f)", pos[0],
-		// pos[1], xPhys, yPhys, stats_[0].getVariance(),
-		// stats_[1].getVariance()));
 		stats_[2].addValue(pos[2]);
 		statCross_.addValue(xPhys * yPhys * 1e6);
 		// Calculate forces
 		final double[] forces = calcForces();
 		double[] skrewness = calcSkrewness();
-
+	
+	  
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
 				if (clearChart) {
-					
-					zDataSeries_.clear();
-				}
 
-				//				if (pos[11] != 0) {
-				//					double p = Math.pow(10, 2);
-				//					double center = Math.round(pos[11] * p) / p;
-				//					myGUI_.chart.getXYPlot().getRangeAxis()
-				//							.setRange(center - 0.06, center + 0.06);
-				//				}
-				zDataSeries_.add(index_, pos[2]);
-				//				myGUI_.Msg0.setText(String
-				//						.format("index = %d # xpos = %f # ypos = %f # zpos = %f # forceX/pN=%f # forceY/pN=%f",
-				//								index_, pos[0], pos[1], pos[2], forces[0],
-				//								forces[1]));
-				//				myGUI_.Msg1.setText(String
-				//						.format("# <stdx> = %f # <stdy> = %f # <stdz> = %f # meanx = %f # meany = %f # meanz = %f",
-				//								pos[6], pos[7], pos[8], pos[9], pos[10],
-				//								pos[11]));
+					zDataSeries_.clear();
+					sum = 0;
+					sum2 = 0;
+				} 
+				double center =  Math.floor(pos[11]*100)/100;//.2f
+				zDataChart.getXYPlot().getRangeAxis().setRange(center - 4*pos[8],center + 4*pos[8]);				
+				zDataSeries_.add(index_, pos[2]);	
+
 				myGUI_.reSetROI((int) pos[0], (int) pos[1]);
 			}
 		});
@@ -223,7 +218,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 					+ nameComp + ".txt");
 			dataFileWriter_ = new BufferedWriter(new FileWriter(file));
 			dataFileWriter_
-					.write("Frame, Timestamp, XPos/pixel, YPos/pixel, XPos/um, YPos/um, ZPos/um,<StdXPos>/nm,<StdYPos>/nm,<StdZPos>/nm,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
+			.write("Frame, Timestamp, XPos/pixel, YPos/pixel, XPos/um, YPos/um, ZPos/um,<StdXPos>/nm,<StdYPos>/nm,<StdZPos>/nm,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
 		}
 
 		double elapsed;
@@ -236,11 +231,11 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				elapsed, pos[0], pos[1], xPhys, yPhys, pos[2], pos[6], pos[7],
 				pos[8], pos[9], pos[10], pos[11], forces[0], forces[1]));
 
-		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.F_L_Flag_) {
+		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.myForm_.isMagnetAuto()) {
 			main.PullMagnet();
 		}
 
-		return new double[] { pos[0], pos[1], pos[2], xPhys, yPhys };
+		return new double[] { pos[0], pos[1], pos[2], xPhys, yPhys, forces[0], forces[1] };
 	}
 
 	private double[] calcSkrewness() {

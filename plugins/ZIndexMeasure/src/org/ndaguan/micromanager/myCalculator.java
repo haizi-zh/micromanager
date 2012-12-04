@@ -45,8 +45,9 @@ public class myCalculator {
 	 * opt:Radius,RInterstep,bitDepth
 	 * ,halfQuadWidth,imgWidth,imgHeight,zX,zN,zLen,zSize Outputs:
 	 * Object[0]:xPos,yPos Object[1]:Time Cost in this function,err_code
+	 * Opt:bitDepth,halfQuadWidth,imgWidth,imgHeight
 	 */
-	public native Object[] GosseCenter(Object image_, int[] roi_);
+	public native Object[] GosseCenter(Object image_, int[] roi_,int[] opt_);
 
 	/*
 	 * DataInit set up static memory size opt:

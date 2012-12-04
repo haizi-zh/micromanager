@@ -66,7 +66,7 @@ public class MyForm extends JFrame {
 	private final int DEFAULT_LOCATION_X = 0;
 	private final int DEFAULT_LOCATION_Y = 0;
 	private final String DEFAULT_TITLE = "Welcome......";
-	private final String DEFAULT_IMAGE = "z:/default.gif";
+	private final String DEFAULT_IMAGE = "icon/I.gif";
 	private final int DEFAULT_CLOSE_OPERATION =JFrame.HIDE_ON_CLOSE;
 	private int[] tapSize = null;
 
@@ -76,6 +76,7 @@ public class MyForm extends JFrame {
 	private JTextArea LogWindow = new JTextArea(40, (int)(40*0.618));
 	private int currTab;
 	private HashMap<String, XYSeries> dataSeries_;
+	private HashMap<String, JFreeChart> chartSeries_;
 	private XYSeriesCollection dataset_;
 	private String[] dataSet;
 	private JRadioButtonMenuItem MagnetAuto;
@@ -101,6 +102,7 @@ public class MyForm extends JFrame {
 		mygui_ = mygui;
 		tapSize = new int[]{600,900,800};
 		setDataSeries_(new HashMap<String,XYSeries>());
+		setChartSeries_(new HashMap<String,JFreeChart>());
 		dataSet  = new String[]{"Chart-Z","Chart-X","Chart-Y","Chart-XY","Chart-Z-STD","Chart-X-STD","Chart-Y-STD"};
 
 		preferDailogBox = new PreferDailogBox(this,mygui_);
@@ -239,7 +241,12 @@ public class MyForm extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				// TODO Auto-generated method stub
-				mygui_.live();
+				(new Thread(new Runnable() {
+					@Override
+					public void run() {
+						mygui_.live();
+					}
+				})).start();
 			}
 			
 		});
@@ -247,8 +254,13 @@ public class MyForm extends JFrame {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				// TODO Auto-generated method stub
-				mygui_.calibrate();
+				(new Thread(new Runnable() {
+					@Override
+					public void run() {
+						mygui_.calibrate();
+						
+					}
+				})).start();
 			}
 			
 		});
@@ -256,8 +268,12 @@ public class MyForm extends JFrame {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				// TODO Auto-generated method stub
-				mygui_.MultiAcq();
+				(new Thread(new Runnable() {
+					@Override
+					public void run() {
+						mygui_.MultiAcq();
+					}
+				})).start();
 			}
 			
 			
@@ -267,7 +283,12 @@ public class MyForm extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				// TODO Auto-generated method stub
-				mygui_.SetScale();
+				(new Thread(new Runnable() {
+					@Override
+					public void run() {
+						mygui_.SetScale();
+					}
+				})).start();
 			}
 			
 			
@@ -408,6 +429,8 @@ public class MyForm extends JFrame {
 		chart = ChartFactory.createXYLineChart(tableName, "-Time",
 				"-value", dataset_, PlotOrientation.VERTICAL, true, true,
 				false);
+
+		getChartSeries_().put(tableName, chart);
 		getDataSeries_().put(tableName,temp_);	
 		ChartPanel cPanel = new ChartPanel(chart, true);
 		cPanel.setBounds(10, 10, tapSize[1], (int)(tapSize[1]*0.6));
@@ -554,6 +577,14 @@ public class MyForm extends JFrame {
 		this.dataSeries_ = dataSeries_;
 	}
 
+	public HashMap<String, JFreeChart> getChartSeries_() {
+		return chartSeries_;
+	}
+
+	public void setChartSeries_(HashMap<String, JFreeChart> chartSeries_) {
+		this.chartSeries_ = chartSeries_;
+	}
+
 	public class Login  {
 		private double data[][] = null;
 		private double[][] userDataSet;
@@ -667,7 +698,7 @@ public class MyForm extends JFrame {
 
 
 		private double[] getUserData() throws IOException{
-			File loginDataFile = new File(System.getProperty("user.home")+"ZIndexMeasure-userData.txt");
+			File loginDataFile = new File(System.getProperty("user.home")+"/ZIndexMeasure/userData.txt");
 			if(!loginDataFile.exists())
 				return null;
 
@@ -687,9 +718,13 @@ public class MyForm extends JFrame {
 		}
 
 		private void setUserData() throws IOException{
-			File loginDataFile = new File(dataDir_+"ZIndexMeasure-userData.txt");
+			File dir = new File(System.getProperty("user.home"),"ZIndexMeasure");
+			if(!dir.isFile())
+			dir.mkdirs();
+		
+			File loginDataFile = new File(System.getProperty("user.home")+"/ZIndexMeasure/userData.txt");
 			FileWriter out = new FileWriter((loginDataFile)); 
-			String temp = new String(String.format("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t\r\n",BallRadius_,DNALength_,ZCalScale_,ZCalStep_,RinterStep_,HalfCorrWin_,MagnetStep_,Frame2Acq_,FrameCalcF_,ITEM0_,ITEM1_,ITEM2_,dataDir_));
+			String temp = new String(String.format("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t\r\n%s",BallRadius_,DNALength_,ZCalScale_,ZCalStep_,RinterStep_,HalfCorrWin_,MagnetStep_,Frame2Acq_,FrameCalcF_,ITEM0_,ITEM1_,ITEM2_,dataDir_));
 			out.write(temp);
 			out.close(); 
 		}
@@ -708,7 +743,7 @@ public class MyForm extends JFrame {
 				ITEM0_ = -1;
 				ITEM1_ = -1;
 				ITEM2_ = 60;
-				this.dataDir_ = System.getProperty("user.home");
+				this.dataDir_ = System.getProperty("user.home")+"/ZIndexMeasure";
 			}else{
 				BallRadius_ = data[0];
 				DNALength_ = data[1];
@@ -938,8 +973,9 @@ public class MyForm extends JFrame {
 					@Override
 					public void run() {
 						myform_.log(String.format("Preferences Change,reCalibrate is recommend ."));
-						mygui_.SetScale();
+						
 						UpdateData(true);//flush
+						mygui_.SetScale();
 						frame.setVisible(false);
 					}
 				});

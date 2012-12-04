@@ -84,7 +84,7 @@ public class ZIndexMeasure implements MMPlugin {
 
 		if (mygui_ == null) {
 			mygui_ = new MyGUI(this,gui_);
-			zDataSeries_ = mygui_.myForm_.getDataSeries_().get("Z-Chart");
+			zDataSeries_ = mygui_.myForm_.getDataSeries_().get("Chart-Z");
 			processor_ = AcqAnalyzer.getInstance(app, this, mygui_);
 			mCalc = new myCalculator();
 			tcpServer_ = new TCPServer(core_, port_);
@@ -138,9 +138,9 @@ public class ZIndexMeasure implements MMPlugin {
 	// (new Thread(new Runnable() { @Override public void run() { test1(); }
 	// })).start();
 	public void StartCalibration() {
-		mygui_.myForm_.log("Calibration Start......Checking up in IJ log for more infomation");
+		mygui_.myForm_.log("Calibration Start......");
 		if (!isSetScale) {
-			mygui_.myForm_.log("Setscale first!");
+			mygui_.myForm_.log("statu\tfalse\tfalseSetscale first!");
 			return;
 		}
 		if (gui_.getAcquisitionEngine().isAcquisitionRunning()) {
@@ -173,14 +173,7 @@ public class ZIndexMeasure implements MMPlugin {
 				double[] tempY = new double[2];
 				core_.getXYPosition(xyStage_, tempX, tempY);
 
-				delta = calPosZ_[z] - temp;
-				if (delta > 0.002 || delta < -0.002) {
-					IJ.log(String.format(
-							"Warning:set z position at%f,return %f detal =%f",
-							calPosZ_[z], temp, delta));
-				}
-				IJ.log(String.format("Calibrating:%d/%d\r\n", z,
-						calPosZ_.length));
+
 				Object[] ret_ = null;
 				double[] outpos = new double[2];
 				gui_.snapSingleImage();
@@ -190,8 +183,6 @@ public class ZIndexMeasure implements MMPlugin {
 				outpos[0] = ((double[]) ret_[0])[0];
 				outpos[1] = ((double[]) ret_[0])[1];
 				mygui_.reSetROI((int) outpos[0], (int) outpos[1]);
-				IJ.log(String.format("xpos:%f--ypos:%f\r\n", outpos[0],
-						outpos[1]));
 
 				ArrayList<RenderItem> list = new ArrayList<OverlayRender.RenderItem>();
 				list.add(RenderItem.createInstance(new Point2D.Float(
@@ -238,7 +229,7 @@ public class ZIndexMeasure implements MMPlugin {
 			isCalibrated = true;
 			processor_.resetData_ = true;
 		} catch (Exception e) {
-			mygui_.myForm_.log("Calibration False! god knows why......" + e.toString());
+			mygui_.myForm_.log("Calibration False!\t" + e.toString());
 			e.printStackTrace();
 		}
 	}
@@ -289,16 +280,16 @@ public class ZIndexMeasure implements MMPlugin {
 	public void InstallCallback() {
 
 		if (!isCalibrated) {
-			mygui_.myForm_.log("Start Calibration first!");
+			mygui_.myForm_.log("statu:false\tStart Calibration first!");
 			return;
 		}
 
 		if (isInstalCallback) {
-			mygui_.myForm_.log("Call back is installed! mission abort");
+			mygui_.myForm_.log("statu:false\tCall back is installed! mission abort");
 		} else {
 			gui_.getAcquisitionEngine().addImageProcessor(processor_);
 			isInstalCallback = true;
-			mygui_.myForm_.log("Call back install,Start capture...");
+			mygui_.myForm_.log("statu:ok\tCall back install,Start capture...");
 		}
 		
 	}
@@ -310,7 +301,7 @@ public class ZIndexMeasure implements MMPlugin {
 			isInstalCallback = false;
 			mygui_.myForm_.log("Call back uninstal,Stop capture");
 		} else {
-			mygui_.myForm_.log("UnInstall Callback false");
+			mygui_.myForm_.log("statu:UnInstall Callback false");
 		}
 		// gui_.getAcquisitionEngine().stop(true);
 	}
@@ -360,19 +351,17 @@ public class ZIndexMeasure implements MMPlugin {
 
 	private void testing() throws Exception {// to verify if this stuff
 		// workable
-		mygui_.myForm_.log("Test begin......checking out the IJ log for move infomation.");
-		IJ.log(String.format("Testing:\r\n#index,#real,#get,#delta"));
-
-		
+		mygui_.myForm_.log("Test begin......checking out the Cart-Z for more information.");
+		//IJ.log(String.format("Testing:\r\n#index,#real,#get,#delta"));	
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
 				zDataSeries_.clear();
 			}
 		});
-		int len = mygui_.calPos_.length;
+		int len = mygui_.getcalPosLen();
 
-		for (int i = 0; i < len; i++) {// get XYZPostion
+		for (int i = 1; i < len-4; i++) {// get XYZPostion
 			gui_.logMessage(String.format("Set z position: %f", calPosZ_[i]));
 			setZPosition(calPosZ_[i]);
 			final double zpos = core_.getPosition(zStage_);

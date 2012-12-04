@@ -66,16 +66,13 @@ public class MyGUI {
 	// XY calibration positions
 	double[][] calPosXY_;
 
-	public boolean F_L_Flag_ = false;
-
-
-
 	private long begin;
 	final Object lock = new Object();
 	public MyForm myForm_;
 	private double ballRadiusPix = 100.0;
 	private boolean isInstall = false;
 	private MMStudioMainFrame gui_;
+	private int calPosLen;
 
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -112,7 +109,7 @@ public class MyGUI {
 		roi_rectangle.height = BallSqrt;
 		roi_rectangle.x = (int) (CenterX - BallSqrt / 2);
 		roi_rectangle.y = (int) (CenterY - BallSqrt / 2);
-	
+
 		if (!this.IsBallInImg()) {
 			myForm_.log("THE BALL IS OUT OF THIS IMAGE,I GONA GIVE UP TRACKING....");
 			return;
@@ -198,7 +195,7 @@ public class MyGUI {
 			return;
 		}
 
-	
+
 
 		currFrame = 1;
 		setDefaultPrefer(myForm_.preferDailogBox.getPreferData());
@@ -211,13 +208,11 @@ public class MyGUI {
 		ZStart_ = mainInstance_.currzpos_ - ZScale_ / 2;
 		mainInstance_.getProcessor().setBaseDir(myForm_.preferDailogBox.getDataDir_());
 
-		F_L_Flag_ = myForm_.isMagnetAuto();
-		
 		roi_rectangle = WindowManager.getCurrentImage().getRoi().getBounds();
 		int CenterX = roi_rectangle.x + roi_rectangle.width / 2;
 		int CenterY = roi_rectangle.y + roi_rectangle.height / 2;
 		reSetROI(CenterX, CenterY);
-		
+
 		reSetOpt();
 		setCalProfile();
 
@@ -228,6 +223,7 @@ public class MyGUI {
 
 	private void setCalProfile() {
 		int nSteps = (int) (ZScale_ / ZStep_);
+		this.calPosLen = nSteps;
 		double[] calPosZ = new double[nSteps];
 		double[][] calPosXY = new double[2][];
 		for (int i = 0; i < nSteps; i++) {
@@ -255,7 +251,7 @@ public class MyGUI {
 	// :radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep
 	// ��DNALen��Temperature��DNAPersLen,frame2calcForce
 	private void reSetOpt() {
-		calcOpt_[0] = getRadius_();
+		calcOpt_[0] = ballRadiusPix;
 		calcOpt_[1] = RInterpStep_;
 		calcOpt_[2] = BitDepth_;
 		calcOpt_[3] = HalfQuadWindow_;
@@ -347,5 +343,10 @@ public class MyGUI {
 
 	public void setDNALen_(double dNALen_) {
 		DNALen_ = dNALen_;
+	}
+
+
+	public int getcalPosLen() {
+		return calPosLen;
 	}
 }
