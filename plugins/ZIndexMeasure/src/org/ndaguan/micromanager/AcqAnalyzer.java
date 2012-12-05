@@ -231,7 +231,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				elapsed, pos[0], pos[1], xPhys, yPhys, pos[2], pos[6], pos[7],
 				pos[8], pos[9], pos[10], pos[11], forces[0], forces[1]));
 
-		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.myForm_.isMagnetAuto()) {
+		if (index_ % myGUI_.movingWindowLen_ == 0 && myGUI_.myForm_.isMagnetAuto()) {
 			main.PullMagnet();
 		}
 

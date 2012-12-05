@@ -149,6 +149,7 @@ public class ZIndexMeasure implements MMPlugin {
 		if (gui_.isLiveModeOn()) {
 			gui_.enableLiveMode(false);
 		}
+	
 		double temp;
 		double delta;
 		try {

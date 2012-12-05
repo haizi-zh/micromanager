@@ -7,6 +7,7 @@
 #include <cassert>
 #include <windows.h>
 #include "convlv.h"
+#include "interp_1d.h"
 
 using namespace std;
 
@@ -33,8 +34,8 @@ namespace DeadNight
 		}
 		void DataInit(double* pOpt_){
 
-			sOpt = new double[13];
-			memcpy(sOpt,pOpt_,13*sizeof(double));
+			sOpt = new double[10];
+			memcpy(sOpt,pOpt_,10*sizeof(double));
 			Option opt;
 			getOption(opt);
 
@@ -45,8 +46,8 @@ namespace DeadNight
 			LAST_ERR =  new double[2];
 			sCalPos =  new double[zLen];
 			sCalProfile = new double[zLen*zSize];
-			sum = new double[3];//x y z
-			sum2 = new double[3];//x y z
+			sum = new double[3];//Mx My Mz
+			sum2 = new double[3];//Mx2 My2 Mz2
 			memset(sCalProfile,0,zLen*zSize*sizeof(double));
 			memset(sum,0,3*sizeof(double));
 			memset(sum2,0,3*sizeof(double));
@@ -62,7 +63,7 @@ namespace DeadNight
 		void getOption(Option &opt){
 					   	
 			// opt_[13]	
-			// radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep,DNALen,Temperature,DNAPersLen,frame2calcForce
+			// radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep,movingWindowLen
 			opt.radius=sOpt[0];
 			opt.rInterStep=sOpt[1];
 			opt.bitDepth=(int)sOpt[2];
@@ -72,11 +73,7 @@ namespace DeadNight
 			opt.zStart=sOpt[6];
 			opt.zScale=sOpt[7];
 			opt.zStep=sOpt[8];	
-
-			opt.DNALen =  sOpt[9];
-			opt.Temperature =  sOpt[10];
-			opt.DNAPersLen =  sOpt[11];
-			opt.frame2calcForce =(int) sOpt[12];
+			opt.movingWindowLen =(int) sOpt[10];
 		}		
 		void quadraticFit(double x[], double data[], int start, int len, double parameters[])
 		{
@@ -485,10 +482,10 @@ namespace DeadNight
 			mean = (mean/len);
 			return  mean;
 		}
-		void getForce(double* pos){
+		void getMeanSTD(double* pos){
 			Option opt;					
 			getOption(opt);			 
-			int len = opt.frame2calcForce;
+			int len = opt.movingWindowLen;
 			double xpos = pos[0];
 			double ypos = pos[1];
 			double zpos = pos[2];
@@ -548,6 +545,7 @@ namespace DeadNight
 			StartCounter();
 			Option opt;					
 			getOption(opt);
+
 			int zLen =(int)( opt.zScale/opt.zStep);
 			int zSize = (int)(opt.radius/opt.rInterStep);
 			int halfQuadWindow =opt.halfQuadWidth;
@@ -557,26 +555,25 @@ namespace DeadNight
 
 			GetCalProfile(env_,image_,roi_,zX_,pos,calProfileX);
 			double zPos = 0;
-			double* val = new double[zLen];
+			 
 			double max = 0;
 			int ind = -1;
+
+			VecDoub xx(zLen,sCalPos), yy(zLen);
 			for(int i = 0;i<zLen; i++){
-				val[i] = corr(calProfileX,sCalProfile+i*zSize,zSize);
-				if(max <val[i]){
-					max = val[i];
+				yy[i] = corr(calProfileX,sCalProfile+i*zSize,zSize);
+				if(max <yy[i]){
+					max = yy[i];
 					ind = i;
 				}
 			}
+			Spline_interp inter(xx,yy);
 			if(calProfileX){
 				delete[] calProfileX;
 				calProfileX =NULL;
 			}
 			if(ind == -1){
 				LAST_ERR[0] = ERR_GET_ZPOS_FALSE;
-				if(val){
-					delete[] val;
-					val=NULL;
-				}
 				return;
 			}	
 
@@ -585,21 +582,33 @@ namespace DeadNight
 				start = 0;
 			else if (start >= zLen - 2*halfQuadWindow)
 				start = zLen- 2*halfQuadWindow - 1;
-			assert(start >= 0 && start <zLen - 2*halfQuadWindow);
 
-			double para[4];
-			quadraticFit(sCalPos, val, start, 2*halfQuadWindow+1, para);
-			if(val){
-				delete[] val;
-				val=NULL;
+			int interStep = 5;
+			if((start >= 0 && start <zLen - 2*halfQuadWindow)){
+				return;
 			}
-			pos[2] = - para[1] /(2 * para[0]);
-			pos[5] = para[2];
+
+		 
+			double temp = -1;
+			for(int i = start;i<start+2*halfQuadWindow;i++){
+				for(int j  = 0;j<interStep;j++){
+					temp = inter.interp((double)(xx[start]+j/interStep));
+					if(temp > pos[2]){
+						pos[2]  = temp;
+					}
+				}
+			}
+		    
+		//	pos[2] =  inter.interp();
+
+
+			 
+		 
+			pos[5] = 2;
 			if(index_ != -1){			
-				getForce(pos);
+				getMeanSTD(pos);
 			}
 			LAST_ERR[1] = GetCounter();
-
 		}
 		 
 

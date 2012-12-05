@@ -35,7 +35,7 @@ namespace DeadNight
 		struct Option
 		{
 		   	// opt_[13]	
-			// radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep,DNALen,Temperature,DNAPersLen,frame2calcForce
+			// radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep,movingWindowLen
 
 			double radius;
 			double rInterStep;
@@ -45,12 +45,8 @@ namespace DeadNight
 			int imgHeight;
 			double zStart;
 			double zScale;
-			double zStep;
-
-			double DNALen;
-			double Temperature;
-			double DNAPersLen;						
-			int frame2calcForce;
+			double zStep;						
+			int movingWindowLen;
 
 
 		};
@@ -63,7 +59,7 @@ namespace DeadNight
 			int height;
 		};
 		
-		void getForce(double* pos,int index_);
+		void getMeanSTD(double* pos);
 		void gosse(JNIEnv * env_, jobject image_,int*  roi_, double*  result,int * opt);
 		void GetCalProfile(JNIEnv * env_, jobject image_, int* roi_,  int zX_, double* pos,double* calProfile);
 		void GetZPosition(JNIEnv * env_, jobject image_,int index_,int*  roi_,double* pos);

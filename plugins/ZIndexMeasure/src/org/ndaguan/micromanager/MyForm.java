@@ -53,7 +53,7 @@ import org.jfree.data.xy.XYSeriesCollection;
 
 
 public class MyForm extends JFrame {
-	final String[] PARALIST  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ITEM2"};
+	final String[] PARALIST  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ballRadiusPix"};
 	/**
 	 * 
 	 */
@@ -634,7 +634,7 @@ public class MyForm extends JFrame {
 		private JTextField FrameCalcF;
 		private JTextField ITEM0;
 		private JTextField ITEM1;
-		private JTextField ITEM2;
+		private JTextField ballRadiusPix;
 
 		private double BallRadius_;
 		private double DNALength_;
@@ -647,7 +647,7 @@ public class MyForm extends JFrame {
 		private double FrameCalcF_;
 		private double ITEM0_;
 		private double ITEM1_;
-		private double ITEM2_;
+		private double ballRadiusPix_;
 
 		private HashMap<String,Double> Opt_ = null;
 		private ActionListener DialogListener;
@@ -682,8 +682,8 @@ public class MyForm extends JFrame {
 		}
 		//		private void print() {
 		//			System.out.println(string);
-		//			"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin",MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1",ITEM2"
-		//			String[] para  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ITEM2"};
+		//			"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin",MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1",ballRadiusPix"
+		//			String[] para  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ballRadiusPix"};
 		//			for (int i = 0; i < para.length; i++) {
 		//				print(String.format("\rOpt_.put(\"%s\",%s_);",para[i],para[i]));
 		//			}
@@ -724,7 +724,7 @@ public class MyForm extends JFrame {
 		
 			File loginDataFile = new File(System.getProperty("user.home")+"/ZIndexMeasure/userData.txt");
 			FileWriter out = new FileWriter((loginDataFile)); 
-			String temp = new String(String.format("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t\r\n%s",BallRadius_,DNALength_,ZCalScale_,ZCalStep_,RinterStep_,HalfCorrWin_,MagnetStep_,Frame2Acq_,FrameCalcF_,ITEM0_,ITEM1_,ITEM2_,dataDir_));
+			String temp = new String(String.format("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t\r\n%s",BallRadius_,DNALength_,ZCalScale_,ZCalStep_,RinterStep_,HalfCorrWin_,MagnetStep_,Frame2Acq_,FrameCalcF_,ITEM0_,ITEM1_,ballRadiusPix_,dataDir_));
 			out.write(temp);
 			out.close(); 
 		}
@@ -742,7 +742,7 @@ public class MyForm extends JFrame {
 				FrameCalcF_ = 500;
 				ITEM0_ = -1;
 				ITEM1_ = -1;
-				ITEM2_ = 60;
+				ballRadiusPix_ = 60;
 				this.dataDir_ = System.getProperty("user.home")+"/ZIndexMeasure";
 			}else{
 				BallRadius_ = data[0];
@@ -756,7 +756,7 @@ public class MyForm extends JFrame {
 				FrameCalcF_ = data[8];
 				ITEM0_ = data[9];
 				ITEM1_ = data[10];
-				ITEM2_ = data[11];
+				ballRadiusPix_ = data[11];
 			}
 
 			packPreferData();
@@ -789,7 +789,7 @@ public class MyForm extends JFrame {
 
 				ITEM1_ = Double.parseDouble(ITEM1.getText());
 
-				ITEM2_ = Double.parseDouble(ITEM2.getText());
+				ballRadiusPix_ = Double.parseDouble(ballRadiusPix.getText());
 
 				try {
 					setUserData();
@@ -822,7 +822,7 @@ public class MyForm extends JFrame {
 
 				ITEM1.setText(String.format("%.0f",ITEM1_));
 
-				ITEM2.setText(String.format("%.0f",ITEM2_));
+				ballRadiusPix.setText(String.format("%.0f",ballRadiusPix_));
 			}
 
 		}
@@ -931,12 +931,12 @@ public class MyForm extends JFrame {
 				ITEM1.setBounds(ITEMWIDTH, ITEMHEIGHT*7, ITEMWIDTH,ITEMHEIGHT);
 				panel.add(ITEM1);
 
-				final JLabel label10 = new JLabel("ITEM2");
+				final JLabel label10 = new JLabel("ballRadiusPix");
 				label10.setBounds( ITEMWIDTH*2, ITEMHEIGHT*6, ITEMWIDTH,ITEMHEIGHT);
 				panel.add(label10);
-				ITEM2 = new JTextField();
-				ITEM2.setBounds(ITEMWIDTH*2, ITEMHEIGHT*7, ITEMWIDTH,ITEMHEIGHT);
-				panel.add(ITEM2);
+				ballRadiusPix = new JTextField();
+				ballRadiusPix.setBounds(ITEMWIDTH*2, ITEMHEIGHT*7, ITEMWIDTH,ITEMHEIGHT);
+				panel.add(ballRadiusPix);
 
 				final JLabel label11 = new JLabel("FrameCalcF");
 				label11.setBounds( ITEMWIDTH*3, ITEMHEIGHT*6, ITEMWIDTH,ITEMHEIGHT);
@@ -1054,7 +1054,7 @@ public class MyForm extends JFrame {
 
 			Opt_.put("ITEM1",ITEM1_);
 
-			Opt_.put("ITEM2",ITEM2_);
+			Opt_.put("ballRadiusPix",ballRadiusPix_);
 
 
 		}
