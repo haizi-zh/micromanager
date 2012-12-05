@@ -16,9 +16,9 @@ static double * LAST_ERR;
 static double * sCalProfile ;
 static double * sCalPos;
 static double * sOpt;
-static double* LastMean;
-static double* LastSTD;
-
+static double* sum;
+static double* sum2;
+static double* corrProfile;
 typedef list<double> LISTDOUBLE;
 static  LISTDOUBLE  myXpos;
 static  LISTDOUBLE  myYpos;
@@ -35,7 +35,7 @@ namespace DeadNight
 		struct Option
 		{
 		   	// opt_[13]	
-			// radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep,DNALen,Temperature,DNAPersLen,frame2calcForce
+			// radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep,movingWindowLen
 
 			double radius;
 			double rInterStep;
@@ -45,12 +45,9 @@ namespace DeadNight
 			int imgHeight;
 			double zStart;
 			double zScale;
-			double zStep;
-
-			double DNALen;
-			double Temperature;
-			double DNAPersLen;						
-			int frame2calcForce;
+			double zStep;						
+			int movingWindowLen;
+			int zInterStep;
 
 
 		};
@@ -63,8 +60,8 @@ namespace DeadNight
 			int height;
 		};
 		
-		void getForce(double* pos,int index_);
-		void gosse(JNIEnv * env_, jobject image_,int*  roi_, double*  result);
+		void getMeanSTD(double* pos);
+		void gosse(JNIEnv * env_, jobject image_,int*  roi_, double*  result,int * opt);
 		void GetCalProfile(JNIEnv * env_, jobject image_, int* roi_,  int zX_, double* pos,double* calProfile);
 		void GetZPosition(JNIEnv * env_, jobject image_,int index_,int*  roi_,double* pos);
 		void StartCounter();
@@ -81,10 +78,12 @@ namespace DeadNight
 		void DataInit(double* pOpt_);
 		void DeleteData();
 		int getLen();
+		int getZLen();
 		double* getcalProfileX(int zX);
 		void SetBitDepth(int bitDepth_);
 		double getSTD(LISTDOUBLE mylist,double mean,int len);
 		double getMean(LISTDOUBLE mylist,int len);
+		double * getCorrProfile();
 		
 	}
 }

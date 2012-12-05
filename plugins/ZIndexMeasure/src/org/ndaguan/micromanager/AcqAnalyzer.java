@@ -60,6 +60,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private Writer dataFileWriter_;
 	private XYSeries zDataSeries_;
 	private JFreeChart zDataChart;
+	private XYSeries corrSeries_;
 
 	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, MyGUI mygui_) {
 		myGUI_ = mygui_;
@@ -67,6 +68,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		mainWnd_ = gui;
 		zDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-Z");
 		zDataChart = myGUI_.myForm_.getChartSeries_().get("Chart-Z");
+		corrSeries_ = mygui_.myForm_.getDataSeries_().get("Chart-Corr");
 		render_ = OverlayRender.getInstance(gui);
 		stats_ = new DescriptiveStatistics[3];
 		windowSize_ = 1000;
@@ -78,8 +80,6 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		beadRadius_ = mygui_.getRadius_()*1000;//1400;//
 		kT_ = 4.2;
 		contourLength_ = mygui_.getDNALen_()*1000;//16700;//
-		sum =0;
-		sum2=0;
 	}
 
 	public static AcqAnalyzer getInstance(ScriptInterface gui,
@@ -95,8 +95,6 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private DescriptiveStatistics statCross_;
 	private long startTs_;
 	private int DRAW;
-	private double sum ;
-	private double sum2;
 
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
@@ -125,7 +123,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			mainWnd_.logError(e);
 			return;
 		}
-		myGUI_.currFrame++;
+	 
 		// Render the overlay
 		String acqName;
 		long index;
@@ -159,6 +157,17 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		Object[] dpos = main.mCalc.GetZPosition(taggedImage.pix,
 				myGUI_.calcRoi_, index_);
 		final double pos[] = (double[]) dpos[0];
+		final double[] corrProfile = (double[]) dpos[2];
+		
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				corrSeries_.clear();
+				for(int i = 0;i<corrProfile.length;i++){
+					corrSeries_.add(main.getCalPosZ_()[i], corrProfile[i]);
+				}
+			}
+		});
 		final boolean clearChart = resetData_;
 		// Reset the stat container
 		if (resetData_) {
@@ -167,7 +176,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			statCross_.clear();
 			resetData_ = false;
 			startTs_ = System.nanoTime();
-			myGUI_.currFrame = 1;
+			
 		}
 		final double xPhys = pixelToPhys_[0] + pixelToPhys_[1] * pos[0];
 		final double yPhys = pixelToPhys_[2] + pixelToPhys_[3] * pos[1];
@@ -180,17 +189,15 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		final double[] forces = calcForces();
 		double[] skrewness = calcSkrewness();
 	
-	  
+ 
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
 				if (clearChart) {
-
-					zDataSeries_.clear();
-					sum = 0;
-					sum2 = 0;
+					zDataSeries_.clear(); 
 				} 
 				double center =  Math.floor(pos[11]*100)/100;//.2f
+				mainWnd_.logMessage(String.format("\t\t\t\t\tt\t\t\t:center:\t%f",center));
 				zDataChart.getXYPlot().getRangeAxis().setRange(center - 4*pos[8],center + 4*pos[8]);				
 				zDataSeries_.add(index_, pos[2]);	
 
@@ -231,7 +238,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				elapsed, pos[0], pos[1], xPhys, yPhys, pos[2], pos[6], pos[7],
 				pos[8], pos[9], pos[10], pos[11], forces[0], forces[1]));
 
-		if (index_ % myGUI_.FrameCalcForce_ == 0 && myGUI_.myForm_.isMagnetAuto()) {
+		if (index_ % myGUI_.movingWindowLen_ == 0 && myGUI_.myForm_.isMagnetAuto()) {
 			main.PullMagnet();
 		}
 

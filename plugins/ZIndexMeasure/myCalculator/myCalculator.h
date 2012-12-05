@@ -37,7 +37,7 @@ JNIEXPORT jobjectArray JNICALL Java_org_ndaguan_micromanager_myCalculator_GetZPo
  * Signature: (Ljava/lang/Object;[I)[Ljava/lang/Object;
  */
 JNIEXPORT jobjectArray JNICALL Java_org_ndaguan_micromanager_myCalculator_GosseCenter
-  (JNIEnv *, jobject, jobject, jintArray);
+  (JNIEnv *, jobject, jobject, jintArray,jintArray);
 
 /*
  * Class:     org_ndaguan_micromanager_myCalculator

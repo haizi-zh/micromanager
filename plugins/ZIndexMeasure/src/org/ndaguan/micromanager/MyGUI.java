@@ -40,11 +40,7 @@ public class MyGUI {
 	private double ZStep_;
 
 
-	private double[] forceOpt_ = null;
-	private double DNALen_;
-	private double Temperature_;
-	private double DNAPersLen_;
-
+	 
 
 	// ROI
 	public Rectangle roi_rectangle;
@@ -53,7 +49,7 @@ public class MyGUI {
 	private int roiy_ = 0;
 	private int roiwidth_ = 40;
 	private int roiheight_ = 40;
-	public double FrameCalcForce_ = 1000;
+	public double movingWindowLen_ = 1000;
 	public int Mstep_ = 100;// um
 	// other
 
@@ -73,6 +69,9 @@ public class MyGUI {
 	private boolean isInstall = false;
 	private MMStudioMainFrame gui_;
 	private int calPosLen;
+	private double DNALen_;
+	private double zInterpStep_;
+	 
 
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -133,9 +132,10 @@ public class MyGUI {
 
 		setDefaultPrefer(myForm_.preferDailogBox.getPreferData());
 		roi_rectangle = new Rectangle();
-		calcOpt_ = new double[] { getRadius_(), RInterpStep_, BitDepth_,
+		
+		setCalcOpt_(new double[] { getRadius_(), RInterpStep_, BitDepth_,
 				HalfQuadWindow_, Imgwidth_, Imgheight_, ZStart_, ZScale_,
-				ZStep_, getDNALen_(), Temperature_, DNAPersLen_, FrameCalcForce_ };
+				ZStep_,movingWindowLen_,zInterpStep_ });
 		calcRoi_ = new int[] { roix_, roiy_, roiwidth_, roiheight_ };
 
 	}
@@ -149,10 +149,9 @@ public class MyGUI {
 			ZScale_ = preferData.get("ZCalScale");
 			ZStep_ = preferData.get("ZCalStep");
 			setDNALen_(preferData.get("DNALength"));		
-			FrameCalcForce_ = preferData.get("FrameCalcF");
-			Temperature_ = 300;// K
-			DNAPersLen_ = 50;// nm
-			ballRadiusPix = preferData.get("ITEM2");
+			movingWindowLen_ = preferData.get("FrameCalcF");
+			ballRadiusPix = preferData.get("ballRadiusPix");
+			zInterpStep_ = preferData.get("ITEM1");
 			ZStart_ = 0;
 			xyCalRange_ = 2;
 		}else{	  
@@ -167,10 +166,9 @@ public class MyGUI {
 			xyCalRange_ = 2;
 			ZStep_ = 0.5;
 			setDNALen_(2.4);// um
-			Temperature_ = 300;// K
-			DNAPersLen_ = 50;// nm
-			FrameCalcForce_ = 500;
+			movingWindowLen_ = 500;
 			ballRadiusPix = 50.0;
+			zInterpStep_ = 5;
 		}
 
 
@@ -244,27 +242,24 @@ public class MyGUI {
 		}
 
 		mainInstance_.updateCalPos(calPosXY, calPosZ);
-		mainInstance_.mCalc.DataInit(calcOpt_);
 	}
 
 	// opt_[13]
 	// :radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep
 	// ��DNALen��Temperature��DNAPersLen,frame2calcForce
 	private void reSetOpt() {
-		calcOpt_[0] = ballRadiusPix;
-		calcOpt_[1] = RInterpStep_;
-		calcOpt_[2] = BitDepth_;
-		calcOpt_[3] = HalfQuadWindow_;
-		calcOpt_[4] = Imgwidth_;
-		calcOpt_[5] = Imgheight_;
-		calcOpt_[6] = ZStart_;
-		calcOpt_[7] = ZScale_;
-		calcOpt_[8] = ZStep_;
-		// force
-		calcOpt_[9] = getDNALen_();
-		calcOpt_[10] = Temperature_;
-		calcOpt_[11] = DNAPersLen_;
-		calcOpt_[12] = FrameCalcForce_;
+		getCalcOpt_()[0] = ballRadiusPix;
+		getCalcOpt_()[1] = RInterpStep_;
+		getCalcOpt_()[2] = BitDepth_;
+		getCalcOpt_()[3] = HalfQuadWindow_;
+		getCalcOpt_()[4] = Imgwidth_;
+		getCalcOpt_()[5] = Imgheight_;
+		getCalcOpt_()[6] = ZStart_;
+		getCalcOpt_()[7] = ZScale_;
+		getCalcOpt_()[8] = ZStep_;
+		// force		
+		getCalcOpt_()[9] = movingWindowLen_;
+		getCalcOpt_()[10] = zInterpStep_;
 	}
 
 	public double getCurrCenter(int currTab) {
@@ -273,7 +268,10 @@ public class MyGUI {
 	}
 
 	public void calibrate() {
+		mainInstance_.mCalc.DataInit(this.calcOpt_);
+		myForm_.getTabbedPane().setSelectedIndex(2);
 		mainInstance_.StartCalibration();
+		
 		mainInstance_.InstallCallback();
 	}
 
@@ -330,12 +328,14 @@ public class MyGUI {
 		if(!isInstall ){
 			myForm_.log("Install");
 			mainInstance_.InstallCallback();
+			myForm_.getTabbedPane().setSelectedIndex(2);
 			isInstall = true;
 		}
 		else
 		{	
 			myForm_.log("UnInstall");
 			mainInstance_.UninstallCallback();
+			myForm_.getTabbedPane().setSelectedIndex(0);
 			isInstall = false;
 		}
 	}
@@ -348,5 +348,15 @@ public class MyGUI {
 
 	public int getcalPosLen() {
 		return calPosLen;
+	}
+
+
+	public double[] getCalcOpt_() {
+		return calcOpt_;
+	}
+
+
+	public void setCalcOpt_(double[] calcOpt_) {
+		this.calcOpt_ = calcOpt_;
 	}
 }

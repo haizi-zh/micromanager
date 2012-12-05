@@ -53,7 +53,7 @@ import org.jfree.data.xy.XYSeriesCollection;
 
 
 public class MyForm extends JFrame {
-	final String[] PARALIST  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ITEM2"};
+	final String[] PARALIST  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ballRadiusPix"};
 	/**
 	 * 
 	 */
@@ -81,6 +81,7 @@ public class MyForm extends JFrame {
 	private String[] dataSet;
 	private JRadioButtonMenuItem MagnetAuto;
 	private JRadioButtonMenuItem MagnetManual;
+	private JTabbedPane tabbedPane;
 	private static MyGUI mygui_;
 
 	public static void main(String[] args) {
@@ -103,7 +104,7 @@ public class MyForm extends JFrame {
 		tapSize = new int[]{600,900,800};
 		setDataSeries_(new HashMap<String,XYSeries>());
 		setChartSeries_(new HashMap<String,JFreeChart>());
-		dataSet  = new String[]{"Chart-Z","Chart-X","Chart-Y","Chart-XY","Chart-Z-STD","Chart-X-STD","Chart-Y-STD"};
+		dataSet  = new String[]{"Chart-Z","Chart-Calfile","Chart-Corr","Chart-XY","Chart-Z-STD","Chart-X-STD","Chart-Y-STD"};
 
 		preferDailogBox = new PreferDailogBox(this,mygui_);
 		initialize();
@@ -338,26 +339,26 @@ public class MyForm extends JFrame {
 		
 		butL.addActionListener(menuListener);	
 		//tabbedPane
-		final JTabbedPane tabbedPane = new JTabbedPane();
-		tabbedPane.setBounds(0,toolbarheight, tapSize[0], (int)(tapSize[0]*0.52));
-		getContentPane().add(tabbedPane);
+		setTabbedPane(new JTabbedPane());
+		getTabbedPane().setBounds(0,toolbarheight, tapSize[0], (int)(tapSize[0]*0.52));
+		getContentPane().add(getTabbedPane());
 
 		final JScrollPane scrollPane = new JScrollPane();
-		tabbedPane.addTab("Log", null, scrollPane, null);
+		getTabbedPane().addTab("Log", null, scrollPane, null);
 
 		scrollPane.setViewportView(LogWindow);
 		for (int i = 0; i <  dataSet.length; i++) {
-			tabbedPane.addTab( dataSet[i], null, createChartPanel(dataSet[i]), null);
+			getTabbedPane().addTab( dataSet[i], null, createChartPanel(dataSet[i]), null);
 		}
 
 
 
 
-		tabbedPane.addChangeListener(new ChangeListener() { 
+		getTabbedPane().addChangeListener(new ChangeListener() { 
 
 			public void stateChanged(ChangeEvent e)
 			{
-				int ind=tabbedPane.getSelectedIndex();
+				int ind=getTabbedPane().getSelectedIndex();
 				int width = tapSize[1];
 				switch(ind){
 				case 0:
@@ -403,7 +404,7 @@ public class MyForm extends JFrame {
 					break;
 				}
 
-				tabbedPane.setBounds(0, toolbarheight, width,(int)(width*0.618+40));		
+				getTabbedPane().setBounds(0, toolbarheight, width,(int)(width*0.618+40));		
 				setBounds(0, 0, width+40, (int)((width)*0.618+120));
 
 			}
@@ -426,6 +427,7 @@ public class MyForm extends JFrame {
 		temp_.setMaximumItemCount(ChartMaxItemCount);
 		dataset_ = new XYSeriesCollection();
 		dataset_.addSeries(temp_);
+		 
 		chart = ChartFactory.createXYLineChart(tableName, "-Time",
 				"-value", dataset_, PlotOrientation.VERTICAL, true, true,
 				false);
@@ -585,6 +587,14 @@ public class MyForm extends JFrame {
 		this.chartSeries_ = chartSeries_;
 	}
 
+	public JTabbedPane getTabbedPane() {
+		return tabbedPane;
+	}
+
+	public void setTabbedPane(JTabbedPane tabbedPane) {
+		this.tabbedPane = tabbedPane;
+	}
+
 	public class Login  {
 		private double data[][] = null;
 		private double[][] userDataSet;
@@ -634,7 +644,7 @@ public class MyForm extends JFrame {
 		private JTextField FrameCalcF;
 		private JTextField ITEM0;
 		private JTextField ITEM1;
-		private JTextField ITEM2;
+		private JTextField ballRadiusPix;
 
 		private double BallRadius_;
 		private double DNALength_;
@@ -647,7 +657,7 @@ public class MyForm extends JFrame {
 		private double FrameCalcF_;
 		private double ITEM0_;
 		private double ITEM1_;
-		private double ITEM2_;
+		private double ballRadiusPix_;
 
 		private HashMap<String,Double> Opt_ = null;
 		private ActionListener DialogListener;
@@ -682,8 +692,8 @@ public class MyForm extends JFrame {
 		}
 		//		private void print() {
 		//			System.out.println(string);
-		//			"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin",MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1",ITEM2"
-		//			String[] para  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ITEM2"};
+		//			"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin",MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1",ballRadiusPix"
+		//			String[] para  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ballRadiusPix"};
 		//			for (int i = 0; i < para.length; i++) {
 		//				print(String.format("\rOpt_.put(\"%s\",%s_);",para[i],para[i]));
 		//			}
@@ -724,7 +734,7 @@ public class MyForm extends JFrame {
 		
 			File loginDataFile = new File(System.getProperty("user.home")+"/ZIndexMeasure/userData.txt");
 			FileWriter out = new FileWriter((loginDataFile)); 
-			String temp = new String(String.format("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t\r\n%s",BallRadius_,DNALength_,ZCalScale_,ZCalStep_,RinterStep_,HalfCorrWin_,MagnetStep_,Frame2Acq_,FrameCalcF_,ITEM0_,ITEM1_,ITEM2_,dataDir_));
+			String temp = new String(String.format("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t\r\n%s",BallRadius_,DNALength_,ZCalScale_,ZCalStep_,RinterStep_,HalfCorrWin_,MagnetStep_,Frame2Acq_,FrameCalcF_,ITEM0_,ITEM1_,ballRadiusPix_,dataDir_));
 			out.write(temp);
 			out.close(); 
 		}
@@ -742,7 +752,7 @@ public class MyForm extends JFrame {
 				FrameCalcF_ = 500;
 				ITEM0_ = -1;
 				ITEM1_ = -1;
-				ITEM2_ = 60;
+				ballRadiusPix_ = 60;
 				this.dataDir_ = System.getProperty("user.home")+"/ZIndexMeasure";
 			}else{
 				BallRadius_ = data[0];
@@ -756,7 +766,7 @@ public class MyForm extends JFrame {
 				FrameCalcF_ = data[8];
 				ITEM0_ = data[9];
 				ITEM1_ = data[10];
-				ITEM2_ = data[11];
+				ballRadiusPix_ = data[11];
 			}
 
 			packPreferData();
@@ -789,7 +799,7 @@ public class MyForm extends JFrame {
 
 				ITEM1_ = Double.parseDouble(ITEM1.getText());
 
-				ITEM2_ = Double.parseDouble(ITEM2.getText());
+				ballRadiusPix_ = Double.parseDouble(ballRadiusPix.getText());
 
 				try {
 					setUserData();
@@ -822,7 +832,7 @@ public class MyForm extends JFrame {
 
 				ITEM1.setText(String.format("%.0f",ITEM1_));
 
-				ITEM2.setText(String.format("%.0f",ITEM2_));
+				ballRadiusPix.setText(String.format("%.0f",ballRadiusPix_));
 			}
 
 		}
@@ -931,12 +941,12 @@ public class MyForm extends JFrame {
 				ITEM1.setBounds(ITEMWIDTH, ITEMHEIGHT*7, ITEMWIDTH,ITEMHEIGHT);
 				panel.add(ITEM1);
 
-				final JLabel label10 = new JLabel("ITEM2");
+				final JLabel label10 = new JLabel("ballRadiusPix");
 				label10.setBounds( ITEMWIDTH*2, ITEMHEIGHT*6, ITEMWIDTH,ITEMHEIGHT);
 				panel.add(label10);
-				ITEM2 = new JTextField();
-				ITEM2.setBounds(ITEMWIDTH*2, ITEMHEIGHT*7, ITEMWIDTH,ITEMHEIGHT);
-				panel.add(ITEM2);
+				ballRadiusPix = new JTextField();
+				ballRadiusPix.setBounds(ITEMWIDTH*2, ITEMHEIGHT*7, ITEMWIDTH,ITEMHEIGHT);
+				panel.add(ballRadiusPix);
 
 				final JLabel label11 = new JLabel("FrameCalcF");
 				label11.setBounds( ITEMWIDTH*3, ITEMHEIGHT*6, ITEMWIDTH,ITEMHEIGHT);
@@ -1054,7 +1064,7 @@ public class MyForm extends JFrame {
 
 			Opt_.put("ITEM1",ITEM1_);
 
-			Opt_.put("ITEM2",ITEM2_);
+			Opt_.put("ballRadiusPix",ballRadiusPix_);
 
 
 		}
