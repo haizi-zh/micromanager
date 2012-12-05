@@ -181,9 +181,7 @@ public class MyGUI {
 		mainInstance_.InstallCallback();
 	}
 
-	private void setCalProfile() {
-		 
-	}
+	 
 
 	// opt_[13]
 	// :radius,rInterStep,bitDepth,halfQuadWidth,imgWidth,imgHeight,zStart,zScale,zStep
