@@ -1,4 +1,12 @@
-
+/**
+ * Code for Micro-Manager ImageProcessor that executes flatfielding and 
+ * background subtraction
+ * 
+ * Nico Stuurman.  Copyright UCSF, 2012
+ * 
+ * Released under the BSD license
+ * 
+ */
 package org.micromanager.bfcorrector;
 
 import ij.ImagePlus;
@@ -23,6 +31,7 @@ class BFProcessor extends DataProcessor<TaggedImage> {
    private int flatFieldHeight_;
    private int flatFieldType_;
    private float[] normalizedFlatField_;
+   private ImagePlus background_;
    
    
    /**
@@ -56,9 +65,14 @@ class BFProcessor extends DataProcessor<TaggedImage> {
       
    }
    
+   public void setBackground(ImagePlus background){
+      background_ = background;
+   }
+   
+   
+   
    /**
-    * Polls for tagged images, and processes them if they are from the selected 
-    * camera.
+    * Polls for tagged images, and processes them if their size and type matches
     * 
     */
    @Override
@@ -84,9 +98,9 @@ class BFProcessor extends DataProcessor<TaggedImage> {
    }
 
    /**
-    * Executes flatfielding
+    * Executes flat-fielding
     * 
-    * First mirror the image if requested, than rotate as requested
+    * 
     * 
     * @return - Transformed tagged image, otherwise a copy of the input
     * @throws JSONException
@@ -94,9 +108,6 @@ class BFProcessor extends DataProcessor<TaggedImage> {
     */
    public  TaggedImage proccessTaggedImage(TaggedImage nextImage) throws JSONException, MMScriptException {
 
-      if (flatField_ == null) {
-         return nextImage;
-      }
       
       int width = MDUtils.getWidth(nextImage.tags);
       int height = MDUtils.getHeight(nextImage.tags);
@@ -106,8 +117,57 @@ class BFProcessor extends DataProcessor<TaggedImage> {
          ijType = ImagePlus.GRAY16;
       }
       
+      // For now, this plugin only works with 8 or 16 bit grayscale images
       if (! (ijType == ImagePlus.GRAY8 || ijType == ImagePlus.GRAY16) ) {
          // Report???
+         return nextImage;
+      }
+      
+      JSONObject newTags = nextImage.tags;
+      
+      // subtract background
+      if (background_ != null) {
+         if (ijType == background_.getType()) {
+            if (width == background_.getWidth() && height == background_.getHeight()) {
+               if (ijType == ImagePlus.GRAY8) {
+                  byte[] newPixels = new byte[width * height];
+                  byte[] oldPixels = (byte[]) nextImage.pix;
+                  byte[] backgroundPixels = (byte[]) background_.getProcessor().getPixels();
+                  for (int x = 0; x < width; x++) {
+                     for (int y = 0; y < height; y++) {
+                        int index = (y * flatFieldWidth_) + x;
+                        if (backgroundPixels[index] > oldPixels[index]) {
+                           newPixels[index] = 0;
+                        } else {
+                           newPixels[index] = (byte) (oldPixels[index] - backgroundPixels[index]);
+                     
+                        }
+                     }
+                  }
+                  nextImage = new TaggedImage(newPixels, newTags);
+               } else if (ijType == ImagePlus.GRAY16) {
+                  short[] newPixels = new short[width * height];
+                  short[] oldPixels = (short[]) nextImage.pix;
+                  short[] backgroundPixels = (short[]) background_.getProcessor().getPixels();
+                  for (int x = 0; x < width; x++) {
+                     for (int y = 0; y < height; y++) {
+                        int index = (y * flatFieldWidth_) + x;
+                        if (backgroundPixels[index] > oldPixels[index]) {
+                           newPixels[index] = 0;
+                        } else {
+                           newPixels[index] = (short) 
+                                   (oldPixels[index] - backgroundPixels[index]);                   
+                        }
+                     }
+                  }
+                  nextImage = new TaggedImage(newPixels, newTags);
+               }
+            }
+         }
+      }
+      
+      
+      if (flatField_ == null) {
          return nextImage;
       }
       
@@ -117,7 +177,7 @@ class BFProcessor extends DataProcessor<TaggedImage> {
          return nextImage;
       }
       
-      JSONObject newTags = nextImage.tags;
+      
       TaggedImage newImage = null;
       
       if (ijType == ImagePlus.GRAY8) {
