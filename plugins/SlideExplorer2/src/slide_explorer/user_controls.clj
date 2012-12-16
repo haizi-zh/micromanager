@@ -1,7 +1,8 @@
 (ns slide-explorer.user-controls
   (:import (java.awt.event ComponentAdapter KeyEvent KeyAdapter
-                           MouseAdapter WindowAdapter)
-           (javax.swing AbstractAction JComponent KeyStroke)
+                           MouseAdapter MouseEvent WindowAdapter)
+           (java.awt Window)
+           (javax.swing AbstractAction JComponent KeyStroke SwingUtilities)
            (java.util UUID)))
 
 (def MIN-ZOOM 1/256)
@@ -63,32 +64,33 @@
       (apply max-key #(overlap-area window-bounds
                                     (screen-bounds %)) screens))))
 
-(defn full-screen-window []
-  (first (remove nil?
-                 (map #(.getFullScreenWindow %)
-                      (screen-devices)))))
+(def old-bounds (atom {}))
 
 (defn full-screen!
   "Make the given window/frame full-screen. Pass nil to return all windows
 to normal size."
-  ([window]
-    (if window
-      (when (not= (full-screen-window) window)
-        (full-screen! nil)
-        (.dispose window)
-        (.setUndecorated window true)
-        (.setFullScreenWindow (window-screen window) window)
-        (.show window))
-      (when-let [window (full-screen-window)]
-        (.dispose window)
-        (.setFullScreenWindow (window-screen window) nil)
-        (.setUndecorated window false)
-        (.show window)))
-    window))
+  [window]
+  (when window
+    (when-not (@old-bounds window)
+      (swap! old-bounds assoc window (.getBounds window)))
+    (.dispose window)
+    (.setUndecorated window true)
+    (.setBounds window (screen-bounds (window-screen window)))
+    (.show window)))
+
+(defn exit-full-screen!
+  [window]
+  (when window
+    (.dispose window)
+    (.setUndecorated window false)
+    (when-let [bounds (@old-bounds window)]
+      (.setBounds window bounds)
+      (swap! old-bounds assoc window nil))
+    (.show window)))
 
 (defn setup-fullscreen [window]
   (bind-window-keys window ["F"] #(full-screen! window))
-  (bind-window-keys window ["ESCAPE"] #(full-screen! nil)))
+  (bind-window-keys window ["ESCAPE"] #(exit-full-screen! window)))
 
 ;; other user controls
 
@@ -124,6 +126,16 @@ to normal size."
     (binder "RIGHT" :x (- dist))
     (binder "LEFT" :x dist)))
 
+(defn handle-mode-keys [panel screen-state-atom]
+  (let [window (SwingUtilities/getWindowAncestor panel)]
+    (bind-window-keys window ["SPACE"]
+                      #(swap! screen-state-atom
+                              (fn [state]
+                                (assoc state :mode
+                                       (condp = (:mode state)
+                                         :explore :navigate
+                                         :navigate :explore)))))))
+
 (defn handle-wheel [component z-atom]
   (.addMouseWheelListener component
     (proxy [MouseAdapter] []
@@ -149,10 +161,10 @@ to normal size."
   (bind-window-keys window ["PERIOD"] #(swap! dive-atom update-in [:z] inc)))
 
 (defn handle-zoom [window zoom-atom]
-  (bind-window-keys window ["ADD" "CLOSE_BRACKET"]
+  (bind-window-keys window ["ADD" "CLOSE_BRACKET" "EQUALS"]
                    (fn [] (swap! zoom-atom update-in [:zoom]
                                  #(min (* % 2) MAX-ZOOM))))
-  (bind-window-keys window ["SUBTRACT" "OPEN_BRACKET"]
+  (bind-window-keys window ["SUBTRACT" "OPEN_BRACKET" "MINUS"]
                    (fn [] (swap! zoom-atom update-in [:zoom]
                                  #(max (/ % 2) MIN-ZOOM)))))
 
@@ -171,6 +183,25 @@ to normal size."
   (swap! screen-state-atom update-in [:mouse]
          merge {:x (.getX e) :y (.getY e)}))
 
+(defn handle-click [panel event-predicate response-fn]
+  (.addMouseListener panel
+                     (proxy [MouseAdapter] []
+                       (mouseClicked [e]
+                                     (when (event-predicate e)
+                                       (response-fn (.getX e) (.getY e)))))))
+
+(defn handle-double-click [panel response-fn]
+  (handle-click panel
+                (fn [e] (and (= MouseEvent/BUTTON1 (.getButton e))
+                             (= 2 (.getClickCount e))))
+                response-fn))
+
+(defn handle-alt-click [panel response-fn]
+  (handle-click panel
+                (fn [e] (and (= MouseEvent/BUTTON1 (.getButton e))
+                             (.isAltDown e)))
+                response-fn))
+                                     
 (defn handle-pointing [component screen-state-atom]
   (.addMouseMotionListener component
                      (proxy [MouseAdapter] []
@@ -187,4 +218,4 @@ to normal size."
            panel screen-state-atom)
     ((juxt handle-zoom handle-dive watch-keys) (.getTopLevelAncestor panel) screen-state-atom)))
     
-  
+ 

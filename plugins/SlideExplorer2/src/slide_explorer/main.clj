@@ -19,24 +19,27 @@
            (org.micromanager.MMStudioMainFrame))
   (:use [org.micromanager.mm :only (core edt mmc gui load-mm json-to-data)]
         [slide-explorer.affine :only (set-destination-origin transform inverse-transform)]
-        [slide-explorer.view :only (show add-to-memory-tiles pixel-rectangle 
-                                         pixel-rectangle-to-tile-bounds
-                                         tile-in-tile-bounds?)]
+        [slide-explorer.view :only (show add-to-memory-tiles pixel-rectangle absolute-mouse-position)]
         [slide-explorer.image :only (show-image intensity-range lut-object)]
-        [slide-explorer.tiles :only (floor-int center-tile tile-list offset-tiles)]
         [slide-explorer.persist :only (save-as)]
         [clojure.java.io :only (file)])
-  (:require [slide-explorer.reactive :as reactive]
+  (:require [org.micromanager.mm :as mm]
+            [org.micromanager.acq-engine :as engine]
+            [slide-explorer.reactive :as reactive]
+            [slide-explorer.user-controls :as user-controls]
+            [slide-explorer.affine :as affine]
             [slide-explorer.tile-cache :as tile-cache]
+            [slide-explorer.canvas :as canvas]
+            [slide-explorer.tiles :as tiles]
             [slide-explorer.persist :as persist]))
-
-(load-mm (MMStudioMainFrame/getInstance))
 
 ;; affine transforms
 
+(defonce positions-atom (atom []))
+
 (def gui-prefs (Preferences/userNodeForPackage MMStudioMainFrame))
 
-(def ^{:dynamic true} tile-dimensions [512 512])
+(def current-xy-positions (atom {}))
 
 (defn set-stage-to-pixel-transform [^AffineTransform affine-transform]
   (JavaUtils/putObjectInPrefs
@@ -72,7 +75,7 @@
   "Gets the channel colors from a tagged-processor-sequence."
   [tagged-processor-sequence]
   (let [summary (-> tagged-processor-sequence first :tags (get "Summary"))]
-    (zipmap (summary "ChNames") (map #(Color. %) (summary "ChColors")))))
+    (zipmap (summary "ChNames") (summary "ChColors"))))
 
 (defn tagged-image-to-processor [tagged-image]
   {:proc (ImageUtils/makeProcessor tagged-image)
@@ -84,9 +87,15 @@
   (core waitForDevice (core getXYStageDevice))
   (.getXYStagePosition gui))
 
-(defn set-xy-position [^Point2D$Double position]
-  (core waitForDevice (core getXYStageDevice))
-  (core setXYPosition (core getXYStageDevice) (.x position) (.y position)))
+(defn set-xy-position
+  ([^Point2D$Double position]
+    (set-xy-position (.x position) (.y position)))
+  ([x y]
+    (let [stage (core getXYStageDevice)]
+      (core waitForDevice stage)
+      (core setXYPosition stage x y)
+      (core waitForDevice stage)
+      (swap! current-xy-positions assoc stage [x y]))))
 
 ;; image acquisition
 
@@ -96,28 +105,26 @@
       (core snapImage)
       (core getTaggedImage)))
 
-(defn acquire-tagged-image-sequence []
-  (let [engine (AcquisitionEngine2010. gui)
-        settings (.. gui getAcquisitionEngine getSequenceSettings)
-        q (.run engine settings false)]
+(defn acquire-tagged-image-sequence [settings]
+  (let [acq-engine (AcquisitionEngine2010. gui)
+        q (engine/run acq-engine settings false)]
     (take-while #(not= % TaggedImageQueue/POISON)
                 (repeatedly #(.take q)))))
 
-(defn acquire-processor-sequence []
-  (map tagged-image-to-processor (acquire-tagged-image-sequence)))
+(defn acquire-processor-sequence [settings]
+  (map tagged-image-to-processor (acquire-tagged-image-sequence settings)))
 
 (def acquire-processor-sequence* (memoize acquire-processor-sequence))
 
 (defn acquire-at
   "Move the stage to position x,y and acquire a multi-dimensional
    sequence of images using the acquisition engine."
-  ([x y]
-    (acquire-at (Point2D$Double. x y)))
-  ([^Point2D$Double stage-pos]
+  ([x y settings]
+    (acquire-at (Point2D$Double. x y) settings))
+  ([^Point2D$Double stage-pos settings]
     (let [xy-stage (core getXYStageDevice)]
       (set-xy-position stage-pos)
-      (core waitForDevice xy-stage)
-      (acquire-processor-sequence)
+      (acquire-processor-sequence settings)
       )))
 
 ;; run using acquisitions
@@ -135,23 +142,17 @@
 
 ;; tile arrangement
 
-(defn number-of-tiles [{:keys [width height zoom]} [tile-width tile-height]]
-  (let [largest-side
-        (+ 3 (max (floor-int (/ width tile-width zoom))
-                  (floor-int (/ height tile-height zoom)) 0))]
-    (* largest-side largest-side)))
-
 (defn next-tile [screen-state acquired-images]
   (let [tile-dimensions (screen-state :tile-dimensions)
-        center-tile (center-tile [(:x screen-state) (:y screen-state)]
+        center (tiles/center-tile [(:x screen-state) (:y screen-state)]
                                  tile-dimensions)
         pixel-rect (pixel-rectangle screen-state)
-        bounds (pixel-rectangle-to-tile-bounds pixel-rect tile-dimensions)
-        number-tiles (number-of-tiles screen-state tile-dimensions)]
-    (->> tile-list
-         (offset-tiles center-tile)
+        bounds (tiles/pixel-rectangle-to-tile-bounds pixel-rect tile-dimensions)
+        number-tiles (tiles/number-of-tiles screen-state tile-dimensions)]
+    (->> tiles/tile-list
+         (tiles/offset-tiles center)
          (take number-tiles)
-         (filter #(tile-in-tile-bounds? % bounds))
+         (filter #(tiles/tile-in-tile-bounds? % bounds))
          (remove @acquired-images)
          first)))
 
@@ -159,18 +160,20 @@
 
 (def image-processing-executor (Executors/newFixedThreadPool 1))
  
-(defn add-tiles-at [memory-tiles [nx ny] affine-stage-to-pixel acquired-images tile-dimensions]
+(defn add-tiles-at [memory-tiles [nx ny] affine-stage-to-pixel acquired-images tile-dimensions
+                    settings]
   (swap! acquired-images conj [nx ny])
   (let [[tile-width tile-height] tile-dimensions]
     (doseq [image (doall (acquire-at (inverse-transform
                                        (Point. (* tile-width nx)
                                                (* tile-height ny))
-                                       affine-stage-to-pixel)))]
+                                       affine-stage-to-pixel)
+                                     settings))]
       (let [indices {:nx nx
                      :ny ny
                      :nz (get-in image [:tags "SliceIndex"])
                      :nt 0
-                     :nc (or (get-in image [:tags "Channel"]) "Default")}]
+                      :nc (or (get-in image [:tags "Channel"]) "Default")}]
         (add-to-memory-tiles 
           memory-tiles
           indices
@@ -183,22 +186,76 @@
   (when-let [next-tile (next-tile @screen-state-atom
                                   acquired-images)]
     (add-tiles-at memory-tiles-atom next-tile affine acquired-images
-                  (@screen-state-atom :tile-dimensions))
+                  (@screen-state-atom :tile-dimensions)
+                  (@screen-state-atom :acq-settings))
     next-tile))
 
 (def explore-executor (Executors/newFixedThreadPool 1))
 
 (defn explore [memory-tiles-atom screen-state-atom acquired-images
                affine]
-  ;(println "explore")
+  ;(println "explore" (and (= :explore (:mode @screen-state-atom))))
   (reactive/submit explore-executor
-                   #(when (acquire-next-tile memory-tiles-atom
-                                             screen-state-atom
-                                             acquired-images
-                                             affine)
+                   #(when (and (= :explore (:mode @screen-state-atom))
+                               (acquire-next-tile memory-tiles-atom
+                                                  screen-state-atom
+                                                  acquired-images
+                                                  affine))
                       (explore memory-tiles-atom screen-state-atom
-                           acquired-images affine))))
+                               acquired-images affine))))
                       
+
+(defn navigate [screen-state-atom affine-transform _ _]
+  (when (#{:navigate :explore} (:mode @screen-state-atom))
+    (swap! screen-state-atom assoc :mode :navigate)
+    (let [{:keys [x y]} (absolute-mouse-position @screen-state-atom)
+               [w h] (:tile-dimensions @screen-state-atom)]
+      (set-xy-position (inverse-transform
+                         (Point2D$Double. (- x (/ w 2))
+                                          (- y (/ h 2)))
+                         affine-transform)))))
+  
+
+;; Position List
+
+
+(defn update-positions-atom! []
+  (let [new-value
+        (map #(-> % bean
+                  (select-keys [:x :y :label]))
+             (mm/get-positions))]
+    (when (not= new-value @positions-atom)
+      (reset! positions-atom new-value))))
+
+(defn follow-positions []
+  (future (loop []
+            (update-positions-atom!)
+            (Thread/sleep 1000)
+            (recur))))
+;
+;(defn share-positions []
+;  (reactive/handle-update positions-atom
+;                          (fn [old new]
+   
+(defn create-acquisition-settings []
+  (-> gui .getAcquisitionEngine .getSequenceSettings
+      engine/convert-settings
+      (assoc :use-autofocus false
+             :frames nil
+             :positions nil
+             :numFrames 0)))
+                          
+
+;; SAVE AND LOAD SETTINGS
+
+
+(defn save-settings [dir screen-state]
+  (spit (file dir "metadata.txt")
+        (pr-str (select-keys screen-state [:channels :tile-dimensions]))))
+
+(defn load-settings [dir]
+  (read-string (slurp (file dir "metadata.txt"))))
+
 ; Overall scheme
 ; the GUI is generally reactive.
 ; vars:
@@ -220,35 +277,68 @@
 ; Overlay tiles are generated whenever memory tiles are added
 ; or the contrast is changed.
 ; The view redraws tiles inside viewing area whenever view-state
-  ; has been adjusted or a new image appears in overlay-tiles.
+; has been adjusted or a new image appears in overlay-tiles.
 
 (defn go
   "The main function that starts a slide explorer window."
   ([dir new?]
-    (core waitForDevice (core getXYStageDevice))
-    (binding [tile-dimensions [(core getImageWidth) (core getImageHeight)]]
-      (let [acquired-images (atom #{})
-            affine-stage-to-pixel (origin-here-stage-to-pixel-transform)
-            first-seq (acquire-at (inverse-transform (Point. 0 0) affine-stage-to-pixel))
-            [screen-state memory-tiles] (show dir acquired-images tile-dimensions)
-            explore-fn #(explore memory-tiles screen-state acquired-images
-                                 affine-stage-to-pixel)]
-        (.mkdirs dir)
-        (def mt memory-tiles)
-        (def affine affine-stage-to-pixel)
-        (def ss screen-state)
-        (def ai acquired-images)
-        (swap! ss assoc :channels (initial-lut-maps first-seq))
-        (when new?
-          (explore-fn)
-          (add-watch ss "explore" (fn [_ _ old new] (when-not (= old new)
-                                                      (explore-fn))))))))
+    (load-mm (MMStudioMainFrame/getInstance))
+    (let [settings (if-not new? (load-settings dir) {:tile-dimensions [512 512]})
+          acquired-images (atom #{})
+          [screen-state memory-tiles panel] (show dir acquired-images settings)]
+      (when new?
+        (core waitForDevice (core getXYStageDevice))
+        (let [settings (create-acquisition-settings)
+              affine-stage-to-pixel (origin-here-stage-to-pixel-transform)
+              first-seq (acquire-at (inverse-transform
+                                      (Point. 0 0) affine-stage-to-pixel)
+                                    settings)
+              explore-fn #(explore memory-tiles screen-state acquired-images
+                                   affine-stage-to-pixel)
+              stage (core getXYStageDevice)]
+          (.mkdirs dir)
+          (def mt memory-tiles)
+          (def pnl panel)
+          (def affine affine-stage-to-pixel)
+          (println "about to get channel luts")
+          (swap! screen-state assoc :positions positions-atom)
+          (user-controls/handle-double-click
+            panel
+            (partial navigate screen-state affine-stage-to-pixel))
+          (user-controls/handle-alt-click
+            panel
+            println)
+          (user-controls/handle-mode-keys panel screen-state)
+          (reactive/handle-update
+            current-xy-positions 
+            (fn [_ new-pos-map]
+              (let [[x y] (new-pos-map (core getXYStageDevice))
+                    pixel (affine/transform (Point2D$Double. x y)
+                                            affine-stage-to-pixel)]
+                (swap! screen-state assoc :xy-stage-position
+                       (affine/point-to-vector pixel)))))
+          (swap! screen-state merge
+                 {:acq-settings settings
+                  :mode :explore
+                  :channels (initial-lut-maps first-seq)
+                  :tile-dimensions [(core getImageWidth)
+                                    (core getImageHeight)]})
+          (add-watch screen-state "explore" (fn [_ _ old new] (when-not (= old new)
+                                                                (explore-fn))))
+          (explore-fn)))
+      (save-settings dir @screen-state)
+      (println dir)
+      (def ss screen-state)
+      (def ai acquired-images)))
   ([]
     (go (file (str "tmp" (rand-int 10000000))) true)))
   
 
-;; save data set: tile-cache/move-cache
-
+(defn navigate-to-pixel [[pixel-x pixel-y] affine-stage-to-pixel]
+  (set-xy-position (inverse-transform
+                     (Point2D$Double. pixel-x pixel-y)
+                     affine-stage-to-pixel)))                
+  
 (defn load-data-set
   []
   (when-let [dir (persist/open-dir-dialog)]

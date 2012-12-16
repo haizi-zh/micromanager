@@ -1,14 +1,19 @@
 (ns slide-explorer.view
   (:import (javax.swing JFrame JPanel JSplitPane)
-           (java.awt AlphaComposite Color Graphics Graphics2D Rectangle RenderingHints Window)
+           (java.awt AlphaComposite BasicStroke Color Graphics
+                     Graphics2D Rectangle RenderingHints Window)
            (java.awt.event ComponentAdapter KeyEvent KeyAdapter
                             WindowAdapter)
            (ij.process ByteProcessor ImageProcessor))
   (:require [slide-explorer.reactive :as reactive]
             [slide-explorer.tile-cache :as tile-cache]
+            [slide-explorer.tiles :as tiles]
+            [slide-explorer.canvas :as canvas]
+            [slide-explorer.user-controls :as user-controls]
             [clojure.core.memoize :as memo])
   (:use [org.micromanager.mm :only (edt)]
-        [slide-explorer.paint :only (enable-anti-aliasing repaint
+        [slide-explorer.canvas :only (color-object)]
+        [slide-explorer.paint :only (enable-anti-aliasing
                                      draw-image repaint-on-change)]
         [slide-explorer.tiles :only (center-tile floor-int)]
         [slide-explorer.image :only (crop insert-half-tile overlay intensity-range)]
@@ -35,42 +40,6 @@
     ; (print '~expr)
     ; (println " -->" (pr-str ret#))
      ret#))
-
-;; TILE <--> PIXELS
-
-(defn tile-to-pixels [[nx ny] [tile-width tile-height] tile-zoom]
-  [(int (* tile-zoom nx tile-width))
-   (int (* tile-zoom ny tile-height))])
-
-(defn pixel-rectangle-to-tile-bounds
-  [rectangle [tile-width tile-height]]
-  {:nl (floor-int (/ (.x rectangle) tile-width))
-   :nr (floor-int (/ (+ -1 (.getWidth rectangle) (.x rectangle)) tile-width))
-   :nt (floor-int (/ (.y rectangle) tile-height))
-   :nb (floor-int (/ (+ -1 (.getHeight rectangle) (.y rectangle)) tile-height))})
-
-(defn tile-in-tile-bounds?
-  [[nx ny] bounds]
-  (let [{:keys [nl nr nt nb]} bounds]
-    (and (<= nl nx nr)
-         (<= nt ny nb)))) 
-
-(defn tile-in-pixel-rectangle?
-  [[nx ny] rectangle [tile-width tile-height]]
-  (tile-in-tile-bounds? [nx ny]
-                        (pixel-rectangle-to-tile-bounds
-                          rectangle [tile-width tile-height])))
-
-(defn tiles-in-pixel-rectangle
-  "Returns a list of tile indices found in a given pixel rectangle."
-  [rectangle [tile-width tile-height]]
-  (let [nl (floor-int (/ (.x rectangle) tile-width))
-        nr (floor-int (/ (+ -1 (.getWidth rectangle) (.x rectangle)) tile-width))
-        nt (floor-int (/ (.y rectangle) tile-height))
-        nb (floor-int (/ (+ -1 (.getHeight rectangle) (.y rectangle)) tile-height))]
-    (for [nx (range nl (inc nr))
-          ny (range nt (inc nb))]
-      [nx ny])))
 
 (defn pixel-rectangle
   	  "Converts the screen state coordinates to visible camera pixel coordinates."
@@ -130,6 +99,11 @@
              merge
              (intensity-range tile-proc)))
 
+(defn copy-settings [pointing-screen-atom showing-screen-atom]
+  (swap! showing-screen-atom merge
+         (select-keys @pointing-screen-atom
+                      [:channels :tile-dimensions :xy-stage-position])))
+
 ;; OVERLAY
 
 (def overlay-memo (memo/memo-lru overlay 100))
@@ -152,36 +126,52 @@
         {:x (long (+ x (/ mouse-x-centered zoom)))
          :y (long (+ y (/ mouse-y-centered zoom)))}))))
 
+(comment
 (defn draw-test-tile [g x y]
   (doto g
     (.setColor Color/YELLOW)
     (.drawRect (+ 2 x) ( + y 2) 508 508)))
-
-(defn paint-tiles [^Graphics2D g overlay-tiles-atom screen-state]
-  (let [pixel-rect (.getClipBounds g)
-        tile-dimensions (screen-state :tile-dimensions)]
-    (doseq [[nx ny] (tiles-in-pixel-rectangle pixel-rect tile-dimensions)]
-      (let [tile-index {:nc :overlay
-                        :zoom (screen-state :zoom)
-                        :nx nx :ny ny :nt 0
-                        :nz (screen-state :z)}]
-;        (let [[x y] (tile-to-pixels [nx ny] tile-dimensions 1)]
-;            (draw-test-tile g x y)
-;          )
-        (when-let [image (tile-cache/get-tile
-                           overlay-tiles-atom
-                           tile-index)]
-          (let [[x y] (tile-to-pixels [nx ny] tile-dimensions 1)]
-            (draw-image g image x y)
-            ))))))
-
+;
 (defn show-mouse-pos [graphics screen-state]
   (let [{:keys [x y]} (:mouse screen-state)]
     (when (and x y)
       (doto graphics
         (.setColor Color/BLUE)
         (.drawRect (- x 25) (- y 25) 50 50)))))
-	
+)
+  
+(defn paint-tiles [^Graphics2D g overlay-tiles-atom screen-state]
+  (let [pixel-rect (.getClipBounds g)
+        tile-dimensions (screen-state :tile-dimensions)]
+    (doseq [[nx ny] (tiles/tiles-in-pixel-rectangle pixel-rect tile-dimensions)]
+      (let [tile-index {:nc :overlay
+                        :zoom (screen-state :zoom)
+                        :nx nx :ny ny :nt 0
+                        :nz (screen-state :z)}]
+;        (let [[x y] (tiles/tile-to-pixels [nx ny] tile-dimensions 1)]
+;            (draw-test-tile g x y)
+;          )
+        (when-let [image (tile-cache/get-tile
+                           overlay-tiles-atom
+                           tile-index)]
+          (let [[x y] (tiles/tile-to-pixels [nx ny] tile-dimensions 1)]
+            (draw-image g image x y)
+            ))))))
+
+(defn paint-stage-position [^Graphics2D g screen-state]
+  (let [[x y] (:xy-stage-position screen-state)
+        [w h] (:tile-dimensions screen-state)
+        zoom (:zoom screen-state)]
+    (println x y w h zoom)
+    (when (and x y)
+      (canvas/draw g
+                   [:rect
+                    {:l (inc (* zoom x)) :t (inc (* zoom y))
+                     :w (* zoom w) :h (* zoom h)
+                     :alpha 0.8
+                     :stroke {:color :yellow
+                              :width (max 2.0 (* zoom 8))}}]))))
+
 (defn paint-screen [graphics screen-state overlay-tiles-atom]
   (let [original-transform (.getTransform graphics)
         zoom (:zoom screen-state)
@@ -194,6 +184,7 @@
       (.translate (- x-center (int (* (:x screen-state) zoom)))
                   (- y-center (int (* (:y screen-state) zoom))))
       (paint-tiles overlay-tiles-atom screen-state)
+      (paint-stage-position screen-state)
       enable-anti-aliasing
       (.setTransform original-transform)
       ;(show-mouse-pos screen-state)
@@ -206,7 +197,7 @@
 (defn overlay-loader
   "Creates overlay tiles for visible monochrome tiles in memory."
   [screen-state-atom memory-tile-atom overlay-tiles-atom]
-  (let [visible-tile-positions (tiles-in-pixel-rectangle
+  (let [visible-tile-positions (tiles/tiles-in-pixel-rectangle
                                  (screen-rectangle @screen-state-atom)
                                  (:tile-dimensions @screen-state-atom))]
     (doseq [[nx ny] visible-tile-positions]
@@ -224,7 +215,7 @@
 (defn monochrome-loader
   "Loads monochrome tiles needed for drawing."
   [screen-state-atom memory-tile-atom acquired-images]
-  (let [visible-tile-positions (tiles-in-pixel-rectangle
+  (let [visible-tile-positions (tiles/tiles-in-pixel-rectangle
                                  (screen-rectangle @screen-state-atom)
                                  (:tile-dimensions @screen-state-atom))]
     (doseq [[nx ny] visible-tile-positions
@@ -280,16 +271,17 @@
     
 (defn main-frame []
   (doto (JFrame. "Slide Explorer II")
-    .show
-    (.setBounds 10 10 500 500)))
+    (.setBounds 10 10 500 500)
+    .show))
     
-(defn view-panel [memory-tiles acquired-images tile-dimensions]
-  (let [screen-state (atom (sorted-map :x 0 :y 0 :z 0 :zoom 1
+(defn view-panel [memory-tiles acquired-images settings]
+  (let [screen-state (atom (merge
+                             (sorted-map :x 0 :y 0 :z 0 :zoom 1
                                        :width 100 :height 10
                                        :keys (sorted-set)
                                        :channels (sorted-map)
-                                       :tile-dimensions tile-dimensions
-                                       ))
+                                       )
+                             settings))
         overlay-tiles (tile-cache/create-tile-cache 100)
         panel (main-panel screen-state overlay-tiles)]
     ;(println overlay-tiles)
@@ -304,25 +296,27 @@
          merge position-map))
 
 (defn show-where-pointing! [pointing-screen-atom showing-screen-atom]
-  ;(println "swp")
+  (copy-settings pointing-screen-atom showing-screen-atom)
   (set-position! showing-screen-atom
                  (absolute-mouse-position @pointing-screen-atom)))
 
 (defn handle-point-and-show [pointing-screen-atom showing-screen-atom]
   (reactive/handle-update
     pointing-screen-atom
-    (fn [_ _]
-      (show-where-pointing!
-        pointing-screen-atom showing-screen-atom))))
+    (fn [old new]
+      (when (not= old new)
+        (show-where-pointing!
+          pointing-screen-atom showing-screen-atom)))))
 
-(defn show [dir acquired-images tile-dimensions]
+(defn show [dir acquired-images settings]
   (let [memory-tiles (tile-cache/create-tile-cache 100 dir)
         memory-tiles2 (tile-cache/create-tile-cache 100 dir)
         frame (main-frame)
-        [panel screen-state] (view-panel memory-tiles acquired-images tile-dimensions)
-        [panel2 screen-state2] (view-panel memory-tiles2 acquired-images tile-dimensions)
+        [panel screen-state] (view-panel memory-tiles acquired-images settings)
+        [panel2 screen-state2] (view-panel memory-tiles2 acquired-images settings)
         split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true panel panel2)]
     (doto split-pane
+      (.setBorder nil)
       (.setResizeWeight 0.5)
       (.setDividerLocation 0.7))
     (def ss screen-state)
@@ -340,13 +334,13 @@
     (handle-point-and-show screen-state screen-state2)
     ;(make-view-controllable panel2 screen-state2)
     ;(handle-open frame)
-    [screen-state memory-tiles]))
+    (.show frame)
+    [screen-state memory-tiles panel]))
 
 
 ;; testing
 
-(defn copy-contrast []
-  (swap! ss2 assoc :channels (:channels @ss)))
+
 
 (defn big-region-contrast []
   (swap! ss assoc
