@@ -807,8 +807,9 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
             // update exposure in gui
             textFieldExp_.setText(NumberUtils.doubleToDisplayString(exposure));  
          }
-         // todo: inform listeners
-            
+         for (MMListenerInterface mmIntf:MMListeners_) {
+            mmIntf.exposureChanged(deviceName, exposure);
+         }
       }
 
    }
@@ -3378,12 +3379,12 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 
    }
 
-    @Override
+   @Override
    public boolean okToAcquire() {
       return !isLiveModeOn();
    }
 
-    @Override
+   @Override
    public void stopAllActivity() {
         if (this.acquisitionEngine2010 != null) {
             this.acquisitionEngine2010.stop();
