@@ -11,16 +11,8 @@
             [slide-explorer.canvas :as canvas]
             [slide-explorer.image :as image]
             [slide-explorer.user-controls :as user-controls]
-            [clojure.core.memoize :as memo])
-  (:use [org.micromanager.mm :only (edt)]
-        [slide-explorer.canvas :only (color-object)]
-        [slide-explorer.paint :only (enable-anti-aliasing
-                                     draw-image repaint-on-change)]
-        [slide-explorer.tiles :only (center-tile floor-int)]
-        [slide-explorer.image :only (crop insert-half-tile overlay intensity-range)]
-        [slide-explorer.user-controls :only (make-view-controllable
-                                              handle-resize
-                                              setup-fullscreen)]))
+            [slide-explorer.paint :as paint]
+            [clojure.core.memoize :as memo]))
 
 (def MIN-ZOOM 1/256)
 
@@ -42,13 +34,33 @@
     ; (println " -->" (pr-str ret#))
      ret#))
 
+;; ZOOMING
+
+(def ln2 (Math/log 2))
+
+(def zoom-levels
+  (zipmap 
+    (map - (range 12))
+    (take 12 (iterate #(/ % 2) 1))))
+
+;(def zoom-lookup nil
+  
+
+(defn log2 [x]
+  (/ (Math/log x) ln2))
+
+;(defn nearby-zoom-levels
+  
+
+;; COORDINATES
+
 (defn pixel-rectangle
-  	  "Converts the screen state coordinates to visible camera pixel coordinates."
-  	  [{:keys [x y width height zoom]}]
-  	  (Rectangle. (- x (/ width 2 zoom))
-                 	    (- y (/ height 2 zoom))
-                 	    (/ width zoom)
-                 	    (/ height zoom)))
+  "Converts the screen state coordinates to visible camera pixel coordinates."
+  [{:keys [x y width height zoom]}]
+  (Rectangle. (- x (/ width 2 zoom))
+              (- y (/ height 2 zoom))
+              (/ width zoom)
+              (/ height zoom)))
 
 (defn screen-rectangle
   "Returns a rectangle centered at x,y."
@@ -58,12 +70,22 @@
               width
               height))
 
+(defn visible-tile-indices
+  "Computes visible tile indices for a given channel index."
+  [screen-state channel-index]
+  (let [visible-tile-positions (tiles/tiles-in-pixel-rectangle
+                                 (screen-rectangle screen-state)
+                                 (:tile-dimensions screen-state))]
+    (for [[nx ny] visible-tile-positions]
+      {:nx nx :ny ny :zoom (:zoom screen-state)
+       :nc channel-index :nz (screen-state :z) :nt 0})))
+
 ;; TILING
 
 (defn child-index
   "Converts an x,y index to one in a child (1/2x zoom)."
   [n]
-  (floor-int (/ n 2)))
+  (tiles/floor-int (/ n 2)))
 
 (defn child-indices [indices]
   (-> indices
@@ -74,7 +96,7 @@
 (defn propagate-tile [tile-map-atom child parent]
   (let [child-tile (tile-cache/load-tile tile-map-atom child)
         parent-tile (tile-cache/load-tile tile-map-atom parent)
-        new-child-tile (insert-half-tile
+        new-child-tile (image/insert-half-tile
                          parent-tile
                          [(even? (:nx parent))
                           (even? (:ny parent))]
@@ -98,7 +120,7 @@
   (update-in screen-state
              [:channels (:nc tile-index)]
              merge
-             (intensity-range tile-proc)))
+             (image/intensity-range tile-proc)))
 
 (defn copy-settings [pointing-screen-atom showing-screen-atom]
   (swap! showing-screen-atom merge
@@ -107,13 +129,13 @@
 
 ;; OVERLAY
 
-(def overlay-memo (memo/memo-lru overlay 100))
+(def overlay-memo (memo/memo-lru image/overlay 100))
 
 (defn multi-color-tile [memory-tiles-atom tile-indices channels-map]
   (let [channel-names (keys channels-map)
         procs (for [chan channel-names]
                 (let [tile-index (assoc tile-indices :nc chan)]
-                  (tile-cache/get-tile memory-tiles-atom tile-index)))
+                  (tile-cache/load-tile memory-tiles-atom tile-index)))
         lut-maps (map channels-map channel-names)]
     (overlay-memo procs lut-maps)))
 
@@ -138,32 +160,21 @@
     (when (and x y)
       (doto graphics
         (.setColor Color/BLUE)
-        (.drawRect (- x 25) (- y 25) 50 50)))))
-)
+        (.drawRect (- x 25) (- y 25) 50 50))))))
   
 (defn paint-tiles [^Graphics2D g overlay-tiles-atom screen-state]
-  (let [pixel-rect (.getClipBounds g)
-        tile-dimensions (screen-state :tile-dimensions)]
-    (doseq [[nx ny] (tiles/tiles-in-pixel-rectangle pixel-rect tile-dimensions)]
-      (let [tile-index {:nc :overlay
-                        :zoom (screen-state :zoom)
-                        :nx nx :ny ny :nt 0
-                        :nz (screen-state :z)}]
-;        (let [[x y] (tiles/tile-to-pixels [nx ny] tile-dimensions 1)]
-;            (draw-test-tile g x y)
-;          )
-        (when-let [image (tile-cache/get-tile
-                           overlay-tiles-atom
-                           tile-index)]
-          (let [[x y] (tiles/tile-to-pixels [nx ny] tile-dimensions 1)]
-            (draw-image g image x y)
-            ))))))
+  (doseq [tile-index (visible-tile-indices screen-state :overlay)] 
+    (when-let [image (tile-cache/get-tile
+                       overlay-tiles-atom
+                       tile-index)]
+      (let [[x y] (tiles/tile-to-pixels [(:nx tile-index) (:ny tile-index)]
+                                        (screen-state :tile-dimensions) 1)]
+        (paint/draw-image g image x y)))))
 
 (defn paint-stage-position [^Graphics2D g screen-state]
   (let [[x y] (:xy-stage-position screen-state)
         [w h] (:tile-dimensions screen-state)
         zoom (:zoom screen-state)]
-    ;(println x y w h zoom)
     (when (and x y)
       (canvas/draw g
                    [:rect
@@ -173,20 +184,22 @@
                      :stroke {:color :yellow
                               :width (max 2.0 (* zoom 8))}}]))))
 
+
 (defn paint-screen [graphics screen-state overlay-tiles-atom]
   (let [original-transform (.getTransform graphics)
         zoom (:zoom screen-state)
+        scale (screen-state :scale 1.0)
         x-center (/ (screen-state :width) 2)
         y-center (/ (screen-state :height) 2)
         [tile-width tile-height] (:tile-dimensions screen-state)]
-    ;(.printStackTrace (Throwable.))
     (doto graphics
       (.setClip 0 0 (:width screen-state) (:height screen-state))
-      (.translate (- x-center (int (* (:x screen-state) zoom)))
-                  (- y-center (int (* (:y screen-state) zoom))))
+      (.translate (- x-center (int (* (:x screen-state) zoom scale)))
+                  (- y-center (int (* (:y screen-state) zoom scale))))
+      (.scale scale scale)
       (paint-tiles overlay-tiles-atom screen-state)
       (paint-stage-position screen-state)
-      enable-anti-aliasing
+      paint/enable-anti-aliasing
       (.setTransform original-transform)
       ;(show-mouse-pos screen-state)
       (.setColor Color/WHITE)
@@ -196,48 +209,19 @@
 ;; Loading visible tiles
 
 (defn overlay-loader
-  "Creates overlay tiles for visible monochrome tiles in memory."
+  "Creates overlay tiles needed for drawing."
   [screen-state-atom memory-tile-atom overlay-tiles-atom]
-  (let [visible-tile-positions (tiles/tiles-in-pixel-rectangle
-                                 (screen-rectangle @screen-state-atom)
-                                 (:tile-dimensions @screen-state-atom))]
-    (doseq [[nx ny] visible-tile-positions]
-      (let [tile {:nx nx
-                  :ny ny
-                  :zoom (@screen-state-atom :zoom)
-                  :nc :overlay
-                  :nz (@screen-state-atom :z)
-                  :nt 0}]
-          (tile-cache/add-tile overlay-tiles-atom
-                               tile
-                               (multi-color-tile memory-tile-atom tile
-                                                 (:channels @screen-state-atom)))))))
-
-(defn monochrome-loader
-  "Loads monochrome tiles needed for drawing."
-  [screen-state-atom memory-tile-atom]
-  (let [visible-tile-positions (tiles/tiles-in-pixel-rectangle
-                                 (screen-rectangle @screen-state-atom)
-                                 (:tile-dimensions @screen-state-atom))]
-    (doseq [[nx ny] visible-tile-positions
-            channel (keys (:channels @screen-state-atom))]
-      (let [tile {:nx nx
-                  :ny ny
-                  :zoom (@screen-state-atom :zoom)
-                  :nc channel
-                  :nz (@screen-state-atom :z)
-                  :nt 0}]
-        (tile-cache/load-tile memory-tile-atom tile)))))
+  (doseq [tile (visible-tile-indices @screen-state-atom :overlay)]
+    (tile-cache/add-tile overlay-tiles-atom
+                         tile
+                         (multi-color-tile memory-tile-atom tile
+                                           (:channels @screen-state-atom)))))
 
 (defn load-visible-only
   "Runs visible-loader whenever screen-state-atom changes."
   [screen-state-atom memory-tile-atom
    overlay-tiles-atom acquired-images]
-  (let [load-monochrome (fn [_ _]
-                          (monochrome-loader
-                            screen-state-atom
-                            memory-tile-atom))
-        load-overlay (fn [_ _]
+  (let [load-overlay (fn [_ _]
                        (overlay-loader
                          screen-state-atom
                          memory-tile-atom
@@ -245,16 +229,12 @@
         agent (agent {})]
     (def agent1 agent)
     (reactive/handle-update
-      memory-tile-atom
+      screen-state-atom
       load-overlay
       agent)
     (reactive/handle-update
-      screen-state-atom
-      load-monochrome
-      agent)
-    (reactive/handle-update
       acquired-images
-      load-monochrome
+      load-overlay
       agent)))
   
 ;; MAIN WINDOW AND PANEL
@@ -292,7 +272,7 @@
     ;(println overlay-tiles)
     (load-visible-only screen-state memory-tiles
                        overlay-tiles acquired-images)
-    (repaint-on-change panel [screen-state memory-tiles overlay-tiles])
+    (paint/repaint-on-change panel [overlay-tiles screen-state]); [memory-tiles])
     ;(set-contrast-when-ready screen-state memory-tiles)
     [panel screen-state]))
 
@@ -333,9 +313,9 @@
     (def ai acquired-images)
     (println ss ss2 mt mt2)
     (.add (.getContentPane frame) split-pane)
-    (setup-fullscreen frame)
-    (make-view-controllable panel screen-state)
-    (handle-resize panel2 screen-state2)
+    (user-controls/setup-fullscreen frame)
+    (user-controls/make-view-controllable panel screen-state)
+    (user-controls/handle-resize panel2 screen-state2)
     (handle-point-and-show screen-state screen-state2)
     ;(handle-open frame)
     (.show frame)
@@ -344,12 +324,21 @@
 
 ;; testing
 
-
-
 (defn big-region-contrast []
   (swap! ss assoc
          :channels {"Default" {:min 200 :max 800 :gamma 1.0 :color Color/WHITE}})
   (swap! ss2 assoc :channels (:channels @ss)))
 
-
+(defn smooth-zoom-test []
+  (swap! ss assoc :scale 1.0 :zoom 1/128)
+  (Thread/sleep 5000)
+  (repeatedly 7
+          (fn []
+  (doseq [x (map #(Math/pow 2 %) (range 0 1.01 0.05))]
+    (Thread/sleep 5)
+    (swap! ss assoc :scale x))
+  (swap! ss update-in [:zoom] * 2)
+  (swap! ss assoc :scale 1)
+  ;(Thread/sleep 1000)
+            )))
 
