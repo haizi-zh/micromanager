@@ -66,6 +66,7 @@
    :dark-grey Color/DARK_GRAY
    :light-gray Color/LIGHT_GRAY
    :light-grey Color/LIGHT_GRAY
+   :brown (Color. 0xA52A2A)
    })
 
 (defn color-object [color]
@@ -82,12 +83,12 @@
 
 (defn set-g2d-state [g2d {:keys [alpha color stroke rotate x y
                                  scale scale-x scale-y]}]
-    (doto g2d
-      (.setColor (color-object (or color :black)))
-    (.setComposite
+    (.setColor g2d (color-object (or color :black)))
+  (when (and alpha (< alpha 1))
+    (.setComposite g2d
       (let [compound-alpha (* (or alpha 1) (.. g2d getComposite getAlpha))]
-        (AlphaComposite/getInstance AlphaComposite/SRC_ATOP compound-alpha)))
-    (.setStroke (let [{:keys [width cap join miter-limit dashes dash-phase]
+        (AlphaComposite/getInstance AlphaComposite/SRC_ATOP compound-alpha))))
+    (.setStroke g2d (let [{:keys [width cap join miter-limit dashes dash-phase]
                        :or {width 1.0 cap :square
                             join :miter miter-limit 10.0
                             dashes [] dash-phase 0.0}} stroke
@@ -97,13 +98,13 @@
                   (if-not (empty? dashes)
                     (BasicStroke. width cap-code join-code miter-limit
                                   dashes-array dash-phase)
-                    (BasicStroke. width cap-code join-code miter-limit)))))
-    (when (or x y rotate scale scale-x scale-y)
-      (doto g2d
-        (.translate (double (or x 0)) (double (or y 0)))
-        (.rotate (* degrees-to-radians (or rotate 0.0)))
-        (.scale (or scale-x scale 1.0) (or scale-y scale 1.0))
-        )))
+                    (BasicStroke. width cap-code join-code miter-limit))))
+  (when (or x y rotate scale scale-x scale-y)
+    (doto g2d
+      (.translate (double (or x 0)) (double (or y 0)))
+      (.rotate (* degrees-to-radians (or rotate 0.0)))
+      (.scale (or scale-x scale 1.0) (or scale-y scale 1.0))
+      )))
 
 (defn intersect-shapes [shape1 shape2]
   (doto (Area. shape1) (.intersect (Area. shape2))))
@@ -127,7 +128,8 @@
       (.setComposite composite)
       (.setPaint paint)
       (.setStroke stroke)
-      (.setTransform transform))))
+      (.setTransform transform))
+    ))
 
 (defmacro with-g2d-state [[g2d params] & body]
   `(with-g2d-state-fn ~g2d ~params (fn [] ~@body)))
@@ -220,11 +222,17 @@
   [_ {:keys [data]}]
   data)
 
+(defmethod make-obj nil
+  [_ _]
+  nil)
+
 (defn stroke? [stroke]
   (let [width (:width stroke)]
     (or (nil? width) (pos? width))))
 
 (defmulti draw-primitive (fn [g2d obj params & inner-items] (type obj)))
+
+(defmethod draw-primitive nil [_ _ _])
 
 (defmethod draw-primitive Shape
   [g2d shape {:keys [color fill stroke] :as params}]
@@ -245,51 +253,39 @@
         params+ (complete-coordinates (assoc params :w w :h h))
         {:keys [l t]} params+]
     (.drawImage g2d image (- (/ w 2)) (- (/ h 2)) w h nil)))
-
-(defn draw-string-center
-  "Draw a string centered at position x,y."
-  [^Graphics2D graphics ^String text x y]
-  (let [context (.getFontRenderContext graphics)
-        height (.. graphics
-                   getFont (createGlyphVector context text)
-                   getVisualBounds
-                   getHeight)
-        width (.. graphics
-                  getFontMetrics
-                  (getStringBounds text graphics)
-                  getWidth)]
-    (.drawString graphics text
-                 (float (- (/ width 2)))
-                 (float (+ (/ height 2))))))
-
-(defmethod draw-primitive String
-  [g2d text {:keys [x y font fill stroke] :as params}]
-  (let [{:keys [name bold italic underline strikethrough size]} font
-        style (bit-or (if bold Font/BOLD 0) (if italic Font/ITALIC 0))
-        font1 (Font. name style size)
-        attributes (.getAttributes font1)]
-    (doto attributes
-      (.put TextAttribute/STRIKETHROUGH
-            (if strikethrough TextAttribute/STRIKETHROUGH_ON false))
-      (.put TextAttribute/UNDERLINE
-            (if underline TextAttribute/UNDERLINE_ON -1)))
-    (let [font2 (Font. attributes)
-          ;context (.getFontRenderContext g2d)
-          ;obj (.getOutline (.createGlyphVector font2 context text))
-          ]
-      ;(.translate g2d x y)
-      ;(draw-shape g2d obj fill stroke)
-      ;(.translate g2d (- x) (- y))
-      (.setFont g2d font2)
-                       (draw-string-center g2d text x y))
-      ))
-
+  
+  (defmethod draw-primitive String
+    [g2d text {:keys [x y font fill stroke] :as params}]
+    (let [{:keys [name bold italic underline strikethrough size]} font
+          style (bit-or (if bold Font/BOLD 0) (if italic Font/ITALIC 0))
+          font1 (Font. name style size)
+          attributes (.getAttributes font1)]
+      (doto attributes
+        (.put TextAttribute/STRIKETHROUGH
+              (if strikethrough TextAttribute/STRIKETHROUGH_ON false))
+        (.put TextAttribute/UNDERLINE
+              (if underline TextAttribute/UNDERLINE_ON -1)))
+      (.setFont g2d (Font. attributes))
+      (let [context (.getFontRenderContext g2d)
+            string-bounds (.. g2d
+                              getFontMetrics
+                              (getStringBounds text g2d))
+            delta-x (.x string-bounds)
+            delta-y (.y string-bounds)
+            height (.height string-bounds)
+            width (.width string-bounds)
+            params+ (complete-coordinates (merge params {:w width :h height}))]
+       ; (println "a" delta-x width (select-keys params+ [:t :l :r :b :x :y]))
+        (.drawString g2d text
+                     (int (- (params+ :l) delta-x))
+                     (int (- (params+ :t) delta-y))))))
+  
 ;  (enable-anti-aliasing g2d)
 ;  (doseq [[type params & inner-items] items]
 
 (defn draw [g2d [type params & inner-items]]
   (when (= type :graphics)
-        (enable-anti-aliasing g2d))
+    (enable-anti-aliasing g2d))
   (let [params+ (complete-coordinates params)]
     (with-g2d-state [g2d params+]
       (if (#{:compound :graphics} type)
@@ -301,7 +297,9 @@
   (let [panel (proxy [JPanel] []
                 (paintComponent [^Graphics graphics]
                                 (proxy-super paintComponent graphics)
-                                (draw graphics @reference)))]
+                                (try
+                                (draw graphics @reference)
+                                  (catch Throwable e nil))))]
     (add-watch reference panel (fn [_ _ _ _]
                                  (.repaint panel)))
     (.setBackground panel Color/BLACK)

@@ -9,6 +9,7 @@
             [slide-explorer.tile-cache :as tile-cache]
             [slide-explorer.tiles :as tiles]
             [slide-explorer.canvas :as canvas]
+            [slide-explorer.scale-bar :as scale-bar]
             [slide-explorer.image :as image]
             [slide-explorer.user-controls :as user-controls]
             [slide-explorer.paint :as paint]
@@ -33,24 +34,6 @@
     ; (print '~expr)
     ; (println " -->" (pr-str ret#))
      ret#))
-
-;; ZOOMING
-
-(def ln2 (Math/log 2))
-
-(def zoom-levels
-  (zipmap 
-    (map - (range 12))
-    (take 12 (iterate #(/ % 2) 1))))
-
-;(def zoom-lookup nil
-  
-
-(defn log2 [x]
-  (/ (Math/log x) ln2))
-
-;(defn nearby-zoom-levels
-  
 
 ;; COORDINATES
 
@@ -79,6 +62,18 @@
     (for [[nx ny] visible-tile-positions]
       {:nx nx :ny ny :zoom (:zoom screen-state)
        :nc channel-index :nz (screen-state :z) :nt 0})))
+
+(defn needed-tile-indices
+  "Computes tile indices that will be needed when a zoom event is finished,
+   to allow pre-loading."
+  [screen-state channel-index]
+  (let [scale (:scale screen-state)]
+    (concat (visible-tile-indices screen-state channel-index)
+            (when (not= scale 1)
+              ;(println scale)
+              (let [factor (if (> scale 1) 2 1/2)
+                    future-state (update-in screen-state [:zoom] * factor)]
+                (visible-tile-indices future-state channel-index))))))
 
 ;; TILING
 
@@ -125,7 +120,9 @@
 (defn copy-settings [pointing-screen-atom showing-screen-atom]
   (swap! showing-screen-atom merge
          (select-keys @pointing-screen-atom
-                      [:channels :tile-dimensions :xy-stage-position])))
+                      [:channels :tile-dimensions
+                       :pixel-size-um :xy-stage-position
+                       :positions])))
 
 ;; OVERLAY
 
@@ -140,14 +137,6 @@
     (overlay-memo procs lut-maps)))
 
 ;; PAINTING
-
-(defn absolute-mouse-position [screen-state]
-  (let [{:keys [x y mouse zoom width height]} screen-state]
-    (when mouse
-      (let [mouse-x-centered (- (mouse :x) (/ width 2))
-            mouse-y-centered (- (mouse :y) (/ height 2))]
-        {:x (long (+ x (/ mouse-x-centered zoom)))
-         :y (long (+ y (/ mouse-y-centered zoom)))}))))
 
 (comment
 (defn draw-test-tile [g x y]
@@ -167,23 +156,39 @@
     (when-let [image (tile-cache/get-tile
                        overlay-tiles-atom
                        tile-index)]
-      (let [[x y] (tiles/tile-to-pixels [(:nx tile-index) (:ny tile-index)]
-                                        (screen-state :tile-dimensions) 1)]
+      (let [[x y] (tiles/tile-to-pixels
+                    [(:nx tile-index) (:ny tile-index)]
+                    (screen-state :tile-dimensions) 1)]
         (paint/draw-image g image x y)))))
+
+(defn paint-position [^Graphics2D g screen-state x y color]
+  (let [[w h] (:tile-dimensions screen-state)
+        zoom (:zoom screen-state)
+        scale (:scale screen-state)]
+    (when (and x y w h color)
+;      (.drawRect g (* zoom x) (* zoom y)
+;                        (* zoom w) (* zoom h)))))
+      (canvas/draw g
+                   [:rect
+                    {:l (inc (* zoom x)) :t (inc (* zoom y))
+                     :w (* zoom w) :h (* zoom h)
+                     :alpha 1
+                     :stroke {:color color
+                              :width (max 4.0 (* 16 zoom))}}]))))
 
 (defn paint-stage-position [^Graphics2D g screen-state]
   (let [[x y] (:xy-stage-position screen-state)
         [w h] (:tile-dimensions screen-state)
         zoom (:zoom screen-state)]
-    (when (and x y)
-      (canvas/draw g
-                   [:rect
-                    {:l (inc (* zoom x)) :t (inc (* zoom y))
-                     :w (* zoom w) :h (* zoom h)
-                     :alpha 0.8
-                     :stroke {:color :yellow
-                              :width (max 2.0 (* zoom 8))}}]))))
+    (paint-position g screen-state x y :yellow)))
 
+(defn paint-position-list [^Graphics2D g screen-state]
+  (let [[w h] (:tile-dimensions screen-state)
+        zoom (:zoom screen-state)]
+    (doseq [{:keys [x y]} (:positions screen-state)]
+      (paint-position g screen-state x y :red))))
+
+(def bar-widget-memo (memo/memo-lru scale-bar/bar-widget 500))
 
 (defn paint-screen [graphics screen-state overlay-tiles-atom]
   (let [original-transform (.getTransform graphics)
@@ -198,20 +203,24 @@
                   (- y-center (int (* (:y screen-state) zoom scale))))
       (.scale scale scale)
       (paint-tiles overlay-tiles-atom screen-state)
+      (paint-position-list screen-state)
       (paint-stage-position screen-state)
       paint/enable-anti-aliasing
       (.setTransform original-transform)
-      ;(show-mouse-pos screen-state)
       (.setColor Color/WHITE)
-      (.drawString (str (select-keys screen-state [:mouse :x :y :z :zoom])) 10 20)
-      (.drawString (str (absolute-mouse-position screen-state)) 10 40))))
+      (canvas/draw (when-let [pixel-size (:pixel-size-um screen-state)]
+                     (bar-widget-memo (/ pixel-size zoom scale))))
+      ;(show-mouse-pos screen-state)
+      ;(.drawString (str (select-keys screen-state [:mouse :x :y :z :zoom])) 10 20)
+      ;(.drawString (str (user-controls/absolute-mouse-position screen-state)) 10 40)
+      )))
 
 ;; Loading visible tiles
 
 (defn overlay-loader
   "Creates overlay tiles needed for drawing."
   [screen-state-atom memory-tile-atom overlay-tiles-atom]
-  (doseq [tile (visible-tile-indices @screen-state-atom :overlay)]
+  (doseq [tile (needed-tile-indices @screen-state-atom :overlay)]
     (tile-cache/add-tile overlay-tiles-atom
                          tile
                          (multi-color-tile memory-tile-atom tile
@@ -261,10 +270,12 @@
     
 (defn view-panel [memory-tiles acquired-images settings]
   (let [screen-state (atom (merge
-                             (sorted-map :x 0 :y 0 :z 0 :zoom 1
+                             (sorted-map :x 0 :y 0 :z 0 :zoom 1 :scale 1
+                                         :pixel-size-um 0.3
                                        :width 100 :height 10
                                        :keys (sorted-set)
                                        :channels (sorted-map)
+                                         :positions #{}
                                        )
                              settings))
         overlay-tiles (tile-cache/create-tile-cache 100)
@@ -276,14 +287,16 @@
     ;(set-contrast-when-ready screen-state memory-tiles)
     [panel screen-state]))
 
-(defn set-position! [screen-state-atom position-map]
-  (swap! screen-state-atom
-         merge position-map))
+(defn set-position! [screen-state-atom x y]
+  (swap! screen-state-atom assoc :x x :y y))
 
 (defn show-where-pointing! [pointing-screen-atom showing-screen-atom]
   (copy-settings pointing-screen-atom showing-screen-atom)
-  (set-position! showing-screen-atom
-                 (absolute-mouse-position @pointing-screen-atom)))
+  (let [[w h] (:tile-dimensions @pointing-screen-atom)
+        {:keys [x y]} (user-controls/absolute-mouse-position
+                        @pointing-screen-atom)]
+    (when (and x y w h)
+    (set-position! showing-screen-atom (+ x (/ w 2)) (+ y (/ h 2))))))
 
 (defn handle-point-and-show [pointing-screen-atom showing-screen-atom]
   (reactive/handle-update
@@ -291,7 +304,8 @@
     (fn [old new]
       (when (not= old new)
         (show-where-pointing!
-          pointing-screen-atom showing-screen-atom)))))
+          pointing-screen-atom showing-screen-atom)
+        ))))
 
 (defn show [dir acquired-images settings]
   (let [memory-tiles (tile-cache/create-tile-cache 100 dir)
@@ -328,17 +342,3 @@
   (swap! ss assoc
          :channels {"Default" {:min 200 :max 800 :gamma 1.0 :color Color/WHITE}})
   (swap! ss2 assoc :channels (:channels @ss)))
-
-(defn smooth-zoom-test []
-  (swap! ss assoc :scale 1.0 :zoom 1/128)
-  (Thread/sleep 5000)
-  (repeatedly 7
-          (fn []
-  (doseq [x (map #(Math/pow 2 %) (range 0 1.01 0.05))]
-    (Thread/sleep 5)
-    (swap! ss assoc :scale x))
-  (swap! ss update-in [:zoom] * 2)
-  (swap! ss assoc :scale 1)
-  ;(Thread/sleep 1000)
-            )))
-
