@@ -60,13 +60,29 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private Writer dataFileWriter_;
 	private XYSeries zDataSeries_;
 	private JFreeChart zDataChart;
+	private XYSeries corrSeries_;
+	private XYSeries xDataSeries_;
+	private XYSeries yDataSeries_;
+	private JFreeChart xDataChart;
+	private JFreeChart yDataChart;
+	private XYSeries fxDataSeries_;
+	private XYSeries fyDataSeries_;
 
 	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, MyGUI mygui_) {
 		myGUI_ = mygui_;
 		main = main_;
 		mainWnd_ = gui;
+		
 		zDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-Z");
+		xDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-X");
+		yDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-Y");
+		fxDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-FX");
+		fyDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-FY");
 		zDataChart = myGUI_.myForm_.getChartSeries_().get("Chart-Z");
+		xDataChart = myGUI_.myForm_.getChartSeries_().get("Chart-X");
+		yDataChart = myGUI_.myForm_.getChartSeries_().get("Chart-Y");
+		corrSeries_ = mygui_.myForm_.getDataSeries_().get("Chart-Corr");
+		
 		render_ = OverlayRender.getInstance(gui);
 		stats_ = new DescriptiveStatistics[3];
 		windowSize_ = 1000;
@@ -78,8 +94,6 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		beadRadius_ = mygui_.getRadius_()*1000;//1400;//
 		kT_ = 4.2;
 		contourLength_ = mygui_.getDNALen_()*1000;//16700;//
-		sum =0;
-		sum2=0;
 	}
 
 	public static AcqAnalyzer getInstance(ScriptInterface gui,
@@ -95,13 +109,14 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private DescriptiveStatistics statCross_;
 	private long startTs_;
 	private int DRAW;
-	private double sum ;
-	private double sum2;
-
+	long index = 0;
+	private long frame=0;
+	long timest =0;
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
 		// Retrieving a POISON image indicates that current acquisition is
 		// completed or has been canceled.
+		timest = now();
 		if (taggedImage == TaggedImageQueue.POISON) {
 			if (dataFileWriter_ != null) {
 				try {
@@ -118,32 +133,37 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				|| !main.isCalibrated)
 			return;
 
-		double pos[] = null;
-		try {
-			pos = GetPosition(myGUI_.currFrame, taggedImage);
-		} catch (IOException | JSONException e) {
-			mainWnd_.logError(e);
-			return;
-		}
-		myGUI_.currFrame++;
+
 		// Render the overlay
 		String acqName;
-		long index;
+
 		try {
-			if (!taggedImage.tags.has("FrameIndex"))
-				index = 0;
-			else
+			if (!taggedImage.tags.has("FrameIndex")){	
+				index =0;
+				frame++;
+			}
+			else{
 				index = taggedImage.tags.getLong("FrameIndex");
+				frame = index;
+			}
 			acqName = taggedImage.tags.getString("AcqName");
 		} catch (JSONException e) {
 			e.printStackTrace();
 			return;
 		}
 
+		double pos[] = null;
+		try {
+			pos = GetPosition(frame, taggedImage);
+		} catch (IOException | JSONException e) {
+			mainWnd_.logError(e);
+			return;
+		}
+
 		ArrayList<RenderItem> list = new ArrayList<OverlayRender.RenderItem>();
 		list.add(RenderItem.createInstance(new Point2D.Float((float) pos[0],
-				(float) pos[1]), String.format("(%.3f, %.3f, %.3f)(%.3f,%.3f)", pos[3],
-						pos[4], pos[2], pos[5], pos[6])));
+				(float) pos[1]), String.format("(%.2f, %.2f, %.2f)(%.2f,%.2f)", pos[3],
+						pos[4], pos[2],  pos[7], pos[8])));
 		boolean update = acqName.equals(MMStudioMainFrame.SIMPLE_ACQ) ? true
 				: false;
 		try {
@@ -151,14 +171,36 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		} catch (MMScriptException e) {
 			mainWnd_.logError(e);
 		}
+
+		mainWnd_.logMessage(String.format("\t\t\t\t\t\t\t\t\tJava Cost#\t%.2f",(double)(( now() - timest)/1000000)));
+
 	}
 
-	public double[] GetPosition(final int index_, TaggedImage taggedImage)
+	private long now() {
+		// TODO Auto-generated method stub
+		return System.nanoTime();
+	}
+
+	public double[] GetPosition(final long index_, TaggedImage taggedImage)
 			throws IOException, JSONException {
 		//pos 0~5 x y z dx dy dz  6~11  <x2> <y2> <z2> <x> <y> <z>
 		Object[] dpos = main.mCalc.GetZPosition(taggedImage.pix,
-				myGUI_.calcRoi_, index_);
+				myGUI_.calcRoi_, 0);
 		final double pos[] = (double[]) dpos[0];
+		mainWnd_.logMessage(String.format("\t\t\t\t\t\t\t\t\tC Cost##\t%.2f",((double[]) dpos[1])[1]));
+		final double[] corrProfile = (double[]) dpos[2];
+
+		if(myGUI_.myForm_.getCurrTab() == 3){
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					corrSeries_.clear();
+					for(int i = 0;i<corrProfile.length;i++){
+						corrSeries_.add(main.getCalPosZ_()[i], corrProfile[i]);
+					}
+				}
+			});
+		}
 		final boolean clearChart = resetData_;
 		// Reset the stat container
 		if (resetData_) {
@@ -167,7 +209,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			statCross_.clear();
 			resetData_ = false;
 			startTs_ = System.nanoTime();
-			myGUI_.currFrame = 1;
+
 		}
 		final double xPhys = pixelToPhys_[0] + pixelToPhys_[1] * pos[0];
 		final double yPhys = pixelToPhys_[2] + pixelToPhys_[3] * pos[1];
@@ -179,24 +221,8 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		// Calculate forces
 		final double[] forces = calcForces();
 		double[] skrewness = calcSkrewness();
-	
- 
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				if (clearChart) {
 
-					zDataSeries_.clear();
-					sum = 0;
-					sum2 = 0;
-				} 
-				double center =  Math.floor(pos[11]*100)/100;//.2f
-				zDataChart.getXYPlot().getRangeAxis().setRange(center - 4*pos[8],center + 4*pos[8]);				
-				zDataSeries_.add(index_, pos[2]);	
-
-				myGUI_.reSetROI((int) pos[0], (int) pos[1]);
-			}
-		});
+		updateGUI(forces,pos,clearChart,(int)index_,xPhys,yPhys);
 
 		String acqName = (String) taggedImage.tags.get("AcqName");
 		String nameComp = "";
@@ -218,7 +244,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 					+ nameComp + ".txt");
 			dataFileWriter_ = new BufferedWriter(new FileWriter(file));
 			dataFileWriter_
-			.write("Frame, Timestamp, XPos/pixel, YPos/pixel, XPos/um, YPos/um, ZPos/um,<StdXPos>/nm,<StdYPos>/nm,<StdZPos>/nm,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN\r\n");
+			.write("Frame, Timestamp, XPos/pixel, YPos/pixel, XPos/um, YPos/um, ZPos/um,<StdXPos>/nm,<StdYPos>/nm,<StdZPos>/nm,meanX/pixel,meanY/pixel,meanZ/pixel,ForceX/pN,ForceY/pN,skrewnessx,skrewnessy\r\n");
 		}
 
 		double elapsed;
@@ -227,15 +253,69 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		else
 			elapsed = (System.nanoTime() - startTs_) / 1e6;
 		dataFileWriter_.write(String.format(
-				"%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n", index_,
+				"%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n", index_,
 				elapsed, pos[0], pos[1], xPhys, yPhys, pos[2], pos[6], pos[7],
-				pos[8], pos[9], pos[10], pos[11], forces[0], forces[1]));
+				pos[8], pos[9], pos[10], pos[11], forces[0], forces[1],skrewness[0],skrewness[1]));
 
 		if (index_ % myGUI_.movingWindowLen_ == 0 && myGUI_.myForm_.isMagnetAuto()) {
 			main.PullMagnet();
 		}
 
-		return new double[] { pos[0], pos[1], pos[2], xPhys, yPhys, forces[0], forces[1] };
+		return new double[] { pos[0], pos[1], pos[2], xPhys, yPhys, forces[0], forces[1],skrewness[0],skrewness[1] };
+	}
+
+	private void updateGUI(final double[] forces, final double[] pos,final boolean clearChart,final int index_,final double xPhys,final double yPhys) {
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				myGUI_.reSetROI((int) pos[0], (int) pos[1]);//reset ROI
+				if (clearChart) {
+					zDataSeries_.clear(); 
+					xDataSeries_.clear(); 
+					yDataSeries_.clear(); 
+					fxDataSeries_.clear(); 
+					fyDataSeries_.clear(); 
+					main.mp285StepCounter = 0;
+				} 
+				//ZPOS
+
+				double center =  Math.floor(pos[11]*100)/100;//.2f
+				double scale = 5*pos[8];
+				if(scale<0.05)
+					scale = 0.05;	
+
+				zDataChart.getXYPlot().getRangeAxis().setRange(center - scale,center +  scale);				
+				zDataSeries_.add(index_, pos[2]);	
+
+				//XPOS
+				double xphycenter = pixelToPhys_[0] + pixelToPhys_[1]*pos[9];
+				center =  Math.floor(xphycenter*100)/100;
+				scale = 2*pos[6];
+				if(scale<0.1)
+					scale = 0.1;	
+
+				xDataChart.getXYPlot().getRangeAxis().setRange(center - scale,center +  scale);				
+				xDataSeries_.add(index_,xPhys);	
+
+				//YPOS
+
+				double yphycenter = pixelToPhys_[2] + pixelToPhys_[3]*pos[10];
+				center =  Math.floor(yphycenter*100)/100;
+				scale = 2*pos[7];
+				if(scale<0.1)
+					scale = 0.1;		
+
+				yDataChart.getXYPlot().getRangeAxis().setRange(center - scale,center +  scale);				
+				yDataSeries_.add(index_, yPhys);
+
+				//FX,FY
+
+				fxDataSeries_.add(index_,forces[0]);
+				fyDataSeries_.add(index_,forces[1]);
+
+			}
+		});
+
 	}
 
 	private double[] calcSkrewness() {
@@ -253,7 +333,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		skrewness[1] = (statCross_.getMean() - stats_[0].getMean()
 				* stats_[1].getMean())
 				* n / (n - 1) / (stds[0] * stds[1]);
-		return null;
+		return skrewness;
 	}
 
 	private double[] calcForces() {

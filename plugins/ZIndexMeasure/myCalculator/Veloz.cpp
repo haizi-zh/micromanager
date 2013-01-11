@@ -33,14 +33,17 @@ namespace DeadNight
 			return double(li.QuadPart-CounterStart)/PCFreq;
 		}
 		void DataInit(double* pOpt_){
-
-			sOpt = new double[10];
-			memcpy(sOpt,pOpt_,10*sizeof(double));
+			DeleteData();
+			sOpt = new double[12];
+			memcpy(sOpt,pOpt_,12*sizeof(double));
 			Option opt;
 			getOption(opt);
 
 
 			int zLen = (int)(opt.zScale/opt.zStep);
+			corrProfile = new double[zLen];
+			memset(corrProfile,0,zLen*sizeof(double));
+
 			int zSize = (int)(opt.radius/opt.rInterStep);
 
 			LAST_ERR =  new double[2];
@@ -73,7 +76,9 @@ namespace DeadNight
 			opt.zStart=sOpt[6];
 			opt.zScale=sOpt[7];
 			opt.zStep=sOpt[8];	
-			opt.movingWindowLen =(int) sOpt[10];
+			opt.movingWindowLen =(int) sOpt[9];
+			opt.zInterStep = (int) sOpt[10];
+			opt.method = (int) sOpt[11];
 		}		
 		void quadraticFit(double x[], double data[], int start, int len, double parameters[])
 		{
@@ -164,6 +169,15 @@ namespace DeadNight
 				delete[] sum;
 			if( sum2)
 				delete[]  sum2;
+			if(corrProfile)
+				delete[] corrProfile;
+			if(myXpos.size() != 0)
+				myXpos.clear();
+			if(myYpos.size() != 0)
+				myYpos.clear();
+			if(myZpos.size() != 0)
+				myZpos.clear();
+
 		}
 		void SetBitDepth(int bitDepth_){
 			sOpt[2] = bitDepth_;
@@ -268,7 +282,10 @@ namespace DeadNight
 			else if (start >= convSize - 2*halfQuadWindow)
 				start = convSize- 2*halfQuadWindow - 1;
 
-			assert(start >= 0 && start <convSize - 2*halfQuadWindow);
+			if((start < 0  || start+2*halfQuadWindow>convSize)){
+				LAST_ERR[0] = ERR_GET_ZPOS_FALSE;
+				return;
+			}
 
 			pArray = new double[convSize];
 			for (int i=0; i<convSize; i++)
@@ -312,8 +329,10 @@ namespace DeadNight
 				start = 0;
 			else if (start >= convSize - 2*halfQuadWindow)
 				start = convSize- 2*halfQuadWindow - 1;
-			assert(start >= 0 && start <convSize - 2*halfQuadWindow);
-
+			if((start < 0  || start+2*halfQuadWindow>convSize)){
+				LAST_ERR[0] = ERR_GET_ZPOS_FALSE;
+				return;
+			}
 			pArray = new double[convSize];
 			for (int i=0; i<convSize; i++)
 				pArray[i] = i;
@@ -412,6 +431,7 @@ namespace DeadNight
 					}
 					sCalProfileX[i] =sumr/nTheta;			
 				}
+				memset(sCalProfileX,0,10*sizeof(double));
 				zscore(sCalProfileX,len);								
 				env_->ReleaseShortArrayElements((jshortArray)image_,(jshort*)pImage,JNI_ABORT);	
 			}
@@ -423,6 +443,12 @@ namespace DeadNight
 			Option opt;
 			getOption(opt);
 			return (int)(opt.radius/opt.rInterStep);
+		}
+
+		int getZLen(){
+			Option opt;
+			getOption(opt);
+			return (int)(opt.zScale/opt.zStep);
 		}
 		double* getcalProfileX(int zX){
 			return sCalProfile +  zX*getLen();
@@ -438,14 +464,14 @@ namespace DeadNight
 		}
 		/*************************************************************************  
 		 *  
-		 * º¯ÊýÃû³Æ£º  
+		 * ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ£ï¿½  
 		 *  log2()  
 		 *  
-		 * ²ÎÊý:  
-		 *   length                      - ÊäÈëÐòÁÐ³¤¶È  
+		 * ï¿½ï¿½ï¿½ï¿½:  
+		 *   length                      - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½  
 		 *  
-		 * ËµÃ÷:  
-		 *   ¸Ãº¯ÊýÈ¡µÃÊäÈëlength¶ÔÓ¦µÄlog2  
+		 * Ëµï¿½ï¿½:  
+		 *   ï¿½Ãºï¿½ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½lengthï¿½ï¿½Ó¦ï¿½ï¿½log2  
 		 *  
 		 ************************************************************************/
 		int log2(long length)
@@ -541,11 +567,14 @@ namespace DeadNight
 			}
 				
 		}
+		double * getCorrProfile(){
+			return corrProfile;
+		}
 		void  GetZPosition(JNIEnv * env_, jobject image_,int index_,int*  roi_,double* pos){
 			StartCounter();
 			Option opt;					
 			getOption(opt);
-
+		
 			int zLen =(int)( opt.zScale/opt.zStep);
 			int zSize = (int)(opt.radius/opt.rInterStep);
 			int halfQuadWindow =opt.halfQuadWidth;
@@ -554,20 +583,22 @@ namespace DeadNight
 			memset(calProfileX,0,zSize*sizeof(double));
 
 			GetCalProfile(env_,image_,roi_,zX_,pos,calProfileX);
-			double zPos = 0;
-			 
+
+			double zPos = 0;		 
 			double max = 0;
 			int ind = -1;
+			double temp = 0;
 
-			VecDoub xx(zLen,sCalPos), yy(zLen);
+			memset(corrProfile,0,zLen*sizeof(double));
 			for(int i = 0;i<zLen; i++){
-				yy[i] = corr(calProfileX,sCalProfile+i*zSize,zSize);
-				if(max <yy[i]){
-					max = yy[i];
+				temp = corr(calProfileX,sCalProfile+i*zSize,zSize);
+				corrProfile[i] = temp;
+				if(max < temp){
+					max = temp;
 					ind = i;
 				}
 			}
-			Spline_interp inter(xx,yy);
+			 			 			
 			if(calProfileX){
 				delete[] calProfileX;
 				calProfileX =NULL;
@@ -576,42 +607,60 @@ namespace DeadNight
 				LAST_ERR[0] = ERR_GET_ZPOS_FALSE;
 				return;
 			}	
-
 			int start =ind - halfQuadWindow;
 			if (start<0)
 				start = 0;
-			else if (start >= zLen - 2*halfQuadWindow)
-				start = zLen- 2*halfQuadWindow - 1;
-
-			int interStep = 5;
-			if((start >= 0 && start <zLen - 2*halfQuadWindow)){
+			else if (start > zLen - 2*halfQuadWindow)
+				start = zLen- 2*halfQuadWindow;
+		
+			if((start < 0  || start+2*halfQuadWindow>zLen)){
+				LAST_ERR[0] = ERR_GET_ZPOS_FALSE;
 				return;
 			}
+			
+			int flag =opt.method;
+			
+			if(flag ==0)
+			{
+			//int windowLen = 2*halfQuadWindow;
+			//double* dxx = new double[windowLen];
+			//double* dyy = new double[windowLen];
 
-		 
-			double temp = -1;
-			for(int i = start;i<start+2*halfQuadWindow;i++){
+			//memcpy(dxx,sCalPos+start,windowLen*sizeof(double));
+			//memcpy(dyy,corrProfile+start,windowLen*sizeof(double));
+
+				
+			VecDoub xx(zLen,sCalPos), yy(zLen,corrProfile);
+			Spline_interp inter(xx,yy);
+			temp = 0;	
+			max = 0;
+			double xi = 0;						
+			int interStep = opt.zInterStep;
+			for(int i = start; i< start+2*halfQuadWindow;i++){
 				for(int j  = 0;j<interStep;j++){
-					temp = inter.interp((double)(xx[start]+j/interStep));
-					if(temp > pos[2]){
-						pos[2]  = temp;
+					xi = xx[i] + j/interStep;
+					temp = inter.interp(xi);			 
+					if(max < temp ){
+						max  = temp;
+						pos[2] = xi;
 					}
 				}
 			}
-		    
-		//	pos[2] =  inter.interp();
+			}
+			else{			
+			double para[4];
+			quadraticFit(sCalPos,corrProfile,start, 2*halfQuadWindow+1, para);
+			pos[2] = - para[1] / (2 * para[0]);
+			pos[5] = para[2];
 
-
-			 
-		 
-			pos[5] = 2;
+			}
 			if(index_ != -1){			
 				getMeanSTD(pos);
 			}
 			LAST_ERR[1] = GetCounter();
 		}
 		 
-
+		 
 		double corr(double* posProfile_,double*  pcalProfile_,int len){
 
 			double sum = 0;

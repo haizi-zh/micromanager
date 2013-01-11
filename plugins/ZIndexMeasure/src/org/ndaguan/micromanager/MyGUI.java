@@ -40,7 +40,7 @@ public class MyGUI {
 	private double ZStep_;
 
 
-	 
+
 
 	// ROI
 	public Rectangle roi_rectangle;
@@ -50,10 +50,8 @@ public class MyGUI {
 	private int roiwidth_ = 40;
 	private int roiheight_ = 40;
 	public double movingWindowLen_ = 1000;
-	public int Mstep_ = 100;// um
+	public double Mstep_ = 100;// um
 	// other
-
-	public int currFrame = 1;
 	public long sleeptime_ = 20;
 	public int Frame2Acq_ = 100000;
 	public int TimeIntervals_ = 5;
@@ -70,6 +68,9 @@ public class MyGUI {
 	private MMStudioMainFrame gui_;
 	private int calPosLen;
 	private double DNALen_;
+	private double zInterpStep_;
+	private double method_;
+
 
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -130,10 +131,10 @@ public class MyGUI {
 
 		setDefaultPrefer(myForm_.preferDailogBox.getPreferData());
 		roi_rectangle = new Rectangle();
-		
+
 		setCalcOpt_(new double[] { getRadius_(), RInterpStep_, BitDepth_,
 				HalfQuadWindow_, Imgwidth_, Imgheight_, ZStart_, ZScale_,
-				ZStep_,movingWindowLen_ });
+				ZStep_,movingWindowLen_,zInterpStep_,method_ });
 		calcRoi_ = new int[] { roix_, roiy_, roiwidth_, roiheight_ };
 
 	}
@@ -149,8 +150,11 @@ public class MyGUI {
 			setDNALen_(preferData.get("DNALength"));		
 			movingWindowLen_ = preferData.get("FrameCalcF");
 			ballRadiusPix = preferData.get("ballRadiusPix");
+			zInterpStep_ = preferData.get("ITEM1");
+			method_  = preferData.get("ITEM0");
 			ZStart_ = 0;
 			xyCalRange_ = 2;
+			Mstep_ =   preferData.get("MagnetStep");
 		}else{	  
 			setRadius_(75);
 			RInterpStep_ = 0.5;
@@ -165,6 +169,9 @@ public class MyGUI {
 			setDNALen_(2.4);// um
 			movingWindowLen_ = 500;
 			ballRadiusPix = 50.0;
+			zInterpStep_ = 5;
+			method_  =0;
+			Mstep_ =   100;
 		}
 
 
@@ -191,8 +198,8 @@ public class MyGUI {
 
 
 
-		currFrame = 1;
 		setDefaultPrefer(myForm_.preferDailogBox.getPreferData());
+
 		ImageProcessor ip = WindowManager.getCurrentImage().getProcessor();
 		Imgwidth_ = ip.getWidth();
 		Imgheight_ = ip.getHeight();
@@ -209,10 +216,8 @@ public class MyGUI {
 
 		reSetOpt();
 		setCalProfile();
-
+		myForm_.log("SetScale OK......");
 		mainInstance_.isSetScale = true;
-		mainInstance_.isCalibrated = false;
-
 	}
 
 	private void setCalProfile() {
@@ -236,7 +241,6 @@ public class MyGUI {
 				calPosXY[i][j] = calPosXY[i][midPoint - 1] - xyCalRange_
 				/ midPoint * (j - midPoint);
 		}
-
 		mainInstance_.updateCalPos(calPosXY, calPosZ);
 	}
 
@@ -255,6 +259,8 @@ public class MyGUI {
 		getCalcOpt_()[8] = ZStep_;
 		// force		
 		getCalcOpt_()[9] = movingWindowLen_;
+		getCalcOpt_()[10] = zInterpStep_;
+		getCalcOpt_()[11] = method_;
 	}
 
 	public double getCurrCenter(int currTab) {
@@ -263,9 +269,30 @@ public class MyGUI {
 	}
 
 	public void calibrate() {
-		mainInstance_.mCalc.DataInit(this.calcOpt_);
-		mainInstance_.StartCalibration();
-		//mainInstance_.InstallCallback();
+		if(!mainInstance_.isCalibrationRunning){
+			mainInstance_.isUserStop = false;
+			myForm_.getTabbedPane().setSelectedIndex(2);		
+			mainInstance_.mCalc.DataInit(this.calcOpt_);
+			
+			if (mainInstance_.gui_.isLiveModeOn()) {
+				mainInstance_.gui_.enableLiveMode(false);
+				myForm_.setLiveIcon(true);
+			} 
+			
+			if(isInstall )
+			{	
+				mainInstance_.UninstallCallback();	
+				myForm_.setInstallIcon(true);
+				isInstall = false;
+			}
+			myForm_.setCalIcon(false);
+			mainInstance_.StartCalibration();	
+		}
+		else{
+			myForm_.setCalIcon(true);
+			mainInstance_.isUserStop = true;
+			mainInstance_.isCalibrationRunning = false;
+		}
 	}
 
 
@@ -274,17 +301,22 @@ public class MyGUI {
 		System.out.println(format);
 	}
 
-	public void live() {
+	public void live() {		
+
 		if (mainInstance_.gui_.getAcquisitionEngine()
 				.isAcquisitionRunning()) {
 			myForm_.log("Acquistion is running,mission abort!");
 			return;
 		}
+		
 		if (mainInstance_.gui_.isLiveModeOn()) {
 			mainInstance_.gui_.enableLiveMode(false);
+			myForm_.setLiveIcon(true);
 		} else {
 			mainInstance_.gui_.enableLiveMode(true);
+			myForm_.setLiveIcon(false);
 		}
+
 	}
 
 	public void MultiAcq() {
@@ -319,14 +351,14 @@ public class MyGUI {
 	}
 	public void installCallback() {
 		if(!isInstall ){
-			myForm_.log("Install");
-			mainInstance_.InstallCallback();
+			mainInstance_.InstallCallback();	
+			myForm_.setInstallIcon(false);
 			isInstall = true;
 		}
 		else
 		{	
-			myForm_.log("UnInstall");
 			mainInstance_.UninstallCallback();
+			myForm_.setInstallIcon(true);
 			isInstall = false;
 		}
 	}

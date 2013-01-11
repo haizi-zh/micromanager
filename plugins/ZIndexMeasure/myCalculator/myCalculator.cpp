@@ -71,11 +71,14 @@ JNIEXPORT jobjectArray JNICALL Java_org_ndaguan_micromanager_myCalculator_GetZPo
 	env_->SetDoubleArrayRegion(jErr_Code, 0, 2, (const jdouble*)GetErrCode()); 
 
 	jclass doubleArrayClass = env_->FindClass("[D");  
-    jobjectArray jret  =  env_->NewObjectArray(2 ,doubleArrayClass , NULL); 
+    jobjectArray jret  =  env_->NewObjectArray(3 ,doubleArrayClass , NULL); 
 
 	env_->SetObjectArrayElement(jret , 0 ,jpos);
 	env_->SetObjectArrayElement(jret , 1 ,jErr_Code);
-   
+    int len = getZLen();
+   	jdoubleArray jCalprofile = env_->NewDoubleArray(len);  
+    env_->SetDoubleArrayRegion(jCalprofile, 0, len, (const jdouble*) getCorrProfile()); 
+	env_->SetObjectArrayElement(jret , 2 ,jCalprofile);	
 
 	return jret ; 
 	

@@ -18,7 +18,7 @@ static double * sCalPos;
 static double * sOpt;
 static double* sum;
 static double* sum2;
-
+static double* corrProfile;
 typedef list<double> LISTDOUBLE;
 static  LISTDOUBLE  myXpos;
 static  LISTDOUBLE  myYpos;
@@ -47,7 +47,8 @@ namespace DeadNight
 			double zScale;
 			double zStep;						
 			int movingWindowLen;
-
+			int zInterStep;
+			int method;
 
 		};
 
@@ -77,10 +78,12 @@ namespace DeadNight
 		void DataInit(double* pOpt_);
 		void DeleteData();
 		int getLen();
+		int getZLen();
 		double* getcalProfileX(int zX);
 		void SetBitDepth(int bitDepth_);
 		double getSTD(LISTDOUBLE mylist,double mean,int len);
 		double getMean(LISTDOUBLE mylist,int len);
+		double * getCorrProfile();
 		
 	}
 }

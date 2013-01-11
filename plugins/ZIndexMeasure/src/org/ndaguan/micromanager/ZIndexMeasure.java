@@ -18,6 +18,7 @@ import mmcorej.CMMCore;
 import mmcorej.TaggedImage;
 
 import org.apache.commons.math3.stat.regression.SimpleRegression;
+import org.jfree.chart.JFreeChart;
 import org.jfree.data.xy.XYSeries;
 import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
@@ -45,7 +46,7 @@ public class ZIndexMeasure implements MMPlugin {
 	private String xyStage_;
 
 	// Z calibration positions
-	double[] calPosZ_;
+	private double[] calPosZ_;
 	// XY calibration positions
 	double[][] calPosXY_;
 
@@ -56,7 +57,7 @@ public class ZIndexMeasure implements MMPlugin {
 	 * @param z
 	 */
 	public void updateCalPos(double[][] xy, double[] z) {
-		calPosZ_ = z;
+		setCalPosZ_(z);
 		calPosXY_ = xy;
 	}
 
@@ -66,12 +67,18 @@ public class ZIndexMeasure implements MMPlugin {
 
 	// MyAnalyzer
 	public boolean isSetScale = false;
-	public boolean isInstalCallback = false;
 	public boolean isAcquisitionRunning = false;
 	public boolean isCalibrated = false;
 	private TCPServer tcpServer_;
 	private int port_ = 50501;
 	private XYSeries zDataSeries_;
+	private XYSeries calfileSeries_;
+	private XYSeries corrSeries_;
+	private XYSeries calProgressSeries_;
+	private XYSeries corrProgressSeries_;
+	public int mp285StepCounter = 0;
+	public boolean isUserStop = false;
+	public boolean isCalibrationRunning = false;
 
 	public static ZIndexMeasure getInstance() {
 		return instance_;
@@ -85,12 +92,21 @@ public class ZIndexMeasure implements MMPlugin {
 		if (mygui_ == null) {
 			mygui_ = new MyGUI(this,gui_);
 			zDataSeries_ = mygui_.myForm_.getDataSeries_().get("Chart-Z");
+			calfileSeries_ = mygui_.myForm_.getDataSeries_().get("Chart-Calfile");	
+
+			calProgressSeries_ = mygui_.myForm_.getDataSeries_().get("Chart-Calfile-pro");	
+			corrProgressSeries_ = mygui_.myForm_.getDataSeries_().get("Chart-Corr-pro");	
+
+			corrSeries_ = mygui_.myForm_.getDataSeries_().get("Chart-Corr");
+
 			processor_ = AcqAnalyzer.getInstance(app, this, mygui_);
 			mCalc = new myCalculator();
 			tcpServer_ = new TCPServer(core_, port_);
 			mygui_.myForm_.log("tcpServer ini ok");
 			tcpServer_.start();
 			mygui_.myForm_.log("mCalc ini ok");
+			//
+
 			// gui_.getAcquisitionEngine().addImageProcessor(
 			// TestAnalyzer.getInstance(gui_));
 		}
@@ -112,20 +128,22 @@ public class ZIndexMeasure implements MMPlugin {
 	}
 
 	public void PullMagnet() {
-		(new Thread(new Runnable() {
+		mp285StepCounter ++;	
+		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
 				try {
+					gui_.logMessage(String.format("\t\t\t\t\t\t\t\t\tstatue:\t%d", mp285StepCounter));
 					double currMP285zpos = core_.getPosition("MP285 Z Stage");
 					core_.setPosition("MP285 Z Stage", currMP285zpos
 							- mygui_.Mstep_);
-					mygui_.myForm_.log(String.format("Set MP285 ZStage to:%f",
-							currMP285zpos - mygui_.Mstep_));
+					mygui_.myForm_.log(String.format("Step:%d\tMove MP285to:%fuM",
+							mp285StepCounter,currMP285zpos,currMP285zpos - mygui_.Mstep_));
 				} catch (Exception e) {
 					mygui_.myForm_.log("Set MP285 ZStage ERR" + e.toString());
 				}
 			}
-		})).start();
+		});
 	}
 
 	public static void main(String[] argv) {
@@ -149,7 +167,7 @@ public class ZIndexMeasure implements MMPlugin {
 		if (gui_.isLiveModeOn()) {
 			gui_.enableLiveMode(false);
 		}
-	
+		isCalibrationRunning = true;
 		double temp;
 		double delta;
 		try {
@@ -160,14 +178,26 @@ public class ZIndexMeasure implements MMPlugin {
 			double[][] stagePos = new double[2][];
 			double[][] loc = new double[2][];
 			for (int i = 0; i < 2; i++) {
-				stagePos[i] = new double[calPosZ_.length];
-				loc[i] = new double[calPosZ_.length];
+				stagePos[i] = new double[getCalPosZ_().length];
+				loc[i] = new double[getCalPosZ_().length];
 			}
 
-			for (int z = 0; z < calPosZ_.length; z++) {
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {					
+					calProgressSeries_.clear();				 
+				}
+			});
+			for (int z = 0; z < getCalPosZ_().length; z++) {
+				if(isUserStop){
+					isUserStop = false;					
+					core_.setXYPosition(xyStage_, currxpos_, currypos_);
+					setZPosition(currzpos_);// turn back to the first place,Always 5
+					return;
+				}
 				// Calibration on X/Y/Z
 				core_.setXYPosition(xyStage_, calPosXY_[0][z], calPosXY_[1][z]);
-				setZPosition(calPosZ_[z]);
+				setZPosition(getCalPosZ_()[z]);
 
 				temp = core_.getPosition(zStage_);
 				double[] tempX = new double[1];
@@ -183,12 +213,26 @@ public class ZIndexMeasure implements MMPlugin {
 				ret_ = mCalc.Calibration(pix, mygui_.calcRoi_, z);
 				outpos[0] = ((double[]) ret_[0])[0];
 				outpos[1] = ((double[]) ret_[0])[1];
+				final double[] calfile = (double[]) ret_[2];
+
+				final double fz = z*calfile.length/getCalPosZ_().length;
+				SwingUtilities.invokeLater(new Runnable() {
+					@Override
+					public void run() {
+						calProgressSeries_.add(fz, 0);
+						calfileSeries_.clear();
+						for(int i = 0;i<calfile.length;i++){
+							calfileSeries_.add(i, calfile[i]);
+						}
+					}
+				});
+
 				mygui_.reSetROI((int) outpos[0], (int) outpos[1]);
 
 				ArrayList<RenderItem> list = new ArrayList<OverlayRender.RenderItem>();
 				list.add(RenderItem.createInstance(new Point2D.Float(
 						(float) outpos[0], (float) outpos[1]), String.format(
-						"(%.2f, %.2f)", outpos[0], outpos[1])));
+								"(%.2f, %.2f)", outpos[0], outpos[1])));
 				render.render(MMStudioMainFrame.SIMPLE_ACQ, list, 0, true);
 
 				// XY calibration
@@ -227,8 +271,12 @@ public class ZIndexMeasure implements MMPlugin {
 			gui_.logMessage("Calibration OK......");
 
 			testing();
+			
 			isCalibrated = true;
 			processor_.resetData_ = true;
+			isUserStop = false;
+			isCalibrationRunning = false;
+			
 		} catch (Exception e) {
 			mygui_.myForm_.log("Calibration False!\t" + e.toString());
 			e.printStackTrace();
@@ -236,22 +284,17 @@ public class ZIndexMeasure implements MMPlugin {
 	}
 
 	public void dispose() {
-		mCalc.DeleteData();
-		if (isInstalCallback) {
-			gui_.getAcquisitionEngine().removeImageProcessor(processor_);
-			isInstalCallback = false;
-			mygui_.myForm_.log("Processor dettached.");
-		}
-
+		mCalc.DeleteData();		
+		gui_.getAcquisitionEngine().removeImageProcessor(processor_);			
 	}
 
 	public void show() {
-// 		mygui_.setVisible(true);
+		// 		mygui_.setVisible(true);
 		if ((!gui_.getAcquisitionEngine().isAcquisitionRunning())
 				&& (!gui_.isLiveModeOn())) {
 			// gui_.snapSingleImage();
 			gui_.enableLiveMode(true);
-//			mygui_.Live.setText("Stop Live");
+			//			mygui_.Live.setText("Stop Live");
 		}
 	}
 
@@ -280,31 +323,14 @@ public class ZIndexMeasure implements MMPlugin {
 
 	public void InstallCallback() {
 
-		if (!isCalibrated) {
-			mygui_.myForm_.log("statu:false\tStart Calibration first!");
-			return;
-		}
+		gui_.getAcquisitionEngine().addImageProcessor(processor_);
+		mygui_.myForm_.log("Call back install,Start capture...");
 
-		if (isInstalCallback) {
-			mygui_.myForm_.log("statu:false\tCall back is installed! mission abort");
-		} else {
-			gui_.getAcquisitionEngine().addImageProcessor(processor_);
-			isInstalCallback = true;
-			mygui_.myForm_.log("statu:ok\tCall back install,Start capture...");
-		}
-		
 	}
 
 	public void UninstallCallback() {
-
-		if (isInstalCallback) {
-			gui_.getAcquisitionEngine().removeImageProcessor(processor_);
-			isInstalCallback = false;
-			mygui_.myForm_.log("Call back uninstal,Stop capture");
-		} else {
-			mygui_.myForm_.log("statu:UnInstall Callback false");
-		}
-		// gui_.getAcquisitionEngine().stop(true);
+		gui_.getAcquisitionEngine().removeImageProcessor(processor_);
+		mygui_.myForm_.log("Call back uninstal,Stop capture");
 	}
 
 	public void setXPosition(double xpos) throws Exception {
@@ -350,6 +376,8 @@ public class ZIndexMeasure implements MMPlugin {
 
 	}
 
+
+
 	private void testing() throws Exception {// to verify if this stuff
 		// workable
 		mygui_.myForm_.log("Test begin......checking out the Cart-Z for more information.");
@@ -358,21 +386,30 @@ public class ZIndexMeasure implements MMPlugin {
 			@Override
 			public void run() {
 				zDataSeries_.clear();
+				corrProgressSeries_.clear();	
 			}
 		});
 		int len = mygui_.getcalPosLen();
-
-		for (int i = 1; i < len-4; i++) {// get XYZPostion
-			gui_.logMessage(String.format("Set z position: %f", calPosZ_[i]));
-			setZPosition(calPosZ_[i]);
+		mygui_.myForm_.getTabbedPane().setSelectedIndex(3);
+		for (int i =(int)(len*1/10); i < (int)(len*9/10); i++) {// get XYZPostion
+			if(isUserStop){
+				isUserStop = false;
+				core_.setXYPosition(xyStage_, currxpos_, currypos_);
+				setZPosition(currzpos_);// turn back to the first place,Always 5
+				return;
+			}
+			gui_.logMessage(String.format("Set z position: %f", getCalPosZ_()[i]));
+			setZPosition(getCalPosZ_()[i]-0.010);
 			final double zpos = core_.getPosition(zStage_);
 			gui_.logMessage(String.format("Set z position done: %f", zpos));
 			gui_.snapSingleImage();
 			final double[] pos = getXYZPositon();
 			final int index = i;
+
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {
+					corrProgressSeries_.add(zpos,0.5);
 					zDataSeries_.add(zpos, zpos - pos[2]);
 					gui_.logMessage(String.format(
 							"i=%d, zpos=%f, pos[2]=%f, delta=%f", index, zpos,
@@ -381,8 +418,10 @@ public class ZIndexMeasure implements MMPlugin {
 			});
 		}
 		setZPosition(currzpos_);// turn back to the first
-								// place,Always 5
-
+		// place,Always 5
+		isUserStop = false;
+		isCalibrationRunning = false;
+		mygui_.myForm_.setCalIcon(true);
 		mygui_.myForm_.log("Test over ");
 	}
 
@@ -393,8 +432,26 @@ public class ZIndexMeasure implements MMPlugin {
 		Object pix = null;
 		pix = core_.getTaggedImage().pix;
 		gui_.logMessage(Arrays.toString(mygui_.calcRoi_));
-		ret = mCalc.GetZPosition(pix, mygui_.calcRoi_, -1);
+		ret = mCalc.GetZPosition(pix, mygui_.calcRoi_, -1);		
+		final double[] corrProfile = (double[]) ret[2];
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				corrSeries_.clear();
+				for(int i = 0;i<corrProfile.length;i++){
+					corrSeries_.add(calPosZ_[i], corrProfile[i]);
+				}
+			}
+		});
 		return (double[]) ret[0];
+	}
+
+	public double[] getCalPosZ_() {
+		return calPosZ_;
+	}
+
+	public void setCalPosZ_(double[] calPosZ_) {
+		this.calPosZ_ = calPosZ_;
 	}
 }
 
