@@ -176,6 +176,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    private static final String SCRIPT_GUI_OBJECT = "gui";
    private static final String AUTOFOCUS_DEVICE = "autofocus_device";
    private static final String MOUSE_MOVES_STAGE = "mouse_moves_stage";
+   private static final String EXPOSURE_SETTINGS_NODE = "MainExposureSettings";
    private static final int TOOLTIP_DISPLAY_DURATION_MILLISECONDS = 15000;
    private static final int TOOLTIP_DISPLAY_INITIAL_DELAY_MILLISECONDS = 2000;
 
@@ -230,6 +231,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    private Preferences mainPrefs_;
    private Preferences systemPrefs_;
    private Preferences colorPrefs_;
+   private Preferences exposurePrefs_;
 
    // MMcore
    private CMMCore core_;
@@ -283,16 +285,11 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    private final JSplitPane splitPane_;
    private volatile boolean ignorePropertyChanges_; 
 
-   public static AtomicBoolean seriousErrorReported_ = new AtomicBoolean(false);
    private JButton setRoiButton_;
    private  JButton clearRoiButton_;
 
    public ImageWindow getImageWin() {
       return getSnapLiveWin();
-   }
-
-   public boolean isSeriousErrorReported() {
-      return seriousErrorReported_.get();
    }
 
    public ImageWindow getSnapLiveWin() {
@@ -812,8 +809,9 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
             // update exposure in gui
             textFieldExp_.setText(NumberUtils.doubleToDisplayString(exposure));  
          }
-         // todo: inform listeners
-            
+         for (MMListenerInterface mmIntf:MMListeners_) {
+            mmIntf.exposureChanged(deviceName, exposure);
+         }
       }
 
    }
@@ -920,6 +918,8 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       
       colorPrefs_ = mainPrefs_.node(mainPrefs_.absolutePath() + "/" + 
               AcqControlDlg.COLOR_SETTINGS_NODE);
+      exposurePrefs_ = mainPrefs_.node(mainPrefs_.absolutePath() + "/" + 
+              EXPOSURE_SETTINGS_NODE);
       
       // check system preferences
       try {
@@ -1835,7 +1835,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
             // Create Multi-D window here but do not show it.
             // This window needs to be created in order to properly set the "ChannelGroup"
             // based on the Multi-D parameters
-            acqControlWin_ = new AcqControlDlg(engine_, mainPrefs_, MMStudioMainFrame.this);
+            acqControlWin_ = new AcqControlDlg(engine_, mainPrefs_, MMStudioMainFrame.this, options_);
             addMMBackgroundListener(acqControlWin_);
 
             configPad_.setCore(core_);
@@ -2240,8 +2240,12 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
          // update current channel in MDA window with this exposure
          String channelGroup = core_.getChannelGroup();
          String channel = core_.getCurrentConfigFromCache(channelGroup);
-         if (!channel.equals("")) {
-            getAcqDlg().setChannelExposureTime(channelGroup, channel, exposure);
+         if (!channel.equals("") ) {
+            exposurePrefs_.putDouble("Exposure_" + channelGroup + "_"
+                 + channel, exposure);
+            if (options_.syncExposureMainAndMDA_) {
+               getAcqDlg().setChannelExposureTime(channelGroup, channel, exposure);
+            }
          }
          
 
@@ -2249,20 +2253,64 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
          // Do nothing.
       }
    }
+   
+   /**
+    * Returns exposure time for the desired preset in the given channelgroup
+    * Acquires its info from the preferences
+    * Same thing is used in MDA window, but this class keeps its own copy
+    * 
+    * @param channelGroup
+    * @param channel - 
+    * @param defaultExp - default value
+    * @return exposure time
+    */
+   public double getChannelExposureTime(String channelGroup, String channel,
+           double defaultExp) {
+      return exposurePrefs_.getDouble("Exposure_" + channelGroup
+              + "_" + channel, defaultExp);
+   }
+
+   /**
+    * Updates the exposure time in the given preset 
+    * Will also update current exposure if it the given channel and channelgroup
+    * are the current one
+    * 
+    * @param channelGroup - 
+    * 
+    * @param channel - preset for which to change exposure time
+    * @param exposure - desired exposure time
+    */
+   public void setChannelExposureTime(String channelGroup, String channel,
+           double exposure) {
+      try {
+         exposurePrefs_.putDouble("Exposure_" + channelGroup + "_"
+                 + channel, exposure);
+         if (channelGroup != null && channelGroup.equals(core_.getChannelGroup())) {
+            if (channel != null && !channel.equals("") && 
+                    channel.equals(core_.getCurrentConfigFromCache(channelGroup))) {
+               textFieldExp_.setText(NumberUtils.doubleToDisplayString(exposure));
+               setExposure();
+            }
+         }
+      } catch (Exception ex) {
+         ReportingUtils.logError("Failed to set Exposure prefs using Channelgroup: "
+                 + channelGroup + ", channel: " + channel + ", exposure: " + exposure);
+      }
+   }
 
    @Override
    public boolean getAutoreloadOption() {
       return options_.autoreloadDevices_;
    }
-   
+
    public double getPreferredWindowMag() {
       return options_.windowMag_;
    }
-   
+
    public boolean getMetadataFileWithMultipageTiff() {
       return options_.mpTiffMetadataFile_;
    }
-   
+
    public boolean getSeperateFilesForPositionsMPTiff() {
       return options_.mpTiffSeperateFilesForPositions_;
    }
@@ -3383,13 +3431,16 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 
    }
 
-    @Override
+   @Override
    public boolean okToAcquire() {
       return !isLiveModeOn();
    }
 
-    @Override
+   @Override
    public void stopAllActivity() {
+        if (this.acquisitionEngine2010 != null) {
+            this.acquisitionEngine2010.stop();
+        }
       enableLiveMode(false);
    }
 
@@ -3721,7 +3772,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    private void openAcqControlDialog() {
       try {
          if (acqControlWin_ == null) {
-            acqControlWin_ = new AcqControlDlg(engine_, mainPrefs_, this);
+            acqControlWin_ = new AcqControlDlg(engine_, mainPrefs_, this, options_);
          }
          if (acqControlWin_.isActive()) {
             acqControlWin_.setTopPosition();

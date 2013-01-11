@@ -25,7 +25,9 @@ import edu.ucsf.tsf.TaggedSpotsProtos.SpotList;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.WindowManager;
+import ij.gui.Arrow;
 import ij.gui.ImageWindow;
+import ij.gui.MessageDialog;
 import ij.gui.Roi;
 import ij.gui.StackWindow;
 import ij.gui.YesNoCancelDialog;
@@ -90,6 +92,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
    private static final String LOADTSFDIR = "TSFDir";
    private static final String RENDERMAG = "VisualizationMagnification";
    private static final String PAIRSMAXDISTANCE = "PairsMaxDistance";
+   private static final String METHOD2C = "MethodFor2CCorrection";
    private static final String COL0Width = "Col0Width";  
    private static final String COL1Width = "Col1Width";
    private static final String COL2Width = "Col2Width";
@@ -376,6 +379,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
        loadTSFDir_ = prefs_.get(LOADTSFDIR, "");
        visualizationMagnification_.setSelectedIndex(prefs_.getInt(RENDERMAG, 0));
        pairsMaxDistanceField_.setText(prefs_.get(PAIRSMAXDISTANCE, "500"));
+       method2CBox_.setSelectedItem(prefs_.get(METHOD2C, "LWM"));
        
        jTable1_.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
        TableColumnModel cm = jTable1_.getColumnModel();
@@ -1657,6 +1661,8 @@ public class DataCollectionForm extends javax.swing.JFrame {
                            double d2 = NearestPoint2D.distance2(pCh1, pCh2);
                            double d = Math.sqrt(d2);
                            rt.addValue("Distance", d);
+                           rt.addValue("Orientation (sine)", 
+                                   NearestPoint2D.orientation(pCh1, pCh2));
                            distances.add(d);
 
                            ip.putPixel((int) (pCh1.x / factor), (int) (pCh1.y / factor), (int) d);
@@ -1706,6 +1712,12 @@ public class DataCollectionForm extends javax.swing.JFrame {
 
                }
 
+               if (rt.getCounter() == 0) {
+                  MessageDialog md = new MessageDialog(DataCollectionForm.getInstance(), 
+                          "No Pairs found", "No Pairs found");
+                  return;
+               }
+               
                // show summary in resultstable
                rt2.show("Summary of Pairs found in " + rowData_.get(row).name_);
 
@@ -1765,33 +1777,10 @@ public class DataCollectionForm extends javax.swing.JFrame {
 
       }
    }//GEN-LAST:event_pairsButtonActionPerformed
-
-   /**
-    * Utility class used to hold spotPairs
-    */
-   private class gsSpotPair {
-      private GaussianSpotData fgs_;
-      private  Point2D.Double fp_;
-      private  Point2D.Double sp_;
-      public gsSpotPair(GaussianSpotData fgs, Point2D.Double fp, Point2D.Double sp) {
-         fgs_ = fgs;
-         fp_ = fp;
-         sp_ = sp;
-      }
-      public GaussianSpotData getGSD() {
-         return fgs_;
-      }
-      public Point2D.Double getfp() {
-         return fp_;
-      }
-      public Point2D.Double getsp() {
-         return sp_;
-      }
-   }
    
    /**
     * Helper function for function listParticels
-    * Finds a spot within MAXMAtchDistance in the frame following the frame
+    * Finds a spot within MAXMatchDistance in the frame following the frame
     * of the given spot.
     * Only looks at Channel 1
     * 
@@ -1799,8 +1788,9 @@ public class DataCollectionForm extends javax.swing.JFrame {
     * @param spotPairs - List with spotPairs
     * @return spotPair found or null if none
     */
-   private gsSpotPair findNextSpotPair(gsSpotPair input, 
-           ArrayList<gsSpotPair> spotPairs, int frame) {
+   private GsSpotPair findNextSpotPair(GsSpotPair input, 
+           ArrayList<ArrayList<GsSpotPair>> spotPairsByFrame, 
+           NearestPointGsSpotPair npsp, int frame) {
       final double maxDistance;
       try {
          maxDistance = NumberUtils.displayStringToDouble(pairsMaxDistanceField_.getText());
@@ -1810,10 +1800,10 @@ public class DataCollectionForm extends javax.swing.JFrame {
       }
       final double maxDistance2 = maxDistance * maxDistance;
       
-      Iterator<gsSpotPair> it = spotPairs.iterator();
+      Iterator<GsSpotPair> it = (spotPairsByFrame.get(frame - 1)).iterator();
       
       while (it.hasNext()) {
-         gsSpotPair nextSpot = it.next();
+         GsSpotPair nextSpot = it.next();
          if (nextSpot.getGSD().getFrame() == frame) {
             if (NearestPoint2D.distance2(input.getfp(), nextSpot.getfp())
                     < maxDistance2) {
@@ -1869,19 +1859,20 @@ public class DataCollectionForm extends javax.swing.JFrame {
                //int height = rowData_.get(row).height_;
                //double factor = rowData_.get(row).pixelSizeNm_;
                
-               XYSeries xData = new XYSeries("XError");
-               XYSeries yData = new XYSeries("YError");
-               ArrayList<gsSpotPair> spotPairs = new ArrayList<gsSpotPair>();
-                            
+               //XYSeries xData = new XYSeries("XError");
+               //XYSeries yData = new XYSeries("YError");
+               ArrayList<GsSpotPair> spotPairs = new ArrayList<GsSpotPair>();
+               ArrayList<ArrayList<GsSpotPair>> spotPairsByFrame = 
+                       new ArrayList<ArrayList<GsSpotPair>>(); 
+               
                ij.IJ.showStatus("Creating Pairs...");
                
  
                // First go through all frames to find all pairs
+               int nrSpotPairsInFrame1 = 0;
                for (int frame = 1; frame <= rowData_.get(row).nrFrames_; frame++) {
                   ij.IJ.showProgress(frame, rowData_.get(row).nrFrames_);
-                  //ImageProcessor ip = new ShortProcessor(width, height);
-                  //short pixels[] = new short[width * height];
-                  //ip.setPixels(pixels);
+                  spotPairsByFrame.add(new ArrayList<GsSpotPair>());
                   
                   // Get points from both channels in each frame as ArrayLists        
                   ArrayList<GaussianSpotData> gsCh1 = new ArrayList<GaussianSpotData>();
@@ -1915,7 +1906,9 @@ public class DataCollectionForm extends javax.swing.JFrame {
                         Point2D.Double pCh1 = new Point2D.Double(gs.getXCenter(), gs.getYCenter());
                         Point2D.Double pCh2 = np.findKDWSE(pCh1);
                         if (pCh2 != null) {
-                           spotPairs.add(new gsSpotPair(gs, pCh1, pCh2));
+                           GsSpotPair pair = new GsSpotPair(gs, pCh1, pCh2);
+                           spotPairs.add(pair);
+                           spotPairsByFrame.get(frame - 1).add(pair);
                         }
                      }
 
@@ -1923,22 +1916,44 @@ public class DataCollectionForm extends javax.swing.JFrame {
                      JOptionPane.showMessageDialog(getInstance(), "Error in Pairs input");
                      return;
                   }
-
                }
                
+               
                // We have all pairs, assemble in tracks
-               ArrayList<ArrayList<gsSpotPair>> tracks = new ArrayList<ArrayList<gsSpotPair>>();
-               Iterator<gsSpotPair> iSpotPairs = spotPairs.iterator();
+               ij.IJ.showStatus("Assembling tracks...");
+               
+               final double maxDistance;
+               try {
+                  maxDistance = NumberUtils.displayStringToDouble(pairsMaxDistanceField_.getText());
+               } catch (ParseException ex) {
+                  ReportingUtils.logError("Error parsing pairs max distance field");
+                  return;
+               }
+               final double maxDistance2 = maxDistance * maxDistance;
+               
+               // prepare NearestPoint objects to speed up finding closest pair 
+               ArrayList<NearestPointGsSpotPair> npsp = new ArrayList<NearestPointGsSpotPair>();
+               for (int frame = 1; frame <= rowData_.get(row).nrFrames_; frame++) {
+                  npsp.add(new NearestPointGsSpotPair(spotPairsByFrame.get(frame - 1), maxDistance));
+               }
+               
+               ArrayList<ArrayList<GsSpotPair>> tracks = new ArrayList<ArrayList<GsSpotPair>>();
+               //Iterator<GsSpotPair> iSpotPairs = spotPairs.iterator();
+               Iterator<GsSpotPair> iSpotPairs = spotPairsByFrame.get(0).iterator();
+               int i = 0;
                while (iSpotPairs.hasNext()) {
-                  gsSpotPair spotPair = iSpotPairs.next();
+                  ij.IJ.showProgress(i++, nrSpotPairsInFrame1);
+                  GsSpotPair spotPair = iSpotPairs.next();
                   // for now, we only start tracks at frame number 1
                   if (spotPair.getGSD().getFrame() == 1) {
-                     ArrayList<gsSpotPair> track = new ArrayList<gsSpotPair>();
+                     ArrayList<GsSpotPair> track = new ArrayList<GsSpotPair>();
                      track.add(spotPair);
                      int frame = 2;
                      while (frame <= rowData_.get(row).nrFrames_) {
-                        gsSpotPair newSpotPair = findNextSpotPair(spotPair, spotPairs, 
-                                frame);
+                        //GsSpotPair newSpotPair = findNextSpotPair(spotPair, spotPairsByFrame, 
+                        //        frame);
+                        GsSpotPair newSpotPair = npsp.get(frame - 1).findKDWSE(
+                                new Point2D.Double(spotPair.getfp().getX(), spotPair.getfp().getY()));
                         if (newSpotPair != null) {
                            spotPair = newSpotPair;
                            track.add(spotPair);
@@ -1955,14 +1970,21 @@ public class DataCollectionForm extends javax.swing.JFrame {
                rt.reset();
                rt.setPrecision(2);
                
+               if (tracks.isEmpty()) {
+                  MessageDialog md = new MessageDialog(DataCollectionForm.getInstance(), 
+                          "No Pairs found", "No Pairs found");
+                  return;
+               }
+                  
                
-               Iterator<ArrayList<gsSpotPair>> itTracks = tracks.iterator();
+               
+               Iterator<ArrayList<GsSpotPair>> itTracks = tracks.iterator();
                int spotId = 0;
                while (itTracks.hasNext()) {
-                  ArrayList<gsSpotPair> track = itTracks.next();
-                  Iterator<gsSpotPair> itTrack = track.iterator();
+                  ArrayList<GsSpotPair> track = itTracks.next();
+                  Iterator<GsSpotPair> itTrack = track.iterator();
                   while (itTrack.hasNext()) {
-                     gsSpotPair spot = itTrack.next();
+                     GsSpotPair spot = itTrack.next();
                      rt.incrementCounter();
                      rt.addValue("Spot ID", spotId);
                      rt.addValue(Terms.FRAME, spot.getGSD().getFrame()); 
@@ -1972,6 +1994,8 @@ public class DataCollectionForm extends javax.swing.JFrame {
                      rt.addValue(Terms.YPIX, spot.getGSD().getY());
                      rt.addValue("Distance", Math.sqrt(
                          NearestPoint2D.distance2(spot.getfp(), spot.getsp())));
+                     rt.addValue("Orientation (sine)", 
+                         NearestPoint2D.orientation(spot.getfp(), spot.getsp()));
                   }
                   spotId++;
                }
@@ -2004,17 +2028,29 @@ public class DataCollectionForm extends javax.swing.JFrame {
                ResultsTable rt2 = new ResultsTable();
                rt2.reset();
                rt2.setPrecision(1); 
+               siPlus = ij.WindowManager.getImage(rowData_.get(row).title_);
+               if (siPlus.getOverlay() != null) {
+                  siPlus.getOverlay().clear();
+               }
+               Arrow.setDefaultWidth(0.5);
                
                itTracks = tracks.iterator();
                spotId = 0;
                while (itTracks.hasNext()) {
-                  ArrayList<gsSpotPair> track = itTracks.next();
+                  ArrayList<GsSpotPair> track = itTracks.next();
                   ArrayList<Double> distances = new ArrayList<Double>();
-                  for (gsSpotPair pair : track) {
+                  ArrayList<Double> orientations = new ArrayList<Double>();
+                  ArrayList<Double> xDiff = new ArrayList<Double>();
+                  ArrayList<Double> yDiff = new ArrayList<Double>();
+                  for (GsSpotPair pair : track) {
                      distances.add(Math.sqrt(
                              NearestPoint2D.distance2(pair.getfp(), pair.getsp())));
+                     orientations.add(NearestPoint2D.orientation(pair.getfp(), 
+                             pair.getsp()));
+                     xDiff.add(pair.getfp().getX() - pair.getsp().getX());
+                     yDiff.add(pair.getfp().getY() - pair.getsp().getY());
                   }
-                  gsSpotPair pair = track.get(0);
+                  GsSpotPair pair = track.get(0);
                   rt2.incrementCounter();
                   rt2.addValue("Spot ID", spotId);
                   rt2.addValue(Terms.FRAME, pair.getGSD().getFrame());
@@ -2022,13 +2058,48 @@ public class DataCollectionForm extends javax.swing.JFrame {
                   rt2.addValue(Terms.CHANNEL, pair.getGSD().getSlice());
                   rt2.addValue(Terms.XPIX, pair.getGSD().getX());
                   rt2.addValue(Terms.YPIX, pair.getGSD().getY());
-                  double avg = avgList(distances);
                   rt2.addValue("n", track.size());
+                  
+                  double avg = avgList(distances);
                   rt2.addValue("Distance-Avg", avg);
                   rt2.addValue("Distance-StdDev", stdDevList(distances, avg));
+                  double oAvg = avgList(orientations);
+                  rt2.addValue("Orientation-Avg", oAvg);
+                  rt2.addValue("Orientation-StdDev", 
+                          stdDevList(orientations, oAvg));
+                  
+                  double xDiffAvg = avgList(xDiff);
+                  double yDiffAvg = avgList(yDiff);
+                  double xDiffAvgStdDev = stdDevList(xDiff, xDiffAvg);
+                  double yDiffAvgStdDev = stdDevList(yDiff, yDiffAvg);
+                  rt2.addValue("Dist.Vect.Avg", Math.sqrt( 
+                          (xDiffAvg * xDiffAvg) + (yDiffAvg * yDiffAvg)));
+                  rt2.addValue("Dist.Vect.StdDev", Math.sqrt(
+                          (xDiffAvgStdDev * xDiffAvgStdDev) + 
+                          (yDiffAvgStdDev * yDiffAvgStdDev) ));
+                  
+                  
+                  /* draw arrows in overlay */
+                  double mag = 100.0;  // factor that sets magnification of the arrow
+                  double factor = mag * 1 / rowData_.get(row).pixelSizeNm_;  // factor relating mad and pixelSize
+                  int xStart = track.get(0).getGSD().getX();
+                  int yStart = track.get(0).getGSD().getY();
+                  
+                  
+                  Arrow arrow = new Arrow(xStart, yStart, 
+                          xStart + (factor * xDiffAvg), 
+                          yStart + (factor * yDiffAvg) );
+                  arrow.setHeadSize(3);
+                  arrow.setOutline(false);
+                  if (siPlus.getOverlay() == null) {
+                     siPlus.setOverlay(arrow, Color.yellow, 1, Color.yellow);
+                  } else {
+                     siPlus.getOverlay().add(arrow);
+                  }
 
                   spotId++;
                }
+               siPlus.setHideOverlay(false);
                
                rtName = rowData_.get(row).name_ + " Particle Summary";
                rt2.show(rtName);
@@ -2242,43 +2313,47 @@ public class DataCollectionForm extends javax.swing.JFrame {
             @Override
             public void run() {
 
-               int mag = 1 << visualizationMagnification_.getSelectedIndex();
-               SpotDataFilter sf = new SpotDataFilter();
-               if (filterSigmaCheckBox_.isSelected()) {
-                  sf.setSigma(true, Double.parseDouble(sigmaMin_.getText()),
-                          Double.parseDouble(sigmaMax_.getText()));
-               }
-               if (filterIntensityCheckBox_.isSelected()) {
-                  sf.setIntensity(true, Double.parseDouble(intensityMin_.getText()),
-                          Double.parseDouble(intensityMax_.getText()));
-               }
-               
-               MyRowData rowData = rowData_.get(row);
-               String fsep = System.getProperty("file.separator");
-               String ttmp = rowData.name_;
-               if (rowData.name_.contains(fsep)) {
-                  ttmp = rowData.name_.substring(rowData.name_.lastIndexOf(fsep) + 1);
-               }
-               ttmp += mag + "x";
-               final String title = ttmp;
-               ImagePlus sp = null;
-               if (rowData.hasZ_) {
-                  ImageStack is = ImageRenderer.renderData3D(rowData,
-                       visualizationModel_.getSelectedIndex(), mag, null, sf);
-                  sp = new ImagePlus(title, is);
-                  
-               } else {
-                  ImageProcessor ip = ImageRenderer.renderData(rowData,
-                       visualizationModel_.getSelectedIndex(), mag, null, sf);
-                  sp = new ImagePlus(title, ip);
-               }
-               GaussCanvas gs = new GaussCanvas(sp, rowData_.get(row),
-                       visualizationModel_.getSelectedIndex(), mag, sf);
-               DisplayUtils.AutoStretch(sp);
-               DisplayUtils.SetCalibration(sp, (float) (rowData.pixelSizeNm_ / mag));
-               ImageWindow w = new ImageWindow(sp, gs);
+               try {
+                  int mag = 1 << visualizationMagnification_.getSelectedIndex();
+                  SpotDataFilter sf = new SpotDataFilter();
+                  if (filterSigmaCheckBox_.isSelected()) {
+                     sf.setSigma(true, Double.parseDouble(sigmaMin_.getText()),
+                             Double.parseDouble(sigmaMax_.getText()));
+                  }
+                  if (filterIntensityCheckBox_.isSelected()) {
+                     sf.setIntensity(true, Double.parseDouble(intensityMin_.getText()),
+                             Double.parseDouble(intensityMax_.getText()));
+                  }
 
-               w.setVisible(true);
+                  MyRowData rowData = rowData_.get(row);
+                  String fsep = System.getProperty("file.separator");
+                  String ttmp = rowData.name_;
+                  if (rowData.name_.contains(fsep)) {
+                     ttmp = rowData.name_.substring(rowData.name_.lastIndexOf(fsep) + 1);
+                  }
+                  ttmp += mag + "x";
+                  final String title = ttmp;
+                  ImagePlus sp = null;
+                  if (rowData.hasZ_) {
+                     ImageStack is = ImageRenderer.renderData3D(rowData,
+                             visualizationModel_.getSelectedIndex(), mag, null, sf);
+                     sp = new ImagePlus(title, is);
+
+                  } else {
+                     ImageProcessor ip = ImageRenderer.renderData(rowData,
+                             visualizationModel_.getSelectedIndex(), mag, null, sf);
+                     sp = new ImagePlus(title, ip);
+                  }
+                  GaussCanvas gs = new GaussCanvas(sp, rowData_.get(row),
+                          visualizationModel_.getSelectedIndex(), mag, sf);
+                  DisplayUtils.AutoStretch(sp);
+                  DisplayUtils.SetCalibration(sp, (float) (rowData.pixelSizeNm_ / mag));
+                  ImageWindow w = new ImageWindow(sp, gs);
+
+                  w.setVisible(true);
+               } catch (OutOfMemoryError ome) {
+                  ReportingUtils.showError("Out of Memory");
+               }
             }
          };
          
@@ -2679,7 +2754,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
    }//GEN-LAST:event_listButton_ActionPerformed
 
    private void method2CBox_ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_method2CBox_ActionPerformed
-      // TODO add your handling code here:
+      prefs_.put(METHOD2C, (String) method2CBox_.getSelectedItem());
    }//GEN-LAST:event_method2CBox_ActionPerformed
 
    /**
@@ -3813,7 +3888,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
     */
    public int zCalibrate(int rowNr) {
       final double widthCutoff = 1000.0;
-      final double maxVariance = 20000.0;
+      final double maxVariance = 100000.0;
       final int minNrSpots = 1;
       
       
@@ -3831,9 +3906,9 @@ public class DataCollectionForm extends javax.swing.JFrame {
       for (GaussianSpotData gsd : sl) {
          double xw = gsd.getWidth();
          double xy = xw / gsd.getA();
-         if (xw < widthCutoff && xy < widthCutoff) {
+         if (xw < widthCutoff && xy < widthCutoff && xw > 0 && xy > 0) {
             zc_.addDataPoint(gsd.getWidth(), gsd.getWidth() / gsd.getA(),
-               gsd.getSlice() );
+               gsd.getSlice() /* * rd.zStackStepSizeNm_*/);
          }
       }
       zc_.plotDataPoints();
@@ -3868,9 +3943,13 @@ public class DataCollectionForm extends javax.swing.JFrame {
             //        ", Y: " + (int) meanY + ", " + (int) varY);
             
             if (frameSpots.size() >= minNrSpots && 
+                    meanX < widthCutoff &&
+                    meanY < widthCutoff &&
                     varX < maxVariance && 
-                    varY < maxVariance) {
-               zc_.addDataPoint(meanX, meanY, frameNr);
+                    varY < maxVariance &&
+                    meanX > 0 &&
+                    meanY > 0) {
+               zc_.addDataPoint(meanX, meanY, frameNr /* * rd.zStackStepSizeNm_ */);
             }
             
          }

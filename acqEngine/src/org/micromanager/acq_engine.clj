@@ -78,10 +78,6 @@
 
 (def pixel-type-depths {"GRAY8" 1 "GRAY16" 2 "RGB32" 4 "RGB64" 8})
 
-(defn check-for-serious-error []
-  (when (. gui isSeriousErrorReported)
-    (swap! state assoc :stop true)))
-
 ;; time
 
 (defn jvm-time-ms []
@@ -371,7 +367,6 @@
           camera-channel-names (get-camera-channel-names)]
       (doall
         (loop [burst-seqs bursts-per-camera-channel i 0]
-          (check-for-serious-error)
           (when (core isBufferOverflowed)
             (swap! state assoc :circular-buffer-overflow true))
           (when (and (not (@state :stop))
@@ -616,7 +611,6 @@
 
 (defn execute [event-fns]
   (doseq [event-fn event-fns :while (not (:stop @state))]
-    (check-for-serious-error)
     (event-fn)
     (await-resume)))
 
@@ -637,7 +631,8 @@
         (.put out-queue TaggedImageQueue/POISON)
         ))
     (catch Throwable t (do (ReportingUtils/showError t "Acquisition failed.")
-                           (cleanup)))))
+                           (cleanup)
+                           (.put out-queue TaggedImageQueue/POISON)))))
 
 ;; generic metadata
 
@@ -786,18 +781,10 @@
     (def x img)
     (.addToAlbum gui (make-TaggedImage img))))
 
-;; java interop -- implements org.micromanager.api.Pipeline
-
-(defn -init [script-gui]
-  [[] (do (load-mm script-gui)
-          (atom {:stop false}))])
-
-(defn -run
-  ([this acq-settings cleanup?]
-    (def last-acq this)
+(defn run [this settings cleanup?]
+  (def last-acq this)
     (reset! (.state this) {:stop false :pause false :finished false})
-    (let [settings (convert-settings acq-settings)
-          out-queue (LinkedBlockingQueue. 10)
+    (let [out-queue (LinkedBlockingQueue. 10)
           acq-thread (Thread. #(run-acquisition this settings out-queue cleanup?)
                               "AcquisitionSequence2010 Thread (Clojure)")]
       (reset! (.state this)
@@ -810,6 +797,17 @@
       (when-not (:stop @(.state this))
         (.start acq-thread)
         out-queue)))
+
+;; java interop -- implements org.micromanager.api.Pipeline
+
+(defn -init [script-gui]
+  [[] (do (load-mm script-gui)
+          (atom {:stop false}))])
+
+(defn -run
+  ([this acq-settings cleanup?]
+    (let [settings (convert-settings acq-settings)]
+      (run this settings cleanup?)))
   ([this acq-settings]
     (-run this acq-settings true)))
 

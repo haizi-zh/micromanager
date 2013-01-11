@@ -20,25 +20,31 @@
   (when-let [dir (tile-dir memory-tile-atom)]
     (reactive/submit file-executor #(disk/write-tile dir key image-processor))))
 
-(defn load-tile
-  [memory-tile-atom key]
-  "Loads the tile into memory-tile-atom, if tile is not already present."
-  (reactive/submit file-executor
-                   (fn []
-                     (or (get @memory-tile-atom key)
-                         (when-let [dir (tile-dir memory-tile-atom)]
-                           (when-let [tile (disk/read-tile dir key)]
-                             (swap! memory-tile-atom
-                                    #(if-not (get % key)
-                                       (assoc % key tile)
-                                       %))
-                             tile))))))
-
 (defn get-tile
-  [memory-tile-atom key]
+  "Returns a tile with a specific key. If hit? is true,
+   the tile is marked as most recently used."
+  ([memory-tile-atom key hit?]
   (when-let [val (get @memory-tile-atom key)]
-    ;(swap! memory-tile-atom cache/hit key)
+    (when hit?
+      (swap! memory-tile-atom cache/hit key))
     val))
+  ([memory-tile-atom key]
+    (get-tile memory-tile-atom key false)))
+
+(defn load-tile
+  "Loads the tile into memory-tile-atom, if tile is not already present."
+  [memory-tile-atom key]
+  (.get
+    (reactive/submit file-executor
+                     (fn []
+                       (or (get-tile memory-tile-atom key true)
+                           (when-let [dir (tile-dir memory-tile-atom)]
+                             (when-let [tile (disk/read-tile dir key)]
+                               (swap! memory-tile-atom
+                                      #(if-not (get % key)
+                                         (assoc % key tile)
+                                         %))
+                               tile)))))))
 
 (defn create-tile-cache
   ([lru-cache-limit directory]
