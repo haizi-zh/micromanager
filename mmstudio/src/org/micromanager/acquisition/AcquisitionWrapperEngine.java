@@ -19,7 +19,6 @@ import mmcorej.PropertySetting;
 import mmcorej.StrVector;
 import mmcorej.TaggedImage;
 import org.json.JSONObject;
-import org.micromanager.MMStudioMainFrame;
 import org.micromanager.api.AcquisitionEngine;
 import org.micromanager.api.DataProcessor;
 import org.micromanager.api.ImageCache;
@@ -43,7 +42,7 @@ import org.zephyre.micromanager.AcqNameTagger;
 public class AcquisitionWrapperEngine implements AcquisitionEngine {
 
    private CMMCore core_;
-   protected MMStudioMainFrame gui_;
+   protected ScriptInterface gui_;
    private PositionList posList_;
    private String zstage_;
    private double sliceZStepUm_;
@@ -84,8 +83,6 @@ public class AcquisitionWrapperEngine implements AcquisitionEngine {
    }
 
    public String acquire() throws MMException {
-      MMStudioMainFrame.seriousErrorReported_.set(false);
-
       return runAcquisition(getSequenceSettings());
    }
 
@@ -177,7 +174,7 @@ public class AcquisitionWrapperEngine implements AcquisitionEngine {
    }
 
    private long getTotalMB() {
-      CMMCore core = gui_.getCore();
+      CMMCore core = gui_.getMMCore();
       long totalMB = core.getImageWidth() * core.getImageHeight() * core.getBytesPerPixel() * ((long) getTotalImages()) / 1048576L;
       return totalMB;
    }
@@ -409,7 +406,7 @@ public class AcquisitionWrapperEngine implements AcquisitionEngine {
    }
 
    public void setParentGUI(ScriptInterface parent) {
-      gui_ = (MMStudioMainFrame) parent;
+      gui_ = parent;
    }
 
    public void setZStageDevice(String stageLabel_) {
