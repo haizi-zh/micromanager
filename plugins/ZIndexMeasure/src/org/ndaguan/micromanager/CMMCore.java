@@ -67,7 +67,6 @@ public class CMMCore {
 	}
 
 	public void logMessage(String string) {
-		//System.out.print(string);
 	}
 
 }

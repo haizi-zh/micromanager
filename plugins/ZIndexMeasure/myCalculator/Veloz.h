@@ -48,7 +48,7 @@ namespace DeadNight
 			double zStep;						
 			int movingWindowLen;
 			int zInterStep;
-
+			int method;
 
 		};
 
