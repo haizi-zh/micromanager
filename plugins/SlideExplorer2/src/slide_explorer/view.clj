@@ -122,7 +122,7 @@
          (select-keys @pointing-screen-atom
                       [:channels :tile-dimensions
                        :pixel-size-um :xy-stage-position
-                       :positions])))
+                       :positions :z])))
 
 ;; OVERLAY
 
@@ -209,7 +209,8 @@
       (.setTransform original-transform)
       (.setColor Color/WHITE)
       (canvas/draw (when-let [pixel-size (:pixel-size-um screen-state)]
-                     (bar-widget-memo (/ pixel-size zoom scale))))
+                     (bar-widget-memo (:height screen-state)
+                                      (/ pixel-size zoom scale))))
       ;(show-mouse-pos screen-state)
       ;(.drawString (str (select-keys screen-state [:mouse :x :y :z :zoom])) 10 20)
       ;(.drawString (str (user-controls/absolute-mouse-position screen-state)) 10 40)
@@ -241,10 +242,9 @@
       screen-state-atom
       load-overlay
       agent)
-    (reactive/handle-update
-      acquired-images
-      load-overlay
-      agent)))
+    (tile-cache/add-tile-listener!
+      memory-tile-atom
+      #(reactive/send-off-update agent load-overlay nil))))
   
 ;; MAIN WINDOW AND PANEL
 
@@ -268,51 +268,72 @@
     (.setBounds 10 10 500 500)
     .show))
     
+(def default-settings
+  (sorted-map :x 0 :y 0 :z 0 :zoom 1 :scale 1
+              :width 100 :height 10
+              :keys (sorted-set)
+              :channels (sorted-map)
+              :positions #{}))
+
 (defn view-panel [memory-tiles acquired-images settings]
-  (let [screen-state (atom (merge
-                             (sorted-map :x 0 :y 0 :z 0 :zoom 1 :scale 1
-                                         :pixel-size-um 0.3
-                                       :width 100 :height 10
-                                       :keys (sorted-set)
-                                       :channels (sorted-map)
-                                         :positions #{}
-                                       )
-                             settings))
+  (let [screen-state (atom (merge default-settings
+                                  settings))
         overlay-tiles (tile-cache/create-tile-cache 100)
         panel (main-panel screen-state overlay-tiles)]
-    ;(println overlay-tiles)
     (load-visible-only screen-state memory-tiles
                        overlay-tiles acquired-images)
     (paint/repaint-on-change panel [overlay-tiles screen-state]); [memory-tiles])
-    ;(set-contrast-when-ready screen-state memory-tiles)
     [panel screen-state]))
 
 (defn set-position! [screen-state-atom x y]
   (swap! screen-state-atom assoc :x x :y y))
 
-(defn show-where-pointing! [pointing-screen-atom showing-screen-atom]
-  (copy-settings pointing-screen-atom showing-screen-atom)
-  (let [[w h] (:tile-dimensions @pointing-screen-atom)
-        {:keys [x y]} (user-controls/absolute-mouse-position
-                        @pointing-screen-atom)]
+(defn show-position! [showing-screen-atom x y]
+  (let [[w h] (:tile-dimensions @showing-screen-atom)]
     (when (and x y w h)
-    (set-position! showing-screen-atom (+ x (/ w 2)) (+ y (/ h 2))))))
+      (set-position! showing-screen-atom (+ x (/ w 2)) (+ y (/ h 2))))))
 
-(defn handle-point-and-show [pointing-screen-atom showing-screen-atom]
+(defn show-where-pointing! [pointing-screen-atom showing-screen-atom] 
+  (let [{:keys [x y]} (user-controls/absolute-mouse-position
+                        @pointing-screen-atom)]
+    (show-position! showing-screen-atom x y)))
+
+(defn show-stage-position! [main-screen-atom showing-screen-atom]
+  (let [main-screen @main-screen-atom
+        [x y] (:xy-stage-position main-screen)]
+    (show-position! showing-screen-atom x y)))
+
+(defn handle-change-and-show
+  [show-fn! value-to-check-fn
+   main-screen-atom showing-screen-atom]
   (reactive/handle-update
-    pointing-screen-atom
+    main-screen-atom
     (fn [old new]
-      (when (not= old new)
-        (show-where-pointing!
-          pointing-screen-atom showing-screen-atom)
-        ))))
+      (when (not= (value-to-check-fn old)
+                  (value-to-check-fn new))
+        (show-fn!
+          main-screen-atom showing-screen-atom)))))
+
+(def handle-point-and-show 
+  (partial handle-change-and-show
+           show-where-pointing!
+           user-controls/absolute-mouse-position))
+
+(def handle-stage-move-and-show
+  (partial handle-change-and-show
+           show-stage-position!
+           :xy-stage-position))
+
+(def handle-display-change-and-show
+  (partial handle-change-and-show
+           copy-settings
+           #(select-keys % [:positions :channels :xy-stage-position :z])))
 
 (defn show [dir acquired-images settings]
-  (let [memory-tiles (tile-cache/create-tile-cache 100 dir)
-        memory-tiles2 (tile-cache/create-tile-cache 100 dir)
+  (let [memory-tiles (tile-cache/create-tile-cache 200 dir)
         frame (main-frame)
         [panel screen-state] (view-panel memory-tiles acquired-images settings)
-        [panel2 screen-state2] (view-panel memory-tiles2 acquired-images settings)
+        [panel2 screen-state2] (view-panel memory-tiles acquired-images settings)
         split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true panel panel2)]
     (doto split-pane
       (.setBorder nil)
@@ -322,15 +343,17 @@
     (def ss2 screen-state2)
     (def pnl panel)
     (def mt memory-tiles)
-    (def mt2 memory-tiles2)
     (def f frame)
     (def ai acquired-images)
-    (println ss ss2 mt mt2)
+    (println ss ss2 mt)
     (.add (.getContentPane frame) split-pane)
     (user-controls/setup-fullscreen frame)
     (user-controls/make-view-controllable panel screen-state)
     (user-controls/handle-resize panel2 screen-state2)
     (handle-point-and-show screen-state screen-state2)
+    ;(handle-stage-move-and-show screen-state screen-state2) ; make this optional?
+    (handle-display-change-and-show screen-state screen-state2)
+    (copy-settings screen-state screen-state2)
     ;(handle-open frame)
     (.show frame)
     [screen-state memory-tiles panel]))

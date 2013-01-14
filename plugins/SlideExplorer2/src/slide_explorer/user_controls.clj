@@ -1,8 +1,10 @@
 (ns slide-explorer.user-controls
   (:import (java.awt.event ComponentAdapter KeyEvent KeyAdapter
-                           MouseAdapter MouseEvent WindowAdapter)
+                           MouseAdapter MouseEvent WindowAdapter
+                           ActionListener)
            (java.awt Window)
-           (javax.swing AbstractAction JComponent KeyStroke SwingUtilities)
+           (javax.swing AbstractAction JComponent KeyStroke SwingUtilities
+                        JButton)
            (java.util UUID)
            (org.micromanager.utils JavaUtils)))
 
@@ -16,6 +18,15 @@
   (tree-seq (constantly true)
             #(.getComponents %)
             window))
+
+;; widgets
+
+(defn button [text press-fn]
+  (doto (JButton. text)
+    (.addActionListener
+      (proxy [ActionListener] []
+        (actionPerformed [e]
+                         (press-fn))))))
 
 ;; key binding
 
@@ -100,6 +111,21 @@ to normal size."
   (bind-window-keys window ["F"] #(full-screen! window))
   (bind-window-keys window ["ESCAPE"] #(exit-full-screen! window)))
 
+;; window positioning
+
+(defn show-window-center
+  ([window width height parent-window]
+    (let [bounds (screen-bounds
+                   (or (window-screen parent-window)
+                       (first (screen-devices))))
+          x (+ (.x bounds) (/ (- (.width bounds) width) 2))
+          y (+ (.y bounds) (/ (- (.height bounds) height) 2))]
+      (doto window
+        (.setBounds x y width height)
+        .show)))
+  ([window width height]
+    (show-window-center window width height nil)))
+
 ;; other user controls
 
 (defn pan! [position-atom axis distance]
@@ -125,7 +151,7 @@ to normal size."
       (.addMouseMotionListener mouse-adapter))
     position-atom))
 
-(def PAN-STEP-COUNT 5)
+(def PAN-STEP-COUNT 10)
 (def PAN-DISTANCE 50)
 
 ;TODO :: rewrite with a smoother algorithm (don't rely on key repeats)
@@ -149,15 +175,18 @@ to normal size."
     (binder "RIGHT" :x -)
     (binder "LEFT" :x +)))
 
+(defn toggle-mode [screen-state]
+  (assoc screen-state :mode
+         (condp = (:mode screen-state)
+           :explore :navigate
+           :navigate :explore
+              :navigate)))
+
 (defn handle-mode-keys [panel screen-state-atom]
   (let [window (SwingUtilities/getWindowAncestor panel)]
-    (bind-window-keys window ["SPACE"]
-                      #(swap! screen-state-atom
-                              (fn [state]
-                                (assoc state :mode
-                                       (condp = (:mode state)
-                                         :explore :navigate
-                                         :navigate :explore)))))))
+    (bind-window-keys window [\ ] ; space bar
+                      #(swap! screen-state-atom toggle-mode))))
+                                
 
 (defn handle-wheel [component z-atom]
   (.addMouseWheelListener component
@@ -235,6 +264,7 @@ to normal size."
 (defn handle-double-click [panel response-fn]
   (handle-click panel
                 (fn [e] (and (= MouseEvent/BUTTON1 (.getButton e))
+                             (not (.isShiftDown e))
                              (= 2 (.getClickCount e))))
                 response-fn))
 
@@ -251,13 +281,14 @@ to normal size."
       (mouseDragged [e] (update-mouse-position e screen-state-atom)))))
                                    
 (defn absolute-mouse-position [screen-state]
-  (let [{:keys [x y mouse zoom scale width height tile-dimensions]} screen-state]
+  (let [{:keys [x y z mouse zoom scale width height tile-dimensions]} screen-state]
     (when mouse
       (let [mouse-x-centered (- (mouse :x) (/ width 2))
             mouse-y-centered (- (mouse :y) (/ height 2))
             [w h] tile-dimensions]
         {:x (long (+ x (/ mouse-x-centered zoom scale) (/ w -2)))
-         :y (long (+ y (/ mouse-y-centered zoom scale) (/ h -2)))}))))
+         :y (long (+ y (/ mouse-y-centered zoom scale) (/ h -2)))
+         :z z}))))
 
 (defn handle-refresh [component]
   (bind-keys component ["R"] #(do (.repaint component) (println "repaint")) true))

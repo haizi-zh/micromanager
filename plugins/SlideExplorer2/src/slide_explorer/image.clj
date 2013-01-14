@@ -82,7 +82,10 @@
   [^ImageProcessor proc]
   (.createImage proc))
 
-(defn convert-to-type-like [proc template-proc]
+(defn convert-to-type-like
+  "Converts proc to a processor of the same type
+   as template-proc."
+  [proc template-proc]
   (condp = (type template-proc)
     ByteProcessor (.convertToByte proc false)
     ShortProcessor (.convertToShort proc false)
@@ -145,6 +148,17 @@
     (let [min-maxes (map intensity-range (cons processor processors))]
       {:min (apply min (map :min min-maxes))
        :max (apply max (map :max min-maxes))})))
+
+(defn intensity-distribution
+  "Get the intensity distribution for a processor,
+   suitable for a histogram."
+  [processor]
+  (let [stat (ImageStatistics/getStatistics
+               processor ImageStatistics/MIN_MAX nil)]
+    {:data (.getHistogram stat)
+     :min (.histMin stat)
+     :max (.histMax stat)}))
+    
 
 ;; Channels/LUTs
 
@@ -213,6 +227,7 @@
 
 (def projection-methods
   {:average ZProjector/AVG_METHOD
+   :mean ZProjector/AVG_METHOD
    :max ZProjector/MAX_METHOD
    :min ZProjector/MIN_METHOD
    :sum ZProjector/SUM_METHOD
@@ -224,14 +239,13 @@
    returning an ImageProcessor of the same type. Methods
    are :average, :max, :min, :sum, :std-dev, :median."
   [method processors]
-  (let [float-processor
-        (->
-          (doto
-            (ZProjector. (ImagePlus. "" (make-stack processors)))
-            (.setMethod (projection-methods method))
-            .doProjection)
-          .getProjection
-          .getProcessor)]
+  (->
+    (doto
+      (ZProjector. (ImagePlus. "" (make-stack processors)))
+      (.setMethod (projection-methods method))
+      .doProjection)
+    .getProjection
+    .getProcessor
     (convert-to-type-like (first processors))))
 
 (defn gaussian-blur
@@ -241,7 +255,7 @@
     (.blurGaussian (GaussianBlur.) new-proc radius radius 0.0002)
     new-proc))
 
-(defn normalize
+(defn normalize-to-max
   "Rescale intensities so the max value of processor is 1.0."
   [processor]
   (let [max (.max (.getStatistics processor))

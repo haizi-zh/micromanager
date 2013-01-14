@@ -7,6 +7,7 @@
            (org.micromanager.utils ImageUtils JavaUtils)
            (org.micromanager.acquisition TaggedImageQueue))
   (:require [clojure.java.io :as io]
+            [clojure.set]
             [org.micromanager.mm :as mm]
             [org.micromanager.acq-engine :as engine]
             [slide-explorer.reactive :as reactive]
@@ -17,7 +18,8 @@
             [slide-explorer.tile-cache :as tile-cache]
             [slide-explorer.canvas :as canvas]
             [slide-explorer.tiles :as tiles]
-            [slide-explorer.persist :as persist]))
+            [slide-explorer.persist :as persist]
+            [slide-explorer.positions :as positions]))
 
 ;; affine transforms
 
@@ -26,6 +28,18 @@
 (def gui-prefs (Preferences/userNodeForPackage MMStudioMainFrame))
 
 (def current-xy-positions (atom {}))
+
+(def current-z-positions (atom {}))
+
+; prevents sudden navigate request from
+; causing images to be acquired in the 
+; wrong place.
+(def anti-blur (Object.)) 
+
+(defn match-set
+  "Retains only those items in set where applying key-fn returns val."
+  [key-fn val set]
+  (clojure.set/select #(= (key-fn %) val) set))
 
 (defn set-stage-to-pixel-transform [^AffineTransform affine-transform]
   (JavaUtils/putObjectInPrefs
@@ -55,6 +69,11 @@
     (get-stage-to-pixel-transform)
     (.getXYStagePosition mm/gui)))
 
+(defn pixel-size-um
+  "Compute the pixel size from a stage-to-pixel transform."
+  [stage-to-pixel-transform]
+  (Math/pow (.getDeterminant stage-to-pixel-transform) -1/2))
+
 ;; tagged image stuff
 
 (defn stack-colors
@@ -78,10 +97,17 @@
     (set-xy-position (.x position) (.y position)))
   ([x y]
     (let [stage (mm/core getXYStageDevice)]
-      (mm/core waitForDevice stage)
       (mm/core setXYPosition stage x y)
       (mm/core waitForDevice stage)
       (swap! current-xy-positions assoc stage [x y]))))
+
+(defn set-z-position
+  [z]
+  (let [stage (mm/core getFocusDevice)]
+    (when (not= z (@current-z-positions stage))
+      (mm/core setPosition stage z)
+      (mm/core waitForDevice stage))
+    (swap! current-z-positions assoc stage z)))
 
 ;; image acquisition
 
@@ -105,13 +131,13 @@
 (defn acquire-at
   "Move the stage to position x,y and acquire a multi-dimensional
    sequence of images using the acquisition engine."
-  ([x y settings]
-    (acquire-at (Point2D$Double. x y) settings))
-  ([^Point2D$Double stage-pos settings]
-    (let [xy-stage (mm/core getXYStageDevice)]
-      (set-xy-position stage-pos)
-      (acquire-processor-sequence settings)
-      )))
+  ([x y z settings]
+    (acquire-at (Point2D$Double. x y) z settings))
+  ([^Point2D$Double stage-pos z-pos settings]
+    (locking anti-blur
+             (set-xy-position stage-pos)
+             (set-z-position z-pos)
+             (acquire-processor-sequence settings))))
 
 ;; run using acquisitions
 
@@ -128,36 +154,43 @@
 
 ;; tile arrangement
 
-(defn next-tile [screen-state acquired-images]
-  (let [tile-dimensions (screen-state :tile-dimensions)
-        center (tiles/center-tile [(:x screen-state) (:y screen-state)]
-                                 tile-dimensions)
+(defn as-map [[x y] z]
+  {:nx x :ny y :nz z})
+
+(defn next-tile [{:keys [tile-dimensions x y z] :as screen-state} acquired-images]
+  (let [center (tiles/center-tile [x y] tile-dimensions)
         pixel-rect (view/pixel-rectangle screen-state)
         bounds (tiles/pixel-rectangle-to-tile-bounds pixel-rect tile-dimensions)
-        number-tiles (tiles/number-of-tiles screen-state tile-dimensions)]
+        number-tiles (tiles/number-of-tiles screen-state tile-dimensions)
+        acquired-this-slice (match-set :nz z @acquired-images)]
     (->> tiles/tile-list
          (tiles/offset-tiles center)
          (take number-tiles)
          (filter #(tiles/tile-in-tile-bounds? % bounds))
-         (remove @acquired-images)
+         (map #(as-map % z))
+         (remove acquired-this-slice)
          first)))
 
 ;; tile acquisition management
 
 (def image-processing-executor (Executors/newFixedThreadPool 1))
  
-(defn add-tiles-at [memory-tiles [nx ny] affine-stage-to-pixel
-                    acquired-images tile-dimensions settings]
-  (swap! acquired-images conj [nx ny])
+(defn add-tiles-at [memory-tiles {:keys [nx ny nz] :as tile-index}
+                    affine-stage-to-pixel
+                    {:keys [z-origin slice-size-um
+                            tile-dimensions acq-settings] :as screen-state}
+                    acquired-images]
+  (swap! acquired-images conj (select-keys tile-index [:nx :ny :nz :nt]))
   (let [[tile-width tile-height] tile-dimensions]
     (doseq [image (doall (acquire-at (affine/inverse-transform
                                        (Point. (* tile-width nx)
                                                (* tile-height ny))
                                        affine-stage-to-pixel)
-                                     settings))]
+                                     (+ (* nz slice-size-um) z-origin)
+                                     acq-settings))]
       (let [indices {:nx nx
                      :ny ny
-                     :nz (get-in image [:tags "SliceIndex"])
+                     :nz (or nz (get-in image [:tags "SliceIndex"]))
                      :nt 0
                      :nc (or (get-in image [:tags "Channel"]) "Default")}]
         (view/add-to-memory-tiles 
@@ -167,24 +200,23 @@
     
 (defn acquire-next-tile
   [memory-tiles-atom
-   screen-state-atom acquired-images
-   affine]
-  (when-let [next-tile (next-tile @screen-state-atom
+   screen-state
+   acquired-images affine]
+  (when-let [next-tile (next-tile screen-state
                                   acquired-images)]
-    (add-tiles-at memory-tiles-atom next-tile affine acquired-images
-                  (@screen-state-atom :tile-dimensions)
-                  (@screen-state-atom :acq-settings))
+    (add-tiles-at memory-tiles-atom next-tile affine 
+                  screen-state
+                  acquired-images)
     next-tile))
 
 (def explore-executor (Executors/newFixedThreadPool 1))
 
 (defn explore [memory-tiles-atom screen-state-atom acquired-images
                affine]
-  ;(println "explore" (and (= :explore (:mode @screen-state-atom))))
   (reactive/submit explore-executor
                    #(when (and (= :explore (:mode @screen-state-atom))
                                (acquire-next-tile memory-tiles-atom
-                                                  screen-state-atom
+                                                  @screen-state-atom
                                                   acquired-images
                                                   affine))
                       (explore memory-tiles-atom screen-state-atom
@@ -194,69 +226,72 @@
   (when (#{:navigate :explore} (:mode @screen-state-atom))
     (swap! screen-state-atom assoc :mode :navigate)
     (let [{:keys [x y]} (user-controls/absolute-mouse-position @screen-state-atom)
-               [w h] (:tile-dimensions @screen-state-atom)]
-      (set-xy-position (affine/inverse-transform
-                         (Point2D$Double. x y)
-                         affine-transform)))))
+          [w h] (:tile-dimensions @screen-state-atom)]
+      (locking anti-blur
+               (set-xy-position (affine/inverse-transform
+                                  (Point2D$Double. x y)
+                                  affine-transform))))))
   
-(defn create-acquisition-settings []
+(defn create-acquisition-settings
+  []
+  "Create acquisition settings from current MDA window. Ignores everything
+   but channels for now."
   (-> mm/gui .getAcquisitionEngine .getSequenceSettings
       engine/convert-settings
       (assoc :use-autofocus false
              :frames nil
              :positions nil
+             :slices nil
              :numFrames 0)))
 
-;; Position List
 
-(defn update-positions-atom! []
-  (let [new-value
-        (map #(-> % bean
-                  (select-keys [:x :y :label]))
-             (mm/get-positions))]
-    (when (not= new-value @positions-atom)
-      (reset! positions-atom new-value))))
+;; flat field determination
 
-(defn follow-positions []
-  (future (loop []
-            (update-positions-atom!)
-            (Thread/sleep 1000)
-            (recur))))
+(def flat-field-positions
+  (map #(* 1/8 %) (range -4 5)))
 
-(defn alter-position [screen-state-atom conj-or-disj position-map]
-  (swap! screen-state-atom update-in [:positions]
-         conj-or-disj position-map))
+(def flat-field-coords
+  (for [x flat-field-positions
+        y flat-field-positions]
+    [x y]))
 
-(defn grid-distances [pos0 pos1]
-  (merge-with #(Math/abs (- %1 %2)) pos0 pos1))
+(defn flat-field-scaled-coords []
+  (let [width (mm/core getImageWidth)
+        height (mm/core getImageHeight)]
+    (map #(let [[x y] %] (Point. (* width x) (* height y)))
+         flat-field-coords))) 
 
-(defn tile-distances [grid-distances w h]
-  (merge-with / grid-distances {:x w :y h}))
-
-(defn in-tile [{:keys [x y] :as tile-distances}]
-  (and (>= 1/2 x) (>= 1/2 y)))
-
-(defn position-clicked [available-positions pos w h]
-  (first
-    (filter #(-> %
-                 (grid-distances pos)
-                 (tile-distances w h)
-                 (in-tile))
-            available-positions)))
-
-(defn toggle-position [screen-state-atom _ _]
-  (let [pos (user-controls/absolute-mouse-position @screen-state-atom)
-        [w h] (:tile-dimensions @screen-state-atom)]
-    (if-let [old-pos (position-clicked (:positions @screen-state-atom) pos w h)]
-      (alter-position screen-state-atom disj old-pos)
-      (alter-position screen-state-atom conj pos))))
+(defn flat-field-stage-coords [scaled-coords]
+  (let [transform (origin-here-stage-to-pixel-transform)]
+    (map #(affine/inverse-transform % transform)
+         scaled-coords)))
     
+(defn flat-field-acquire []
+  (let [acq-settings (create-acquisition-settings)
+        scaled (flat-field-scaled-coords)
+        to-and-fro (concat scaled (reverse scaled))]
+    (for [coords (flat-field-stage-coords to-and-fro)]
+      (acquire-at coords acq-settings))))
+
+(defn flat-field-save [images]
+  (let [dir (io/file "flatfield")]
+    (.mkdirs dir)
+    (dorun
+      (loop [images0 (map :proc (flatten images))
+             i 0]
+        (println i)
+        (when-let [image (first images0)]
+          (slide-explorer.disk/write-tile dir {:i i} (first images0)))
+        (when-let [more (next images0)]
+          (recur more (inc i)))))))
+
 ;; SAVE AND LOAD SETTINGS
 
 
 (defn save-settings [dir screen-state]
   (spit (io/file dir "metadata.txt")
-        (pr-str (select-keys screen-state [:channels :tile-dimensions]))))
+        (pr-str (select-keys screen-state [:channels :tile-dimensions
+                                           :pixel-size-um]))))
 
 (defn load-settings [dir]
   (read-string (slurp (io/file dir "metadata.txt"))))
@@ -293,11 +328,13 @@
           [screen-state memory-tiles panel] (view/show dir acquired-images settings)]
       (when new?
         (mm/core waitForDevice (mm/core getXYStageDevice))
-        (let [settings (create-acquisition-settings)
+        (let [acq-settings (create-acquisition-settings)
               affine-stage-to-pixel (origin-here-stage-to-pixel-transform)
+              z-origin (mm/core getPosition (mm/core getFocusDevice))
               first-seq (acquire-at (affine/inverse-transform
                                       (Point. 0 0) affine-stage-to-pixel)
-                                    settings)
+                                    z-origin
+                                    acq-settings)
               explore-fn #(explore memory-tiles screen-state acquired-images
                                    affine-stage-to-pixel)
               stage (mm/core getXYStageDevice)]
@@ -305,13 +342,10 @@
           (def mt memory-tiles)
           (def pnl panel)
           (def affine affine-stage-to-pixel)
-          (println "about to get channel luts")
           (user-controls/handle-double-click
             panel
             (partial navigate screen-state affine-stage-to-pixel))
-          (user-controls/handle-shift-click
-            panel
-            (fn [x y] (toggle-position screen-state x y)))
+          (positions/handle-positions panel screen-state affine-stage-to-pixel)
           (user-controls/handle-mode-keys panel screen-state)
           (reactive/handle-update
             current-xy-positions 
@@ -322,7 +356,11 @@
                 (swap! screen-state assoc :xy-stage-position
                        (affine/point-to-vector pixel)))))
           (swap! screen-state merge
-                 {:acq-settings settings
+                 {:acq-settings acq-settings
+                  :pixel-size-um (pixel-size-um affine-stage-to-pixel)
+                  :z-origin z-origin
+                  :slice-size-um 1.0
+                  :dir dir
                   :mode :explore
                   :channels (initial-lut-maps first-seq)
                   :tile-dimensions [(mm/core getImageWidth)
@@ -331,7 +369,6 @@
                                                                 (explore-fn))))
           (explore-fn)))
       (save-settings dir @screen-state)
-      (println dir)
       (def ss screen-state)
       (def ai acquired-images)))
   ([]

@@ -78,6 +78,7 @@ public class ProjectorController {
       Thread th = new Thread("Projector calibration thread") {
          public void run() {
             Roi originalROI = IJ.getImage().getRoi();
+            gui.snapSingleImage();
             AffineTransform firstApprox = getFirstApproxTransform();
             AffineTransform affineTransform = getFinalTransform(firstApprox);
             dev.turnOff();
@@ -115,16 +116,22 @@ public class ProjectorController {
          return transform;
       }
    }
+      
+   
+      
 // then use:
 //imgp.updateImage();
 //imgp.getCanvas().repaint();
    public Point measureSpot(Point dmdPt) {
-      dev.displaySpot(dmdPt.x, dmdPt.y);
+      gui.snapSingleImage();
+      ImageProcessor proc1 = IJ.getImage().getProcessor().duplicate();
+      dev.displaySpot(dmdPt.x, dmdPt.y, 50);
       dev.waitForDevice();
+      mmc.sleep(200); 
       gui.snapSingleImage();
       mmc.sleep(200);
-      ImageProcessor proc = IJ.getImage().getProcessor();
-      Point maxPt = findPeak(proc);
+      ImageProcessor proc2 = IJ.getImage().getProcessor().duplicate();
+      Point maxPt = findPeak(ImageUtils.subtractImageProcessors(proc2, proc1));
       IJ.getImage().setRoi(new PointRoi(maxPt.x, maxPt.y));
       return maxPt;
    }
@@ -169,7 +176,7 @@ public class ProjectorController {
       int imgWidth = (int) mmc.getImageWidth();
       int imgHeight = (int) mmc.getImageHeight();
 
-      int s = 30;
+      int s = 60;
       Point2D.Double dmdPoint;
 
       dmdPoint = (Point2D.Double) firstApprox.transform(new Point2D.Double((double) s, (double) s), null);
