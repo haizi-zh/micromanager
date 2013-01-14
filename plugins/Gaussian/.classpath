@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="source"/>
-	<classpathentry kind="lib" path="Gaussian.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/MMJ"/>
-	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/ij.jar"/>
-	<classpathentry kind="lib" path="/MMCoreJ_wrap/MMCoreJ.jar"/>
-	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/commons-math-2.2.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/AbsoluteLayout.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/bsh-2.0b4.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/clojure.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/clooj.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/commons-math-2.2.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/commons-math3-3.0.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/core.cache.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/core.memoize.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/data.json.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/gproto.jar"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/ij.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/jcommon-1.0.17.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/jfreechart-1.0.14.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/loci-common.jar"/>
@@ -28,6 +27,6 @@
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/swingx-0.9.5.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/trident.jar"/>
 	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/3rdpartypublic/classext/TSFProto.jar"/>
-	<classpathentry kind="lib" path="classes"/>
+	<classpathentry kind="lib" path="D:/Users/Zephyre/Development/mmroot/trunk/bin_Win32/MMCoreJ.jar"/>
 	<classpathentry kind="output" path="build"/>
 </classpath>
