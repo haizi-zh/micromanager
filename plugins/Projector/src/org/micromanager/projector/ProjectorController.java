@@ -15,11 +15,13 @@ import ij.plugin.frame.RoiManager;
 import ij.process.ImageProcessor;
 import java.awt.Point;
 import java.awt.Polygon;
+import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +29,8 @@ import java.util.Map;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 import mmcorej.CMMCore;
+import mmcorej.TaggedImage;
+import org.apache.commons.math.util.MathUtils;
 import org.micromanager.api.AcquisitionEngine;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.utils.ImageUtils;
@@ -117,31 +121,38 @@ public class ProjectorController {
       }
    }
       
-   
-      
-// then use:
-//imgp.updateImage();
-//imgp.getCanvas().repaint();
    public Point measureSpot(Point dmdPt) {
-      gui.snapSingleImage();
-      ImageProcessor proc1 = IJ.getImage().getProcessor().duplicate();
-      dev.displaySpot(dmdPt.x, dmdPt.y, 50);
-      dev.waitForDevice();
-      mmc.sleep(200); 
-      gui.snapSingleImage();
-      mmc.sleep(200);
-      ImageProcessor proc2 = IJ.getImage().getProcessor().duplicate();
-      Point maxPt = findPeak(ImageUtils.subtractImageProcessors(proc2, proc1));
-      IJ.getImage().setRoi(new PointRoi(maxPt.x, maxPt.y));
-      return maxPt;
+      try {
+         mmc.snapImage();
+         ImageProcessor proc1 = ImageUtils.makeProcessor(mmc.getTaggedImage());
+
+         dev.displaySpot(dmdPt.x, dmdPt.y, 500000);
+         Thread.sleep(300);
+
+         mmc.snapImage();
+         TaggedImage taggedImage2 = mmc.getTaggedImage();
+         ImageProcessor proc2 = ImageUtils.makeProcessor(taggedImage2);
+         gui.displayImage(taggedImage2);
+
+         Point maxPt = findPeak(ImageUtils.subtractImageProcessors(proc2, proc1));
+         IJ.getImage().setRoi(new PointRoi(maxPt.x, maxPt.y));
+         mmc.sleep(500);
+         return maxPt;
+      } catch (Exception e) {
+         ReportingUtils.showError(e);
+         return null;
+      }
    }
 
    private Point findPeak(ImageProcessor proc) {
       ImageProcessor blurImage = ((ImageProcessor) proc.duplicate());
       blurImage.setRoi((Roi) null);
       GaussianBlur blur = new GaussianBlur();
-      blur.blurGaussian(blurImage, 20, 20, 0.01);
-      return ImageUtils.findMaxPixel(blurImage);
+      blur.blurGaussian(blurImage, 10, 10, 0.01);
+      //gui.displayImage(blurImage.getPixels());
+      Point x = ImageUtils.findMaxPixel(blurImage);
+      x.translate(1, 1);
+      return x;
    }
    
    public void mapSpot(Map spotMap, Point ptSLM) {
@@ -171,6 +182,17 @@ public class ProjectorController {
       return MathFunctions.generateAffineTransformFromPointPairs(spotMap);
    }
 
+   
+   public static Point2D.Double clipPoint(Point2D.Double pt, Rectangle2D.Double rect) {
+      return new Point2D.Double(
+              MathFunctions.clip(pt.x, rect.x, rect.x + rect.width),
+              MathFunctions.clip(pt.y, rect.y, rect.y + rect.height));
+   }
+           
+   public static Point2D.Double transformAndClip(double x, double y, AffineTransform transform, Rectangle2D.Double clipRect) {
+      return clipPoint((Point2D.Double) transform.transform(new Point2D.Double(x,y), null), clipRect);
+   }
+   
    public AffineTransform getFinalTransform(AffineTransform firstApprox) {
       Map spotMap2 = new HashMap();
       int imgWidth = (int) mmc.getImageWidth();
@@ -178,14 +200,15 @@ public class ProjectorController {
 
       int s = 60;
       Point2D.Double dmdPoint;
-
-      dmdPoint = (Point2D.Double) firstApprox.transform(new Point2D.Double((double) s, (double) s), null);
+      Rectangle2D.Double dmdRect = new Rectangle2D.Double(0, 0, dev.getWidth(), dev.getHeight());
+      
+      dmdPoint = transformAndClip(s, s, firstApprox, dmdRect);
       mapSpot(spotMap2, dmdPoint);
-      dmdPoint = (Point2D.Double) firstApprox.transform(new Point2D.Double((double) imgWidth - s, (double) s), null);
+      dmdPoint = transformAndClip(imgWidth - s, s, firstApprox, dmdRect); 
       mapSpot(spotMap2, dmdPoint);
-      dmdPoint = (Point2D.Double) firstApprox.transform(new Point2D.Double((double) imgWidth - s, (double) imgHeight - s), null);
+      dmdPoint = transformAndClip(imgWidth - s, imgHeight - s, firstApprox, dmdRect); 
       mapSpot(spotMap2, dmdPoint);
-      dmdPoint = (Point2D.Double) firstApprox.transform(new Point2D.Double((double) s, (double) imgHeight - s), null);
+      dmdPoint = transformAndClip(s, imgHeight - s, firstApprox, dmdRect); 
       mapSpot(spotMap2, dmdPoint);
       return MathFunctions.generateAffineTransformFromPointPairs(spotMap2);
    }

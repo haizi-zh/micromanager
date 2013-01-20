@@ -80,7 +80,6 @@
 
 #ifdef PRODUCTION_VERSION
 #undef LOG_ENABLED
-#undef ENABLE_SEQUENCE_ACQ
 //#define	LOG_ENABLED			// define LOG_ENABLED to enable log messages
 //#define	ENABLE_SEQUENCE_ACQ		// define ENABLE_SEQUENCE_ACQ to enable threaded acquistion
 #endif
@@ -158,10 +157,8 @@ public:
    int SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySize); 
    int GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& ySize); 
    int ClearROI();
-#ifdef	ENABLE_SEQUENCE_ACQ
    int StartSequenceAcquisition(long numImages, double interval_ms, bool stopOnOverflow);
    int StopSequenceAcquisition();
-#endif
 
    // action interface
    // ----------------
@@ -211,7 +208,17 @@ private:
 		int svc(void);			// capture process
 		
 		// asnyc stop
-		void Stop() {stop_ = true;}
+		void Stop() 
+      {
+         MMThreadGuard(this->stopLock_);
+         stop_ = true;
+      }
+     
+       bool IsStopped()
+       {
+          MMThreadGuard(this->stopLock_);
+          return stop_;
+       }    
 
 		// sequence start
 		void Start()
@@ -223,16 +230,18 @@ private:
 		void SetLength(long images) {numImages_ = images;}
 
 		private:
+         MMThreadLock stopLock_;
 			CScionCamera*	camera_;
-			bool			stop_;
+         bool			stop_;
 			long			numImages_;
 		};
 
 	SequenceThread	*ctp;
 	bool			sequenceRunning_;
 	bool			stopOnOverflow_;
-	int				InsertImage();
+	int         InsertImage();
 	bool			IsCapturing();
+   void        OnThreadExiting() throw();
 
 	bool			snap_in_progress;
 	bool			reload_config;
@@ -242,9 +251,7 @@ private:
 	unsigned long	sequenceLength_;
 	double			interval_ms_;
 
-#ifdef	ENABLE_SEQUENCE_ACQ
 	int				RestartSequenceAcquisition();
-#endif
 	int				SetCameraPropertyList();
 	int				ResizeImageBuffer();
 	

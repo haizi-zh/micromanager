@@ -360,6 +360,19 @@ else
 }
 
 
+void CScionCamera::OnThreadExiting() throw()
+{
+   try 
+   {
+      LogMessage(g_Msg_SEQUENCE_ACQUISITION_THREAD_EXITING);
+      GetCoreCallback()->AcqFinished(this, 0);
+   }
+   catch (...) 
+   {
+      LogMessage(g_Msg_EXCEPTION_IN_ON_THREAD_EXITING, false);
+   }
+}
+
 //----------------------------------------------------------------------------
 //
 //	svc() - thread routine to perform sequence capture
@@ -371,37 +384,38 @@ int CScionCamera::SequenceThread::svc()
 long count(0);
 
 // capture requested number of images
-while (!stop_ && count < numImages_)
-	{
+while (!IsStopped() && count < numImages_)
+{
 	// get next image
 	int ret = camera_->SnapImage();
 	if (ret != DEVICE_OK)
-		{
-		camera_->StopSequenceAcquisition();
+   {
+      camera_->sequenceRunning_ = false;
+      camera_->OnThreadExiting();
 		return(1);
-		}
+   }
 
 	// got image - insert image in micro manager buffer pool
 	ret = camera_->InsertImage();
 	if (ret != DEVICE_OK)
-		{
-		camera_->StopSequenceAcquisition();
+   {
+      camera_->sequenceRunning_ = false;
+      camera_->OnThreadExiting();
 		return(1);
-		}
+   }
 
 	camera_->image_counter_++;
 	count++;
-	}
+}
 
 // sequence complete
-
+camera_->OnThreadExiting();
 camera_->sequenceRunning_ = false;
 
 return(0);
 }
 
 
-#ifdef	ENABLE_SEQUENCE_ACQ
 //----------------------------------------------------------------------------
 //
 //	StartSequenceAcquisition() - initiate sequence capture method
@@ -415,6 +429,8 @@ int CScionCamera::StartSequenceAcquisition(long numImages,
 #ifdef	LOG_ENABLED
 sLogMessage("start seqquence acquisition\r\n");
 #endif
+
+LogMessage("Starting sequence acquisition");
 
 if (Busy() || sequenceRunning_)
 	{return DEVICE_CAMERA_BUSY_ACQUIRING;}
@@ -437,6 +453,8 @@ ctp->SetLength(numImages);
 ctp->Start();
 
 sequenceRunning_ = true;
+
+LogMessage("Sequence acquisition started");
 
 return DEVICE_OK;
 }
@@ -468,11 +486,13 @@ int CScionCamera::StopSequenceAcquisition()
 sLogMessage("stop sequence acquisition\r\n");
 #endif
 
+LogMessage("Requesting sequence acquisition to stop", true);
+
 ctp->Stop();
 ctp->wait();
 sequenceRunning_ = false;
+
 return DEVICE_OK;
 }
 
-#endif
 
