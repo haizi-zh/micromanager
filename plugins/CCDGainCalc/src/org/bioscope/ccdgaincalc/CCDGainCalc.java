@@ -78,8 +78,8 @@ public class CCDGainCalc implements MMPlugin {
 							}
 						}
 						ArrayList<double[]> data = analyzeStack();
-						gui_.closeAcquisitionWindow("Acq");
-						gui_.closeAcquisition("Acq");
+//						gui_.closeAcquisitionWindow("Acq");
+//						gui_.closeAcquisition("Acq");
 
 						for (int j = 0; j < s; j++) {
 							lvlVals[i * s + j] = data.get(0)[j];

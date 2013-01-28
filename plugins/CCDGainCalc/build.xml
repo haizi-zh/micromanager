@@ -5,7 +5,7 @@
 		image intensity and its variations.
     </description>
 
-	<property name="build.dir" value="build" />
+	<property name="build.dir" value="bin" />
 	<property name="src.dir" value="src" />
 	<property name="mm.dir" value="../../bin_Win32" />
 	<property name="dist.dir" value="../../Install_Win32/micro-manager" />
