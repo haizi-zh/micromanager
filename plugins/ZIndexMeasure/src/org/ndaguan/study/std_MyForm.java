@@ -1,6 +1,4 @@
-package org.ndaguan.micromanager;
-
-import ij.gui.Toolbar;
+package org.ndaguan.study;
 
 import java.awt.Dimension;
 import java.awt.GridLayout;
@@ -15,8 +13,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 
 import javax.swing.ButtonGroup;
@@ -39,7 +35,6 @@ import javax.swing.JSlider;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -52,8 +47,8 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
 
-public class MyForm extends JFrame {
-	final String[] PARALIST  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ballRadiusPix"};
+public class std_MyForm extends JFrame {
+	final String[] PARALIST  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ITEM2"};
 	/**
 	 * 
 	 */
@@ -66,7 +61,7 @@ public class MyForm extends JFrame {
 	private final int DEFAULT_LOCATION_X = 0;
 	private final int DEFAULT_LOCATION_Y = 0;
 	private final String DEFAULT_TITLE = "Welcome......";
-	private final String DEFAULT_IMAGE = "icon/I.gif";
+	private final String DEFAULT_IMAGE = "z:/default.gif";
 	private final int DEFAULT_CLOSE_OPERATION =JFrame.HIDE_ON_CLOSE;
 	private int[] tapSize = null;
 
@@ -76,36 +71,17 @@ public class MyForm extends JFrame {
 	private JTextArea LogWindow = new JTextArea(40, (int)(40*0.618));
 	private int currTab;
 	private HashMap<String, XYSeries> dataSeries_;
-	private HashMap<String, JFreeChart> chartSeries_;
 	private XYSeriesCollection dataset_;
 	private String[] dataSet;
 	private JRadioButtonMenuItem MagnetAuto;
 	private JRadioButtonMenuItem MagnetManual;
-	private JTabbedPane tabbedPane;
-	private Image imgC;
-	private Image imgXI;
-	private Image imgXM;
-	private Image imgXL;
-	private Image imgXC;
-	private Image imgI;
-	private Image imgL;
-	private Image imgM;
-	private JButton butI;
-	private JButton butM;
-	private JButton butL;
-	private JButton butC;
-	protected boolean buttonLive = false;
-	protected boolean buttonCal = false;
-	protected boolean buttonMult = false;
-	protected boolean buttonInstall = false;
-
-	private static MyGUI mygui_;
+	private static std_MyGUI mygui_;
 
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 
-				MyForm frame = new MyForm(mygui_);
+				std_MyForm frame = new std_MyForm(mygui_);
 				frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	
 				frame.setVisible(true);		
 
@@ -115,15 +91,14 @@ public class MyForm extends JFrame {
 
 	}
 
-	public MyForm(MyGUI mygui) {
+	public std_MyForm(std_MyGUI myGUI) {
 
-		mygui_ = mygui;
+		mygui_ = myGUI;
 		tapSize = new int[]{600,900,800};
-		setDataSeries_(new HashMap<String,XYSeries>());
-		setChartSeries_(new HashMap<String,JFreeChart>());
-		dataSet  = new String[]{"Chart-Z","Chart-Calfile","Chart-Corr","Chart-X","Chart-Y","Chart-FX","Chart-FY"};
-
-		preferDailogBox = new PreferDailogBox(this,mygui_);
+		dataSeries_ = new HashMap<String,XYSeries>(7);
+		dataSet  = new String[]{"Chart-Z","Chart-X","Chart-Y","Chart-XY","Chart-Z-STD","Chart-X-STD","Chart-Y-STD"};
+		
+		preferDailogBox = new PreferDailogBox(myGUI);
 		initialize();
 		//Set Data
 
@@ -137,54 +112,6 @@ public class MyForm extends JFrame {
 		setDefaultCloseOperation(DEFAULT_CLOSE_OPERATION);
 	}
 
-
-	public void setCalIcon(boolean flag){
-		if(flag)
-		{
-			butC.setIcon(new javax.swing.ImageIcon(imgC)); // NOI18N
-			butC.setToolTipText("Calibrate");
-		}
-		else{
-			butC.setIcon(new javax.swing.ImageIcon(imgXC)); // NOI18N
-			butC.setToolTipText("Stop Calibrate");
-		}
-	}
-	public void setInstallIcon(boolean flag){
-		if(flag)
-		{
-			butI.setIcon(new javax.swing.ImageIcon(imgI)); // NOI18N
-			butI.setToolTipText("InstallCallback to analyze data");
-		}
-		else{
-			butI.setIcon(new javax.swing.ImageIcon(imgXI)); // NOI18N
-			butI.setToolTipText("UninstallCallback,analyze will not run in this mode");
-		}
-	}
-	public void setMultIcon(boolean flag){
-		if(flag)
-		{
-			butM.setIcon(new javax.swing.ImageIcon(imgM)); // NOI18N
-			butM.setToolTipText("Mutil-ACQ with the default preferences");
-		}
-		else{
-			butM.setIcon(new javax.swing.ImageIcon(imgXM)); // NOI18N
-			butM.setToolTipText("Stop Mutil-ACQ");
-		}
-	}
-	public void setLiveIcon(boolean flag){
-		if(flag)
-		{
-			butL.setIcon(new javax.swing.ImageIcon(imgL)); // NOI18N
-			butL.setToolTipText("Live view");
-			buttonLive = false;
-		}
-		else{
-			butL.setIcon(new javax.swing.ImageIcon(imgXL)); // NOI18N
-			butL.setToolTipText("Stop Live view");
-			buttonLive = true;
-		}
-	}
- 
 	private void initialize() {
 		menuListener = new ActionListener() {public void actionPerformed(ActionEvent e) {PhraseActionEvent(e);}};
 
@@ -230,211 +157,27 @@ public class MyForm extends JFrame {
 		menuBar.add(Operation);
 		menuBar.add(Option);
 
-		final int toolItemWidth = 120;
-		final int toolItemHeight = 20;
-		final int toolbarheight = toolItemHeight+10;
-		final JToolBar toolBar = new JToolBar();
-		int itemNum = 5;
-		toolBar.setBounds(0,0, toolItemWidth*itemNum , toolbarheight);
-
-		Toolkit kit = Toolkit.getDefaultToolkit();
-		imgC = kit.getImage("icon/C.gif");
-		imgL = kit.getImage("icon/L.gif");
-		imgM = kit.getImage("icon/M.gif");
-		final	Image imgS = kit.getImage("icon/S.gif");
-		final	Image imgH = kit.getImage("icon/H.gif");
-		final	Image imgSet = kit.getImage("icon/set.gif");
-		imgI = kit.getImage("icon/I.gif");
-
-		imgXC = kit.getImage("icon/XC.gif");
-		imgXL = kit.getImage("icon/XL.gif");
-		imgXM = kit.getImage("icon/XM.gif");
-		imgXI = kit.getImage("icon/XI.gif");
-
-		butC = new JButton();
-		butL = new JButton();
-		butM = new JButton();
-		JButton butS = new JButton();
-		JButton butSet = new JButton();
-		JButton butH = new JButton();
-		butI = new JButton();
-
-
-		int offsety = 0;
-		butI.setIcon(new javax.swing.ImageIcon(imgI)); // NOI18N
-		butI.setToolTipText("Install callback");
-		butI.setFocusable(false);
-		butI.setBounds(offsety,0, toolItemWidth, toolItemHeight);
-		offsety += toolItemWidth;	
-
-		butSet.setIcon(new javax.swing.ImageIcon(imgSet)); // NOI18N
-		butSet.setToolTipText("Set up");
-		butSet.setFocusable(false);
-		butSet.setBounds(offsety,0, toolItemWidth, toolItemHeight);
-		offsety += toolItemWidth;
-
-
-
-
-		butC.setIcon(new javax.swing.ImageIcon(imgC)); // NOI18N
-		butC.setToolTipText("Calibrate");
-		butC.setFocusable(false);
-		butC.setBounds(offsety,0, toolItemWidth, toolItemHeight);
-		offsety += toolItemWidth;
-
-		butL.setIcon(new javax.swing.ImageIcon(imgL)); // NOI18N
-		butL.setToolTipText("Live view");
-		butL.setFocusable(false);
-		butL.setBounds(offsety,0, toolItemWidth, toolItemHeight);
-		offsety += toolItemWidth;
-
-		butM.setIcon(new javax.swing.ImageIcon(imgM)); // NOI18N
-		butM.setToolTipText("Mutil-ACQ with the default preferences");
-		butM.setFocusable(false);
-		butM.setBounds(offsety,0, toolItemWidth, toolItemHeight);
-		offsety += toolItemWidth;
-
-		butS.setIcon(new javax.swing.ImageIcon(imgS)); // NOI18N
-		butS.setToolTipText("select a ROI");
-		butS.setFocusable(false);
-		butS.setBounds(offsety,0, toolItemWidth, toolItemHeight);
-		offsety += toolItemWidth;
-
-		butH.setIcon(new javax.swing.ImageIcon(imgH)); // NOI18N
-		butH.setToolTipText("Hand tool for moving the xyStage");
-		butH.setFocusable(false);
-		butH.setBounds(offsety,0, toolItemWidth, toolItemHeight);
-		offsety += toolItemWidth;
-
-		butL.addActionListener(new ActionListener(){
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				// TODO Auto-generated method stub			
-				(new Thread(new Runnable() {
-					@Override
-					public void run() {
-						mygui_.live();
-					}
-				})).start();
-			}
-
-		});
-		butC.addActionListener(new ActionListener(){
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				
-				(new Thread(new Runnable() {
-					@Override
-					public void run() {
-						mygui_.calibrate();
-
-					}
-				})).start();
-			}
-
-		});
-		butM.addActionListener(new ActionListener(){
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				
-				(new Thread(new Runnable() {
-					@Override
-					public void run() {
-						mygui_.MultiAcq();
-					}
-				})).start();
-			}
-
-
-		});
-		butSet.addActionListener(new ActionListener(){
-
-			@Override
-			public void actionPerformed(ActionEvent e) {//SET
-				// TODO Auto-generated method stub
-				(new Thread(new Runnable() {
-					@Override
-					public void run() {
-						mygui_.SetScale();
-					}
-				})).start();
-			}
-
-
-		});
-		butS.addActionListener(new ActionListener(){//SELECT
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				// TODO Auto-generated method stub
-				if (Toolbar.getInstance() == null)
-					return;
-
-				Toolbar.getInstance().setTool(Toolbar.RECTANGLE);
-			}
-
-		});
-		butH.addActionListener(new ActionListener(){
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				// TODO Auto-generated method stub
-				if (Toolbar.getInstance() == null)
-					return;
-				Toolbar.getInstance().setTool(Toolbar.HAND);
-			}
-
-		});
-		butI.addActionListener(new ActionListener(){
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				// TODO Auto-generated method stub
-				
-				(new Thread(new Runnable() {
-					@Override
-					public void run() {
-						mygui_.installCallback();
-
-					}
-				})).start();
-
-			}
-
-		});
-		toolBar.add(butI);
-		toolBar.add(butSet);
-		toolBar.add(butL);
-		toolBar.add(butC);
-		toolBar.add(butM);
-		toolBar.add(butS);
-		toolBar.add(butH);
-		getContentPane().add(toolBar);
-
-		butL.addActionListener(menuListener);	
 		//tabbedPane
-		setTabbedPane(new JTabbedPane());
-		getTabbedPane().setBounds(0,toolbarheight, tapSize[0], (int)(tapSize[0]*0.52));
-		getContentPane().add(getTabbedPane());
+		final JTabbedPane tabbedPane = new JTabbedPane();
+		tabbedPane.setBounds(0,0, tapSize[0], (int)(tapSize[0]*0.52));
+		getContentPane().add(tabbedPane);
 
 		final JScrollPane scrollPane = new JScrollPane();
-		getTabbedPane().addTab("Log", null, scrollPane, null);
+		tabbedPane.addTab("Log", null, scrollPane, null);
 
 		scrollPane.setViewportView(LogWindow);
 		for (int i = 0; i <  dataSet.length; i++) {
-			getTabbedPane().addTab( dataSet[i], null, createChartPanel(dataSet[i]), null);
+			tabbedPane.addTab( dataSet[i], null, createChartPanel(dataSet[i]), null);
 		}
 
 
 
 
-		getTabbedPane().addChangeListener(new ChangeListener() { 
+		tabbedPane.addChangeListener(new ChangeListener() { 
 
 			public void stateChanged(ChangeEvent e)
 			{
-				int ind=getTabbedPane().getSelectedIndex();
+				int ind=tabbedPane.getSelectedIndex();
 				int width = tapSize[1];
 				switch(ind){
 				case 0:
@@ -480,7 +223,7 @@ public class MyForm extends JFrame {
 					break;
 				}
 
-				getTabbedPane().setBounds(0, toolbarheight, width,(int)(width*0.618+40));		
+				tabbedPane.setBounds(0, 0, width,(int)(width*0.618+40));		
 				setBounds(0, 0, width+40, (int)((width)*0.618+120));
 
 			}
@@ -495,7 +238,7 @@ public class MyForm extends JFrame {
 	}
 
 	private JPanel createChartPanel(String tableName) {
-		if(this.getDataSeries_().containsKey(tableName))
+		if(this.dataSeries_.containsKey(tableName))
 			return null;
 
 		final XYSeries temp_ =  new XYSeries(tableName);
@@ -503,27 +246,10 @@ public class MyForm extends JFrame {
 		temp_.setMaximumItemCount(ChartMaxItemCount);
 		dataset_ = new XYSeriesCollection();
 		dataset_.addSeries(temp_);
-
-		if(tableName.equals("Chart-Calfile")){
-			XYSeries progress_ =  new XYSeries("cal-progress");
-			progress_.setMaximumItemCount(ChartMaxItemCount);
-			dataset_.addSeries(progress_);
-			getDataSeries_().put(tableName+"-pro",progress_);	
-
-		}
-		if(tableName.equals("Chart-Corr")){
-			XYSeries progress1_ =  new XYSeries("corr-progress");
-			progress1_.setMaximumItemCount(ChartMaxItemCount);
-			dataset_.addSeries(progress1_);
-			getDataSeries_().put(tableName+"-pro",progress1_);	
-
-		}
 		chart = ChartFactory.createXYLineChart(tableName, "-Time",
 				"-value", dataset_, PlotOrientation.VERTICAL, true, true,
 				false);
-
-		getChartSeries_().put(tableName, chart);
-		getDataSeries_().put(tableName,temp_);	
+		dataSeries_.put(tableName,temp_);	
 		ChartPanel cPanel = new ChartPanel(chart, true);
 		cPanel.setBounds(10, 10, tapSize[1], (int)(tapSize[1]*0.6));
 
@@ -579,7 +305,6 @@ public class MyForm extends JFrame {
 		return panel;
 	}
 	private void PhraseActionEvent(ActionEvent e){
-		String cmdString = e.getActionCommand();
 		if (e.getActionCommand().equals("Preferences")) {
 			(new Thread(new Runnable() {
 				@Override
@@ -590,7 +315,7 @@ public class MyForm extends JFrame {
 			})).start();
 
 		}
-		if (cmdString.equals("Calibrate") ) {
+		if (e.getActionCommand().equals("Calibrate")) {
 			(new Thread(new Runnable() {
 				@Override
 				public void run() {
@@ -625,25 +350,12 @@ public class MyForm extends JFrame {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				LogWindow.setText(String.format("%s\r\n  #%s#   %s ",
-						LogWindow.getText(), getTime(),str));
+				LogWindow.setText(String.format("%s\r\n     %s ",
+						LogWindow.getText(), str));
 				LogWindow.setCaretPosition(LogWindow.getText().length());
 			}
 		});
 	}
-	private String getTime() {
-		Calendar theCa;
-		String nowT;
-		theCa = new GregorianCalendar();
-		theCa.getTime();
-		nowT = theCa.get(Calendar.MONTH) + "/" + theCa.get(Calendar.DATE)
-				+ "  "
-				+ (24 * theCa.get(Calendar.AM) % 24 + theCa.get(Calendar.HOUR))
-				+ ":" + theCa.get(Calendar.MINUTE) + ":"
-				+ theCa.get(Calendar.SECOND);
-		return nowT;
-	}
-
 
 	public int getCurrTab() {
 		return currTab;
@@ -659,30 +371,6 @@ public class MyForm extends JFrame {
 
 	public void setMagnetAuto(boolean isMagnetAuto) {
 		MagnetManual.setSelected(isMagnetAuto);
-	}
-
-	public HashMap<String, XYSeries> getDataSeries_() {
-		return dataSeries_;
-	}
-
-	public void setDataSeries_(HashMap<String, XYSeries> dataSeries_) {
-		this.dataSeries_ = dataSeries_;
-	}
-
-	public HashMap<String, JFreeChart> getChartSeries_() {
-		return chartSeries_;
-	}
-
-	public void setChartSeries_(HashMap<String, JFreeChart> chartSeries_) {
-		this.chartSeries_ = chartSeries_;
-	}
-
-	public JTabbedPane getTabbedPane() {
-		return tabbedPane;
-	}
-
-	public void setTabbedPane(JTabbedPane tabbedPane) {
-		this.tabbedPane = tabbedPane;
 	}
 
 	public class Login  {
@@ -734,7 +422,7 @@ public class MyForm extends JFrame {
 		private JTextField FrameCalcF;
 		private JTextField ITEM0;
 		private JTextField ITEM1;
-		private JTextField ballRadiusPix;
+		private JTextField ITEM2;
 
 		private double BallRadius_;
 		private double DNALength_;
@@ -747,28 +435,28 @@ public class MyForm extends JFrame {
 		private double FrameCalcF_;
 		private double ITEM0_;
 		private double ITEM1_;
-		private double ballRadiusPix_;
+		private double ITEM2_;
 
 		private HashMap<String,Double> Opt_ = null;
 		private ActionListener DialogListener;
-		private String dataDir_  ;
-		private MyGUI mygui_;
-		private MyForm myform_;
+		protected String dataDir_ = "C:/";
+		private std_MyGUI mygui;
 
-		public PreferDailogBox(MyForm myform,MyGUI mygui) {
-			myform_ = myform;
-			mygui_ = mygui;
+		public PreferDailogBox(std_MyGUI mygui_) {
+			mygui = mygui_;
 			Opt_   = new HashMap<String,Double>();
-
+			
 			double[] temp = null;
 			try {
 				temp = getUserData();
 			} catch (IOException e) {
-
+				
 				e.printStackTrace();
 			}
 			setDefautPrefer(temp);
 			initialize();
+
+
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {
@@ -782,8 +470,8 @@ public class MyForm extends JFrame {
 		}
 		//		private void print() {
 		//			System.out.println(string);
-		//			"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin",MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1",ballRadiusPix"
-		//			String[] para  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ballRadiusPix"};
+		//			"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin",MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1",ITEM2"
+		//			String[] para  = new String[]{"BallRadius","DNALength","ZCalScale_","ZCalStep","RinterStep","HalfCorrWin","MagnetStep","Frame2Acq","FrameCalcF","ITEM0","ITEM1","ITEM2"};
 		//			for (int i = 0; i < para.length; i++) {
 		//				print(String.format("\rOpt_.put(\"%s\",%s_);",para[i],para[i]));
 		//			}
@@ -798,7 +486,7 @@ public class MyForm extends JFrame {
 
 
 		private double[] getUserData() throws IOException{
-			File loginDataFile = new File(System.getProperty("user.home")+"/ZIndexMeasure/userData.txt");
+			File loginDataFile = new File(System.getProperty("user.home")+"ZIndexMeasure-userData.txt");
 			if(!loginDataFile.exists())
 				return null;
 
@@ -812,23 +500,17 @@ public class MyForm extends JFrame {
 			for (int i = 0; i < userDataSet.length; i++) {
 				userDataSet[i] = Double.parseDouble(temp[i]);				
 			}
-			if((line = in.readLine()) != null)
-				this.dataDir_ = line;
 			return userDataSet;
 		}
-
+		
 		private void setUserData() throws IOException{
-			File dir = new File(System.getProperty("user.home"),"ZIndexMeasure");
-			if(!dir.isFile())
-				dir.mkdirs();
-
-			File loginDataFile = new File(System.getProperty("user.home")+"/ZIndexMeasure/userData.txt");
-			FileWriter out = new FileWriter((loginDataFile)); 
-			String temp = new String(String.format("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t\r\n%s",BallRadius_,DNALength_,ZCalScale_,ZCalStep_,RinterStep_,HalfCorrWin_,MagnetStep_,Frame2Acq_,FrameCalcF_,ITEM0_,ITEM1_,ballRadiusPix_,dataDir_));
-			out.write(temp);
-			out.close(); 
+			File loginDataFile = new File(System.getProperty("user.home")+"ZIndexMeasure-userData.txt");
+			 FileWriter out = new FileWriter((loginDataFile)); 
+			 String temp = new String(String.format("%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t",BallRadius_,DNALength_,ZCalScale_,ZCalStep_,RinterStep_,HalfCorrWin_,MagnetStep_,Frame2Acq_,FrameCalcF_,ITEM0_,ITEM1_,ITEM2_));
+			 out.write(temp);
+			 out.close(); 
 		}
-
+		
 		private void setDefautPrefer(double[] data) {
 			if(data == null || data.length<12){
 				BallRadius_ = 1.4;
@@ -842,8 +524,7 @@ public class MyForm extends JFrame {
 				FrameCalcF_ = 500;
 				ITEM0_ = -1;
 				ITEM1_ = -1;
-				ballRadiusPix_ = 60;
-				this.dataDir_ = System.getProperty("user.home")+"/ZIndexMeasure";
+				ITEM2_ = -1;
 			}else{
 				BallRadius_ = data[0];
 				DNALength_ = data[1];
@@ -856,10 +537,9 @@ public class MyForm extends JFrame {
 				FrameCalcF_ = data[8];
 				ITEM0_ = data[9];
 				ITEM1_ = data[10];
-				ballRadiusPix_ = data[11];
+				ITEM2_ = data[11];
 			}
 
-			packPreferData();
 		}
 
 		private void UpdateData(boolean flag) {
@@ -889,7 +569,7 @@ public class MyForm extends JFrame {
 
 				ITEM1_ = Double.parseDouble(ITEM1.getText());
 
-				ballRadiusPix_ = Double.parseDouble(ballRadiusPix.getText());
+				ITEM2_ = Double.parseDouble(ITEM2.getText());
 
 				try {
 					setUserData();
@@ -922,7 +602,7 @@ public class MyForm extends JFrame {
 
 				ITEM1.setText(String.format("%.0f",ITEM1_));
 
-				ballRadiusPix.setText(String.format("%.0f",ballRadiusPix_));
+				ITEM2.setText(String.format("%.0f",ITEM2_));
 			}
 
 		}
@@ -1031,12 +711,12 @@ public class MyForm extends JFrame {
 				ITEM1.setBounds(ITEMWIDTH, ITEMHEIGHT*7, ITEMWIDTH,ITEMHEIGHT);
 				panel.add(ITEM1);
 
-				final JLabel label10 = new JLabel("ballRadiusPix");
+				final JLabel label10 = new JLabel("ITEM2");
 				label10.setBounds( ITEMWIDTH*2, ITEMHEIGHT*6, ITEMWIDTH,ITEMHEIGHT);
 				panel.add(label10);
-				ballRadiusPix = new JTextField();
-				ballRadiusPix.setBounds(ITEMWIDTH*2, ITEMHEIGHT*7, ITEMWIDTH,ITEMHEIGHT);
-				panel.add(ballRadiusPix);
+				ITEM2 = new JTextField();
+				ITEM2.setBounds(ITEMWIDTH*2, ITEMHEIGHT*7, ITEMWIDTH,ITEMHEIGHT);
+				panel.add(ITEM2);
 
 				final JLabel label11 = new JLabel("FrameCalcF");
 				label11.setBounds( ITEMWIDTH*3, ITEMHEIGHT*6, ITEMWIDTH,ITEMHEIGHT);
@@ -1067,13 +747,14 @@ public class MyForm extends JFrame {
 				OpenDir.addActionListener(DialogListener);
 		}
 
+
 		private void PhraseActionEvent(ActionEvent e){
 			if (e.getActionCommand().equals("OK")) {
 				SwingUtilities.invokeLater(new Runnable() {
 					@Override
-					public void run() {						
+					public void run() {
+						mygui.SetScale(getPreferData());
 						UpdateData(true);//flush
-						mygui_.SetScale();
 						frame.setVisible(false);
 					}
 				});
@@ -1095,11 +776,10 @@ public class MyForm extends JFrame {
 					public void run() {
 						JFileChooser fileChooser = new JFileChooser(".");		 
 						fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-						fileChooser.setDialogTitle("请选择文件夹");
+						fileChooser.setDialogTitle("鎵撳紑鏂囦欢澶");
 						int ret = fileChooser.showOpenDialog(null);
 						if (ret == JFileChooser.APPROVE_OPTION) {
-							setDataDir_(fileChooser.getSelectedFile().getAbsolutePath());
-							myform_.log(String.format("Current DataDir is:%s.",getDataDir_()));
+							dataDir_ = fileChooser.getSelectedFile().getAbsolutePath();
 						}
 					}
 				});
@@ -1111,7 +791,7 @@ public class MyForm extends JFrame {
 					@Override
 					public void run() {
 						try {
-							Runtime.getRuntime().exec("explorer /select, "+getDataDir_());
+							Runtime.getRuntime().exec("explorer /select, "+dataDir_);
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
@@ -1134,7 +814,7 @@ public class MyForm extends JFrame {
 
 			Opt_.put("DNALength",DNALength_);
 
-			Opt_.put("ZCalScale",ZCalScale_);
+			Opt_.put("ZCalScale_",ZCalScale_);
 
 			Opt_.put("ZCalStep",ZCalStep_);
 
@@ -1152,19 +832,9 @@ public class MyForm extends JFrame {
 
 			Opt_.put("ITEM1",ITEM1_);
 
-			Opt_.put("ballRadiusPix",ballRadiusPix_);
+			Opt_.put("ITEM2",ITEM2_);
 
 
-		}
-
-
-		public String getDataDir_() {
-			return dataDir_;
-		}
-
-
-		public void setDataDir_(String dataDir_) {
-			this.dataDir_ = dataDir_;
 		}
 	}
 

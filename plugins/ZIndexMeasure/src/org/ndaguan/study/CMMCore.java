@@ -1,4 +1,4 @@
-package org.ndaguan.micromanager;
+package org.ndaguan.study;
 
 public class CMMCore {
 
@@ -67,6 +67,7 @@ public class CMMCore {
 	}
 
 	public void logMessage(String string) {
+		//System.out.print(string);
 	}
 
 }
