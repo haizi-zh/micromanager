@@ -38,16 +38,18 @@ debug: pre-build main-build post-build
 -include $(DEPENDENCY)
 
 %.d: %.cpp 
-	@echo Building dependencies...
+	@echo Building MMCore dependencies: $@...
 	gcc -MM $(GCC_IFLAGS) $< | \
 	sed '/$(subst \,\\,$(BOOST))/d' | \
 	sed 's/\($*\.o\)[ :]*/\1 $@ :/' > $@
+	@echo.
 
 %.d: $(MM_ROOT)/trunk/MMDevice/%.cpp
-	@echo Building dependencies...
+	@echo Building MMDevice dependencies: $@...
 	gcc -MM $(GCC_IFLAGS) $< | \
 	sed '/$(subst \,\\,$(BOOST))/d' | \
 	sed 's/\($*\.o\)[ :]*/\1 $@ :/' > $@
+	@echo.
 
 pre-build:
 	@echo

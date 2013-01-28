@@ -7,19 +7,19 @@
 
 	<property name="build.dir" value="build" />
 	<property name="src.dir" value="src" />
-	<property name="fiji.dir" value="c:/Fiji.app" />
-	<property name="mm.dir" value="../../micromanager/bin_Win32" />
-	<property name="dist.dir" value="../../micromanager/Install_Win32/micro-manager" />
+	<property name="mm.dir" value="../../bin_Win32" />
+	<property name="dist.dir" value="../../Install_Win32/micro-manager" />
 	<property name="target.name" value="CCD_Gain_Calc" />
+	<property name="3rdparty" value="../../../3rdpartypublic" />
 	<property environment="env" />
 
 	<path id="project.class.path">
-		<pathelement location="${dist.dir}/ij.jar" />
+		<pathelement location="${3rdparty}/classext/ij.jar" />
 		<pathelement location="${mm.dir}/MMCoreJ.jar" />
 		<pathelement location="${mm.dir}/plugins/Micro-Manager/MMJ_.jar" />
-		<pathelement location="${env.COMMONS_MATH3}" />
-		<pathelement location="${env.JFREE_CHART}/jfreechart-1.0.14.jar" />
-		<pathelement location="${env.JFREE_CHART}/jcommon-1.0.17.jar" />
+		<pathelement location="${3rdparty}/classext/commons-math3-3.0.jar" />
+		<pathelement location="${3rdparty}/classext/jfreechart-1.0.14.jar" />
+		<pathelement location="${3rdparty}/classext/jcommon-1.0.17.jar" />
 	</path>
 
 	<target description="Creates necessary directories" name="init">
@@ -42,7 +42,6 @@
 			</manifest>
 		</jar>
 		<copy file="${target.name}.jar" toDir="${dist.dir}/mmplugins" preservelastmodified="true" />
-		<copy file="${target.name}.jar" toDir="${fiji.dir}/mmplugins" preservelastmodified="true" />
 	</target>
 
 	<target name="clean" description="Delete the build files.">

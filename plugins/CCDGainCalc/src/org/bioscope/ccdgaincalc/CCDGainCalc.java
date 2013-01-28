@@ -41,10 +41,10 @@ public class CCDGainCalc implements MMPlugin {
 	private CCDGainCalcFrame frame_;
 	private Thread calibrThrd_;
 
-	public static void main(String[] arg) {
-		CCDGainCalc obj = new CCDGainCalc();
-		obj.setApp(null);
-	}
+//	public static void main(String[] arg) {
+//		CCDGainCalc obj = new CCDGainCalc();
+//		obj.setApp(null);
+//	}
 
 	/*
 	 * Start the CCD gain calibrating process
@@ -248,12 +248,6 @@ public class CCDGainCalc implements MMPlugin {
 		gui_ = app;
 		if (gui_ != null)
 			core_ = gui_.getMMCore();
-		SwingUtilities.invokeLater(new Runnable() {
-			public void run() {
-				frame_ = CCDGainCalcFrame.getInstance(CCDGainCalc.this);
-				frame_.setVisible(true);
-			}
-		});
 	}
 
 	/*
@@ -272,8 +266,8 @@ public class CCDGainCalc implements MMPlugin {
 
 	@Override
 	public void show() {
-		// TODO Auto-generated method stub
-
+		frame_ = CCDGainCalcFrame.getInstance(CCDGainCalc.this);
+		frame_.setVisible(true);
 	}
 
 	@Override
@@ -284,13 +278,11 @@ public class CCDGainCalc implements MMPlugin {
 
 	@Override
 	public String getDescription() {
-		// TODO Auto-generated method stub
-		return null;
+		return "Calibration the CCD Gain via noise analysis.";
 	}
 
 	@Override
 	public String getInfo() {
-		// TODO Auto-generated method stub
 		return "CCD Gain Calc Plugin";
 	}
 
