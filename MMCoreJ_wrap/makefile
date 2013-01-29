@@ -37,9 +37,6 @@ debug: pre-build main-build post-build
 pre-build: 
 	@echo Building $(PROJ_NAME): pre-building, configuration: $(CONFIG)
 	@test -d $(CONFIG) || mkdir $(CONFIG)
-	$(if $(wildcard $(CONFIG)/*.o),-@mv -f $(CONFIG)/*.o .,)
-	$(if $(wildcard $(CONFIG)/*.pdb),-@mv -f $(CONFIG)/*.pdb .,)
-	$(if $(wildcard $(CONFIG)/*.idb),-@mv -f $(CONFIG)/*.idb .,)
 	@echo Pre-building done.
 	@echo Target: $(TARGET)
 	@echo.
@@ -76,9 +73,6 @@ $(OBJ_FILES): MMCoreJ_wrap.cxx MMCoreJ_wrap.h
 	
 post-build:
 	@echo $(PROJ_NAME): post-build:	
-	-@mv -f *.o $(CONFIG)
-	-@mv -f *.pdb $(CONFIG)
-	-@mv -f *.idb $(CONFIG)
 	@cp -v -f $(JAR_FILE) $(MM_ROOT)/trunk/bin_Win32
 	@cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@echo.

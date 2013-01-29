@@ -15,7 +15,7 @@ IFLAGS := $(patsubst %,-I"%",$(INCLUDE)) -I"$(WIN_SDK)/Include" -I"$(VC_SDK)/inc
 GCC_IFLAGS := $(patsubst %,-I"%",$(INCLUDE))
 PREPROCS := _WINDOWS _USRDLL _WINDLL _MBCS WIN32 _LIB MODULE_EXPORTS
 PREPROC_FLAGS = $(patsubst %,-D%,$(PREPROCS))
-CFLAGS := -c -nologo -W4 -WX- -Oy- -Gm -EHa -GS -fp:precise -Zc:wchar_t -Zc:forScope -GR -Gd -wd"4290" -analyze- -errorReport:queue
+CFLAGS := -c -nologo -W3 -WX- -Oy- -Gm -EHa -GS -fp:precise -Zc:wchar_t -Zc:forScope -GR -Gd -wd"4290" -analyze- -errorReport:queue
 LINK_FLAGS = -NOLOGO
 LIBPATH := $(THIRD_PARTY)/zlib/bin_Win32
 LIB_FLAGS := $(patsubst %,-LIBPATH:"%",$(LIBPATH)) -LIBPATH:"$(WIN_SDK)/Lib" -LIBPATH:"$(VC_SDK)/lib" 
@@ -55,9 +55,6 @@ pre-build:
 	@echo
 	@echo Building $(PROJ_NAME): pre-building, configuration: $(CONFIG)
 	@test -d $(CONFIG) || mkdir $(CONFIG)
-	$(if $(wildcard $(CONFIG)/*.o),-@mv -fv $(CONFIG)/*.o .,)
-	$(if $(wildcard $(CONFIG)/*.pdb),-@mv -fv $(CONFIG)/*.pdb .,)
-	$(if $(wildcard $(CONFIG)/*.idb),-@mv -fv $(CONFIG)/*.idb .,)
 	@echo Pre-building done.
 	@echo.
 
@@ -87,9 +84,6 @@ $(MM_OBJ_FILES): %.o: $(MM_ROOT)/trunk/MMDevice/%.cpp
 
 post-build:
 	@echo $(PROJ_NAME): post-build:	
-	-@mv -fv *.o $(CONFIG)
-	-@mv -fv *.pdb $(CONFIG)
-	-@mv -fv *.idb $(CONFIG)
 	@cp -fv $(TARGET) $(MM_ROOT)/trunk/lib_Win32
 	@cp -fv $(TARGET) $(MM_ROOT)/trunk/lib_Win32/$(PREFIX)$(PROJ_NAME)$(EXTENSION)	
 	@echo.

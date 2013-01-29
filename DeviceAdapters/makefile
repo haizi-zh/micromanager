@@ -36,9 +36,6 @@ debug: pre-build main-build post-build
 pre-build: 
 	@echo Building $(PROJ_NAME): pre-building, configuration: $(CONFIG)
 	@test -d $(CONFIG) || mkdir $(CONFIG)
-	$(if $(wildcard $(CONFIG)/*.o),-@mv -f $(CONFIG)/*.o .,)
-	$(if $(wildcard $(CONFIG)/*.pdb),-@mv -f $(CONFIG)/*.pdb .,)
-	$(if $(wildcard $(CONFIG)/*.idb),-@mv -f $(CONFIG)/*.idb .,)
 	@echo Pre-building done.
 	@echo.
 
@@ -80,9 +77,6 @@ $(MM_OBJ_FILES): %.o: $(MM_ROOT)/trunk/MMDevice/%.cpp
 	
 post-build:
 	@echo $(PROJ_NAME): post-build:	
-	-@mv -f *.o $(CONFIG)
-	-@mv -f *.pdb $(CONFIG)
-	-@mv -f *.idb $(CONFIG)
 	-@cp -fv $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	-@cp -fv $(TARGET) $(MM_ROOT)/trunk/Install_Win32/micro-manager
 	@echo.
