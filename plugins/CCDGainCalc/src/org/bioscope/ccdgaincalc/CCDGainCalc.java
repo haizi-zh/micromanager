@@ -9,6 +9,7 @@ import java.awt.geom.Ellipse2D;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -41,10 +42,10 @@ public class CCDGainCalc implements MMPlugin {
 	private CCDGainCalcFrame frame_;
 	private Thread calibrThrd_;
 
-//	public static void main(String[] arg) {
-//		CCDGainCalc obj = new CCDGainCalc();
-//		obj.setApp(null);
-//	}
+	// public static void main(String[] arg) {
+	// CCDGainCalc obj = new CCDGainCalc();
+	// obj.setApp(null);
+	// }
 
 	/*
 	 * Start the CCD gain calibrating process
@@ -77,13 +78,15 @@ public class CCDGainCalc implements MMPlugin {
 								e.printStackTrace();
 							}
 						}
-						ArrayList<double[]> data = analyzeStack();
-//						gui_.closeAcquisitionWindow("Acq");
-//						gui_.closeAcquisition("Acq");
+						List<List<Number>> data = analyzeStack();
+						// gui_.closeAcquisitionWindow("Acq");
+						// gui_.closeAcquisition("Acq");
 
 						for (int j = 0; j < s; j++) {
-							lvlVals[i * s + j] = data.get(0)[j];
-							noiseVals[i * s + j] = data.get(1)[j];
+							lvlVals[i * s + j] = data.get(0).get(j)
+									.doubleValue();
+							noiseVals[i * s + j] = data.get(1).get(j)
+									.doubleValue();
 						}
 						tot += s;
 
@@ -194,19 +197,23 @@ public class CCDGainCalc implements MMPlugin {
 		});
 	}
 
-	private ArrayList<double[]> analyzeStack() {
+	/**
+	 * 返回：平均值和方差
+	 * 
+	 * @return
+	 */
+	private List<List<Number>> analyzeStack() {
 		// TODO Auto-generated method stub
 		ImagePlus img = IJ.getImage();
-		int frames = img.getImageStackSize();
-		int samples = frames / 2;
+		int samples = img.getImageStackSize() / 2;
 		int width = img.getWidth();
 		int height = img.getHeight();
 		Mean m = new Mean();
 		Variance var = new Variance();
 		ArrayRealVector vec1 = new ArrayRealVector(width * height);
 		ArrayRealVector vec2 = new ArrayRealVector(width * height);
-		double[] lvl = new double[samples];
-		double[] noise = new double[samples];
+		List<Number> lvlList = new ArrayList<Number>();
+		List<Number> noiseList = new ArrayList<Number>();
 		for (int i = 0; i < samples; i++) {
 			img.setSlice(i * 2 + 1);
 			ImageProcessor ip1 = img.getProcessor().crop();
@@ -218,16 +225,16 @@ public class CCDGainCalc implements MMPlugin {
 					vec2.setEntry(j * height + k, ip2.getPixel(j, k));
 				}
 			}
-			lvl[i] = m.evaluate(vec1.getDataRef());
 			double ratio = -m.evaluate(vec1.getDataRef())
 					/ m.evaluate(vec2.getDataRef());
 			vec1.combineToSelf(1, ratio, vec2);
-			noise[i] = var.evaluate(vec1.getDataRef());
+			lvlList.add(m.evaluate(vec1.getDataRef()));
+			noiseList.add(var.evaluate(vec1.getDataRef()));
 		}
-		ArrayList<double[]> ret = new ArrayList<double[]>(2);
-		ret.add(0, lvl);
-		ret.add(1, noise);
-		return ret;
+		List<List<Number>> result = new ArrayList<List<Number>>();
+		result.add(lvlList);
+		result.add(noiseList);
+		return result;
 	}
 
 	boolean isCalibrating() {
