@@ -28,7 +28,7 @@
 	</target>
 
 	<target name="compile" depends="init" description="Compile.">
-		<javac includeantruntime="false" srcdir="${src.dir}" destdir="${build.dir}" source="1.6" target="1.6" optimize="on" debug="on" verbose="off">
+		<javac includeantruntime="false" srcdir="${src.dir}" destdir="${build.dir}" source="1.7" target="1.7" encoding="UTF-8" optimize="on" debug="on" verbose="off">
 			<classpath refid="project.class.path" />
 		</javac>
 	</target>

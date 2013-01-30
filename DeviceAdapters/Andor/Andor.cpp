@@ -3651,6 +3651,7 @@ int AndorCamera::GetListOfAvailableCameras()
                if(1 == gainAvailable)
                {
                   numAvailGains++;
+				  memset(PreAmpGainBuf, 0, 30);
                   GetPreAmpGainString(i,PreAmpGainBuf);
                   PreAmpGains_.push_back(PreAmpGainBuf);
                }

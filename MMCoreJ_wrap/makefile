@@ -74,7 +74,9 @@ $(OBJ_FILES): MMCoreJ_wrap.cxx MMCoreJ_wrap.h
 post-build:
 	@echo $(PROJ_NAME): post-build:	
 	@cp -v -f $(JAR_FILE) $(MM_ROOT)/trunk/bin_Win32
+	@cp -v -f $(JAR_FILE) $(MM_ROOT)/trunk/Install_Win32/micro-manager/plugins/Micro-Manager
 	@cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
+	@cp -v -f $(TARGET) $(MM_ROOT)/trunk/Install_Win32/micro-manager
 	@echo.
 	
 clean:

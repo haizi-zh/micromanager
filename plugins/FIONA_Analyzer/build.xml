@@ -4,12 +4,23 @@
 		This plugin tracks fluorescent particles via FIONA algorithm.
 	</description>
 
-	<property name="build.dir" value="build" />
 	<property name="src.dir" value="src" />
-	<property name="dist.dir" value="../../imagej/dist" />
-	<property name="target.name" value="FIONA_Analyzer" />
+	<property name="target.name" value="FIONA_Analyzer" />	
+	<property name="build.dir" value="bin" />
+	<property name="src.dir" value="src" />
+	<property name="mm.dir" value="../../bin_Win32" />
+	<property name="dist.dir" value="../../Install_Win32/micro-manager" />
+	<property name="3rdparty" value="../../../3rdpartypublic" />
+	<property environment="env" />
 
 	<path id="project.class.path">
+		<pathelement location="${3rdparty}/classext/ij.jar" />
+		<pathelement location="${mm.dir}/MMCoreJ.jar" />
+		<pathelement location="${mm.dir}/plugins/Micro-Manager/MMJ_.jar" />
+		<pathelement location="${3rdparty}/classext/commons-math3-3.0.jar" />
+		<pathelement location="${3rdparty}/classext/jfreechart-1.0.14.jar" />
+		<pathelement location="${3rdparty}/classext/jcommon-1.0.17.jar" />
+		
 		<pathelement location="${dist.dir}/ij.jar" />
 		<pathelement location="lib/FIONA.jar" />
 		<pathelement location="lib/javabuilder.jar" />
