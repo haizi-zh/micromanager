@@ -46,10 +46,10 @@ public class DefaultTaggedImagePipeline {
       summaryMetadata_ = acqEngine.getSummaryMetadata();
 
       // Create the default display
-      acqName_ = gui.createAcquisition(summaryMetadata_, diskCached);
-      
+      acqName_ = gui.createAcquisition(summaryMetadata_, diskCached, gui.getHideMDADisplayOption());
+
       // Acquisition name tagger
-      List<DataProcessor<TaggedImage>> processors =new ArrayList<DataProcessor<TaggedImage>>();
+      List<DataProcessor<TaggedImage>> processors = new ArrayList<DataProcessor<TaggedImage>>();
       processors.add(AcqNameTagger.getInstance(acqName_));
       Iterator<DataProcessor<TaggedImage>> it = imageProcessors.iterator();
       while(it.hasNext()){
