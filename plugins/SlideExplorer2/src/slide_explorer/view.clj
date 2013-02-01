@@ -15,10 +15,6 @@
             [slide-explorer.paint :as paint]
             [clojure.core.memoize :as memo]))
 
-(def MIN-ZOOM 1/256)
-
-(def MAX-ZOOM 1)
-
 ; Order of operations:
 ;  Stitch (not done)
 ;  Crop (not done)
@@ -75,37 +71,6 @@
                     future-state (update-in screen-state [:zoom] * factor)]
                 (visible-tile-indices future-state channel-index))))))
 
-;; TILING
-
-(defn child-index
-  "Converts an x,y index to one in a child (1/2x zoom)."
-  [n]
-  (tiles/floor-int (/ n 2)))
-
-(defn child-indices [indices]
-  (-> indices
-     (update-in [:nx] child-index)
-     (update-in [:ny] child-index)
-     (update-in [:zoom] / 2)))
-
-(defn propagate-tile [tile-map-atom child parent]
-  (let [child-tile (tile-cache/load-tile tile-map-atom child)
-        parent-tile (tile-cache/load-tile tile-map-atom parent)
-        new-child-tile (image/insert-half-tile
-                         parent-tile
-                         [(even? (:nx parent))
-                          (even? (:ny parent))]
-                         child-tile)]
-    (tile-cache/add-tile tile-map-atom child new-child-tile)))
-
-(defn add-to-memory-tiles [tile-map-atom indices tile]
-  (let [full-indices (assoc indices :zoom 1)]
-    (tile-cache/add-tile tile-map-atom full-indices tile)
-    (loop [child (child-indices full-indices)
-           parent full-indices]
-      (when (<= MIN-ZOOM (:zoom child))
-        (propagate-tile tile-map-atom child parent)
-        (recur (child-indices child) child)))))
 
 ;; CONTRAST
 
@@ -161,20 +126,17 @@
                     (screen-state :tile-dimensions) 1)]
         (paint/draw-image g image x y)))))
 
-(defn paint-position [^Graphics2D g screen-state x y color]
-  (let [[w h] (:tile-dimensions screen-state)
-        zoom (:zoom screen-state)
-        scale (:scale screen-state)]
+(defn paint-position [^Graphics2D g
+                      {[w h] :tile-dimensions :keys [zoom scale] :as screen-state}
+                      x y color]
     (when (and x y w h color)
-;      (.drawRect g (* zoom x) (* zoom y)
-;                        (* zoom w) (* zoom h)))))
       (canvas/draw g
                    [:rect
                     {:l (inc (* zoom x)) :t (inc (* zoom y))
                      :w (* zoom w) :h (* zoom h)
                      :alpha 1
                      :stroke {:color color
-                              :width (max 4.0 (* 16 zoom))}}]))))
+                              :width (max 4.0 (* 16 zoom))}}])))
 
 (defn paint-stage-position [^Graphics2D g screen-state]
   (let [[x y] (:xy-stage-position screen-state)
@@ -205,13 +167,13 @@
       (paint-tiles overlay-tiles-atom screen-state)
       (paint-position-list screen-state)
       (paint-stage-position screen-state)
-      paint/enable-anti-aliasing
       (.setTransform original-transform)
-      (.setColor Color/WHITE)
+      paint/enable-anti-aliasing
       (canvas/draw (when-let [pixel-size (:pixel-size-um screen-state)]
                      (bar-widget-memo (:height screen-state)
                                       (/ pixel-size zoom scale))))
       ;(show-mouse-pos screen-state)
+      ;(.setColor Color/WHITE)
       ;(.drawString (str (select-keys screen-state [:mouse :x :y :z :zoom])) 10 20)
       ;(.drawString (str (user-controls/absolute-mouse-position screen-state)) 10 40)
       )))
@@ -229,8 +191,9 @@
 
 (defn load-visible-only
   "Runs visible-loader whenever screen-state-atom changes."
-  [screen-state-atom memory-tile-atom
-   overlay-tiles-atom acquired-images]
+  [screen-state-atom
+   memory-tile-atom
+   overlay-tiles-atom]
   (let [load-overlay (fn [_ _]
                        (overlay-loader
                          screen-state-atom
@@ -275,14 +238,15 @@
               :channels (sorted-map)
               :positions #{}))
 
-(defn view-panel [memory-tiles acquired-images settings]
+(defn view-panel [memory-tile-atom settings]
   (let [screen-state (atom (merge default-settings
                                   settings))
         overlay-tiles (tile-cache/create-tile-cache 100)
         panel (main-panel screen-state overlay-tiles)]
-    (load-visible-only screen-state memory-tiles
-                       overlay-tiles acquired-images)
-    (paint/repaint-on-change panel [overlay-tiles screen-state]); [memory-tiles])
+    (load-visible-only screen-state
+                       memory-tile-atom
+                       overlay-tiles)
+    (paint/repaint-on-change panel [overlay-tiles screen-state]); [memory-tile-atom])
     [panel screen-state]))
 
 (defn set-position! [screen-state-atom x y]
@@ -329,11 +293,10 @@
            copy-settings
            #(select-keys % [:positions :channels :xy-stage-position :z])))
 
-(defn show [dir acquired-images settings]
-  (let [memory-tiles (tile-cache/create-tile-cache 200 dir)
-        frame (main-frame)
-        [panel screen-state] (view-panel memory-tiles acquired-images settings)
-        [panel2 screen-state2] (view-panel memory-tiles acquired-images settings)
+(defn show [memory-tile-atom settings]
+  (let [frame (main-frame)
+        [panel screen-state] (view-panel memory-tile-atom settings)
+        [panel2 screen-state2] (view-panel memory-tile-atom settings)
         split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true panel panel2)]
     (doto split-pane
       (.setBorder nil)
@@ -342,9 +305,8 @@
     (def ss screen-state)
     (def ss2 screen-state2)
     (def pnl panel)
-    (def mt memory-tiles)
+    (def mt memory-tile-atom)
     (def f frame)
-    (def ai acquired-images)
     (println ss ss2 mt)
     (.add (.getContentPane frame) split-pane)
     (user-controls/setup-fullscreen frame)
@@ -356,7 +318,7 @@
     (copy-settings screen-state screen-state2)
     ;(handle-open frame)
     (.show frame)
-    [screen-state memory-tiles panel]))
+    [screen-state panel]))
 
 
 ;; testing
