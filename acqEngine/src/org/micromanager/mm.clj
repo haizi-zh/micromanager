@@ -22,7 +22,8 @@
            [org.micromanager.utils ChannelSpec]
            [java.util Date]
            [ij IJ]
-           [javax.swing SwingUtilities]))
+           [javax.swing SwingUtilities])
+  (:require [clojure.pprint]))
 
 (declare gui)
 (declare mmc)
@@ -81,7 +82,7 @@
     (.logMessage mmc s true))
 
 (defn handle-multiline [x]
-  (let [x-trimmed (clojure.string/trim x)]
+  (let [x-trimmed (.trim x)]
     (if (< 1 (count (.split x-trimmed "\n")))
       (str "\n" x-trimmed)
       x-trimmed)))
