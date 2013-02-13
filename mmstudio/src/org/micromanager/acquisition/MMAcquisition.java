@@ -107,7 +107,6 @@ public class MMAcquisition {
 
    public MMAcquisition(String name, JSONObject summaryMetadata, boolean diskCached, AcquisitionEngine eng, boolean show) {
       TaggedImageStorage imageFileManager;
-      MMImageCache imageCache;
       name_ = name;
       virtual_ = diskCached;
       existing_ = false;
@@ -115,40 +114,40 @@ public class MMAcquisition {
       try {
          if (summaryMetadata.has("Directory") && summaryMetadata.get("Directory").toString().length() > 0) {
             try {
-               String acqPath = createAcqPath(summaryMetadata.getString("Directory"), summaryMetadata.getString("Prefix"));
+               String acqDirectory = createAcqDirectory(summaryMetadata.getString("Directory"), summaryMetadata.getString("Prefix"));
+               summaryMetadata.put("Prefix", acqDirectory);
+               String acqPath = summaryMetadata.getString("Directory") + File.separator + acqDirectory;
                imageFileManager = ImageUtils.newImageStorageInstance(acqPath, true, (JSONObject) null);
-               imageCache = new MMImageCache(imageFileManager);
+               imageCache_ = new MMImageCache(imageFileManager);
                if (!virtual_) {
-                  imageCache.saveAs(new TaggedImageStorageRam(null), true);
+                  imageCache_.saveAs(new TaggedImageStorageRam(null), true);
                }
             } catch (Exception e) {
                ReportingUtils.showError(e, "Unable to create directory for saving images.");
                eng.stop(true);
                imageFileManager = null;
-               imageCache = null;
+               imageCache_ = null;
             }
          } else {
             imageFileManager = new TaggedImageStorageRam(null);
-            imageCache = new MMImageCache(imageFileManager);
+            imageCache_ = new MMImageCache(imageFileManager);
          }
   
-      imageCache.setSummaryMetadata(summaryMetadata);
+      imageCache_.setSummaryMetadata(summaryMetadata);
       if (show_) {
-         virtAcq_ = new VirtualAcquisitionDisplay(imageCache, eng);
-         imageCache.addImageCacheListener(virtAcq_);
+         virtAcq_ = new VirtualAcquisitionDisplay(imageCache_, eng);
+         imageCache_.addImageCacheListener(virtAcq_);
       }
-      this.summary_ = summaryMetadata;
-      this.imageCache_ = imageCache;
+         this.summary_ = summaryMetadata;
       } catch (JSONException ex) {
          ReportingUtils.showError(ex);
       }
   }
-
-   private String createAcqPath(String root, String prefix) throws Exception {
+   
+   private String createAcqDirectory(String root, String prefix) throws Exception {
       File rootDir = JavaUtils.createDirectory(root);
       int curIndex = getCurrentMaxDirIndex(rootDir, prefix + "_");
-      File acqDir = new File(root + "/" + prefix + "_" + (1 + curIndex));
-      return acqDir.getAbsolutePath();
+      return prefix + "_" + (1 + curIndex);
    }
 
    private int getCurrentMaxDirIndex(File rootDir, String prefix) throws NumberFormatException {
@@ -275,7 +274,6 @@ public class MMAcquisition {
 
       TaggedImageStorage imageFileManager;
       String name = name_;
-      MMImageCache imageCache = null;
 
       if (virtual_ && existing_) {
          String dirName = rootDirectory_ + File.separator + name;
@@ -291,26 +289,30 @@ public class MMAcquisition {
             throw new MMScriptException(ex);
          }
 
-         imageCache = new MMImageCache(imageFileManager);
+         imageCache_ = new MMImageCache(imageFileManager);
       }
 
       if (virtual_ && !existing_) {
          String dirName = rootDirectory_ + File.separator + name;
          if ((new File(dirName)).exists()) {
             try {
-               dirName = createAcqPath(rootDirectory_, name_);
+               String acqDirectory = createAcqDirectory(rootDirectory_, name_);
+               if (summary_ != null) {
+                  summary_.put("Prefix", acqDirectory);
+               }
+               dirName = rootDirectory_ + File.separator + acqDirectory;
             } catch (Exception ex) {
                throw new MMScriptException("Failed to figure out acq saving path.");
             }
          }
          
          imageFileManager = ImageUtils.newImageStorageInstance(dirName, true, summary_);
-         imageCache = new MMImageCache(imageFileManager);
+         imageCache_ = new MMImageCache(imageFileManager);
       }
 
       if (!virtual_ && !existing_) {
          imageFileManager = new TaggedImageStorageRam(null);
-         imageCache = new MMImageCache(imageFileManager);
+         imageCache_ = new MMImageCache(imageFileManager);
       }
 
       if (!virtual_ && existing_) {
@@ -329,12 +331,12 @@ public class MMAcquisition {
          }
 
          System.gc();
-         imageCache = new MMImageCache(tempImageFileManager);
+         imageCache_ = new MMImageCache(tempImageFileManager);
          if (tempImageFileManager.getDataSetSize() > 0.9 * JavaUtils.getAvailableUnusedMemory()) {
             throw new MMScriptException("Not enough room in memory for this data set.\nTry opening as a virtual data set instead.");
          }
          imageFileManager = new TaggedImageStorageRam(null);
-         imageCache.saveAs(imageFileManager);
+         imageCache_.saveAs(imageFileManager);
       }
 
       
@@ -354,12 +356,12 @@ public class MMAcquisition {
                }
             }
          }
-         createDefaultAcqSettings(name, imageCache);
+         createDefaultAcqSettings(name, imageCache_);
       }
 
-      if (imageCache.getSummaryMetadata() != null) {
+      if (imageCache_.getSummaryMetadata() != null) {
          if (show_) {
-            virtAcq_ = new VirtualAcquisitionDisplay(imageCache, null, name);
+            virtAcq_ = new VirtualAcquisitionDisplay(imageCache_, null, name);
             virtAcq_.show();
          }
 
@@ -985,7 +987,7 @@ public class MMAcquisition {
    }
 
    public int getLastAcquiredFrame() {
-      return imageCache_.lastAcquiredFrame();
+      return (imageCache_ != null) ? imageCache_.lastAcquiredFrame() : 0;
    }
 
    public VirtualAcquisitionDisplay getAcquisitionWindow() {

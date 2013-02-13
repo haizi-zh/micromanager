@@ -15,22 +15,17 @@ import ij.plugin.frame.RoiManager;
 import ij.process.ImageProcessor;
 import java.awt.Point;
 import java.awt.Polygon;
-import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 import mmcorej.CMMCore;
 import mmcorej.TaggedImage;
-import org.apache.commons.math.util.MathUtils;
 import org.micromanager.api.AcquisitionEngine;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.utils.ImageUtils;
@@ -54,6 +49,7 @@ public class ProjectorController {
    private Roi[] individualRois_ = {};
    private int reps_ = 1;
    private long interval_us_ = 500000;
+   private Map mapping_ = null;
 
    public ProjectorController(ScriptInterface app) {
       gui = app;
@@ -76,6 +72,17 @@ public class ProjectorController {
        return (dev instanceof SLM);
    }
    
+   
+   public Point transform(Map<Polygon, AffineTransform> mapping, Point pt) {
+       Set<Polygon> set = mapping.keySet();
+       for (Polygon poly:set) {
+           if (poly.contains(pt)) {
+               return toIntPoint((Point2D.Double) mapping.get(poly).transform(toDoublePoint(pt), null));
+           } 
+       }
+       return null;
+   }
+   
    public void calibrate() {
       final boolean liveModeRunning = gui.isLiveModeOn();
       gui.enableLiveMode(false);
@@ -83,15 +90,16 @@ public class ProjectorController {
          public void run() {
             Roi originalROI = IJ.getImage().getRoi();
             gui.snapSingleImage();
-            AffineTransform firstApprox = getFirstApproxTransform();
-            AffineTransform affineTransform = getFinalTransform(firstApprox);
+            mapping_ = getMapping();
+            //LocalWeightedMean lwm = multipleAffineTransforms(mapping_);
+            //AffineTransform affineTransform = MathFunctions.generateAffineTransformFromPointPairs(mapping_);
             dev.turnOff();
             try {
                Thread.sleep(500);
             } catch (InterruptedException ex) {
                ReportingUtils.logError(ex);
             }
-            saveAffineTransform(affineTransform);
+            //saveAffineTransform(affineTransform);
             gui.enableLiveMode(liveModeRunning);
             JOptionPane.showMessageDialog(IJ.getImage().getWindow(), "Calibration finished.");
             IJ.getImage().setRoi(originalROI);
@@ -188,29 +196,56 @@ public class ProjectorController {
               MathFunctions.clip(pt.x, rect.x, rect.x + rect.width),
               MathFunctions.clip(pt.y, rect.y, rect.y + rect.height));
    }
-           
+   
    public static Point2D.Double transformAndClip(double x, double y, AffineTransform transform, Rectangle2D.Double clipRect) {
       return clipPoint((Point2D.Double) transform.transform(new Point2D.Double(x,y), null), clipRect);
    }
    
-   public AffineTransform getFinalTransform(AffineTransform firstApprox) {
-      Map spotMap2 = new HashMap();
-      int imgWidth = (int) mmc.getImageWidth();
-      int imgHeight = (int) mmc.getImageHeight();
-
-      int s = 60;
-      Point2D.Double dmdPoint;
-      Rectangle2D.Double dmdRect = new Rectangle2D.Double(0, 0, dev.getWidth(), dev.getHeight());
+   public static void addVertex(Polygon poly, Point p) {
+       poly.addPoint(p.x, p.y);
+   }
+   
+   public static Point toIntPoint(Point2D.Double pt) {
+       return new Point((int) pt.x, (int) pt.y);
+   }
+   
+   public static Point2D.Double toDoublePoint(Point pt) {
+       return new Point2D.Double(pt.x, pt.y);
+   }
+   
+   public Map getMapping() {
+      int w = (int) dev.getWidth()-1;
+      int h = (int) dev.getHeight()-1;
+      int n = 6;
+      Point2D.Double dmdPoint[][] = new Point2D.Double[1+n][1+n];
+      Point2D.Double resultPoint[][] = new Point2D.Double[1+n][1+n];
+      for (int i = 0; i <= n; ++i) {
+        for (int j = 0; j <= n; ++j) {
+           dmdPoint[i][j] = new Point2D.Double((int) (i*w/n),(int) (j*h/n));
+           resultPoint[i][j] = toDoublePoint(measureSpot(toIntPoint(dmdPoint[i][j])));
+        }
+      }
       
-      dmdPoint = transformAndClip(s, s, firstApprox, dmdRect);
-      mapSpot(spotMap2, dmdPoint);
-      dmdPoint = transformAndClip(imgWidth - s, s, firstApprox, dmdRect); 
-      mapSpot(spotMap2, dmdPoint);
-      dmdPoint = transformAndClip(imgWidth - s, imgHeight - s, firstApprox, dmdRect); 
-      mapSpot(spotMap2, dmdPoint);
-      dmdPoint = transformAndClip(s, imgHeight - s, firstApprox, dmdRect); 
-      mapSpot(spotMap2, dmdPoint);
-      return MathFunctions.generateAffineTransformFromPointPairs(spotMap2);
+      Map bigMap = new HashMap();
+      for (int i=0; i<=n-1; ++i) {
+          for (int j=0; j<=n-1; ++j) {
+              Polygon poly = new Polygon();
+              addVertex(poly, toIntPoint(resultPoint[i][j]));
+              addVertex(poly, toIntPoint(resultPoint[i][j+1]));
+              addVertex(poly, toIntPoint(resultPoint[i+1][j+1]));
+              addVertex(poly, toIntPoint(resultPoint[i+1][j]));
+              
+              Map map = new HashMap();
+              map.put(resultPoint[i][j], dmdPoint[i][j]);
+              map.put(resultPoint[i][j+1], dmdPoint[i][j+1]);
+              map.put(resultPoint[i+1][j], dmdPoint[i+1][j]);
+              map.put(resultPoint[i+1][j+1], dmdPoint[i+1][j+1]);
+              
+              AffineTransform transform = MathFunctions.generateAffineTransformFromPointPairs(map);
+              bigMap.put(poly, transform);
+          } 
+      }
+      return bigMap;
    }
 
    public void turnOff() {
@@ -252,8 +287,8 @@ public class ProjectorController {
    }
    
    public int setRois(int reps) {
-      AffineTransform transform = loadAffineTransform();
-      if (transform != null) {
+      //AffineTransform transform = loadAffineTransform();
+      if (mapping_ != null) {
          Roi[] rois = null;
          Roi[] roiMgrRois = {};
          Roi singleRoi = gui.getImageWin().getImagePlus().getRoi();
@@ -305,9 +340,10 @@ public class ProjectorController {
             Point p = e.getPoint();
             ImageCanvas canvas = (ImageCanvas) e.getSource();
             Point pOffscreen = new Point(canvas.offScreenX(p.x),canvas.offScreenY(p.y));
-            Point2D.Double devP = (Point2D.Double) loadAffineTransform().transform(
-                    new Point2D.Double(pOffscreen.x, pOffscreen.y), null);
-            displaySpot(devP.x, devP.y, thisController.getPointAndShootInterval());
+            Point devP = transform((Map<Polygon, AffineTransform>) mapping_, new Point(pOffscreen.x, pOffscreen.y));
+            if (devP != null) {
+                displaySpot(devP.x, devP.y, thisController.getPointAndShootInterval());
+            }
          }
       };
    }

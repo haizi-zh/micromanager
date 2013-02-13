@@ -38,6 +38,8 @@
 // CircularBuffer class
 // ~~~~~~~~~~~~~~~~~~~~
 
+static MMThreadLock g_bufferLock;
+
 class CircularBuffer
 {
 public:
@@ -49,9 +51,9 @@ public:
    unsigned long GetFreeSize() const;
    unsigned long GetRemainingImageCount() const;
 
-   unsigned int Width() const {return width_;}
-   unsigned int Height() const {return height_;}
-   unsigned int Depth() const {return pixDepth_;}
+   unsigned int Width() const {MMThreadGuard guard(g_bufferLock); return width_;}
+   unsigned int Height() const {MMThreadGuard guard(g_bufferLock); return height_;}
+   unsigned int Depth() const {MMThreadGuard guard(g_bufferLock); return pixDepth_;}
 
    bool InsertImage(const unsigned char* pixArray, unsigned int width, unsigned int height, unsigned int byteDepth, const Metadata* pMd) throw (CMMError);
    bool InsertMultiChannel(const unsigned char* pixArray, unsigned int numChannels, unsigned int width, unsigned int height, unsigned int byteDepth, const Metadata* pMd) throw (CMMError);
@@ -60,16 +62,17 @@ public:
    const ImgBuffer* GetTopImageBuffer(unsigned channel, unsigned slice) const;
    const ImgBuffer* GetNthFromTopImageBuffer(unsigned long n) const;
    const ImgBuffer* GetNextImageBuffer(unsigned channel, unsigned slice);
-   void Clear() {insertIndex_=0; saveIndex_=0; overflow_ = false;}
+   void Clear() {MMThreadGuard guard(g_bufferLock); insertIndex_=0; saveIndex_=0; overflow_ = false;}
 
    double GetAverageIntervalMs() const;
-   bool Overflow() {return overflow_;}
+   bool Overflow() {MMThreadGuard guard(g_bufferLock); return overflow_;}
 
 private:
    unsigned int width_;
    unsigned int height_;
    unsigned int pixDepth_;
    long imageCounter_;
+   std::map<std::string, long> imageNumbers_;
    long insertIndex_;
    long saveIndex_;
    unsigned long memorySizeMB_;

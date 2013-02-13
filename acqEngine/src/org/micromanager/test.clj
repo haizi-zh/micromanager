@@ -1,10 +1,11 @@
 (ns org.micromanager.test
   (:import (java.util List)
+           (java.util.concurrent Executors)
            (mmcorej TaggedImage)
            (org.json JSONObject)
            (org.micromanager MMStudioMainFrame)
            (org.micromanager.api DataProcessor))
-  (:use [org.micromanager.mm :only (edt load-mm gui mmc)]))
+  (:use [org.micromanager.mm :only (edt load-mm core gui mmc)]))
 
 (load-mm (MMStudioMainFrame/getInstance))
 
@@ -82,3 +83,57 @@
   (remove-all-image-processors!)
   (add-image-processor! (duplicator-proc))
   (add-image-processor! (identity-proc)))
+
+
+;; popNextImage speed tests
+
+(def pop-lock (Object.))
+
+(defn pop-next []
+  (locking pop-lock
+           (when (or (core isSequenceRunning)
+                     (pos? (core getRemainingImageCount)))
+             (while (zero? (core getRemainingImageCount))
+               (Thread/sleep 10))
+             (core popNextImage))))
+
+(defn pop-n [n]
+  (repeatedly n pop-next))
+
+(defn pop-n-par [n]
+  (pmap (fn [_] (pop-next)) (range n)))
+
+(defn test-speed [n]
+  (do (core startSequenceAcquisition n 0 true)
+      (time (dotimes [i n] (pop-next))))
+  (println (core isBufferOverflowed)))
+
+(defn fill-circular-buffer [n]
+  (core startSequenceAcquisition n 0 true)
+  (while (core isSequenceRunning) (Thread/sleep 10)))
+
+(defn single-thread-pop-test [n]
+  (fill-circular-buffer n)
+  (time (dotimes [i n]
+          (core popNextImage))))
+
+  
+(defn multithread-pop [nthreads n]
+  (fill-circular-buffer n)
+  (let [pop-service (Executors/newFixedThreadPool nthreads)
+        pop-fn (cast Runnable #(core popNextImage))]
+    (time
+      (do
+        (dotimes [i n]
+          (.submit pop-service pop-fn))
+        (while (pos? (core getRemainingImageCount))
+          (Thread/sleep 1))))))
+
+(defn repeat-with-params [f & more]
+  (doseq [[n args] (partition 2 more)]
+    (println n args)
+    (doall
+      (repeatedly n #(apply f args)))))
+    
+    
+
