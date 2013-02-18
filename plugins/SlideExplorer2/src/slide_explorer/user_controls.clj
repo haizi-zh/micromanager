@@ -108,8 +108,16 @@
     (.repaint window)
     (.show window)))
 
+(defn toggle-full-screen!
+  "Turn full screen mode on and off for a given window."
+  [window]
+  (when window
+    (if (@old-bounds window)
+      (exit-full-screen! window)
+      (full-screen! window))))
+
 (defn setup-fullscreen [window]
-  (bind-window-keys window ["F"] #(full-screen! window))
+  (bind-window-keys window ["F"] #(toggle-full-screen! window))
   (bind-window-keys window ["ESCAPE"] #(exit-full-screen! window)))
 
 ;; window positioning
@@ -256,9 +264,16 @@
     (doseq [component (window-descendants window)]
       (.addKeyListener component key-adapter))))
 
+(defn apply-centered-mouse-position [screen-state screen-x screen-y]
+  (let [{:keys [width height]} screen-state]
+    (update-in screen-state [:mouse] assoc
+               :x (- screen-x (/ width 2))
+               :y (- screen-y (/ height 2)))))
+
 (defn update-mouse-position [e screen-state-atom]
-  (swap! screen-state-atom update-in [:mouse]
-         merge {:x (.getX e) :y (.getY e)}))
+  (swap! screen-state-atom
+         apply-centered-mouse-position
+         (.getX e) (.getY e)))
 
 (defn handle-click [panel event-predicate response-fn]
   (.addMouseListener panel
@@ -289,11 +304,9 @@
 (defn absolute-mouse-position [screen-state]
   (let [{:keys [x y z mouse zoom scale width height tile-dimensions]} screen-state]
     (when mouse
-      (let [mouse-x-centered (- (mouse :x) (/ width 2))
-            mouse-y-centered (- (mouse :y) (/ height 2))
-            [w h] tile-dimensions]
-        {:x (long (+ x (/ mouse-x-centered zoom scale) (/ w -2)))
-         :y (long (+ y (/ mouse-y-centered zoom scale) (/ h -2)))
+      (let [[w h] tile-dimensions]
+        {:x (long (+ x (/ (mouse :x) zoom scale) (/ w -2)))
+         :y (long (+ y (/ (mouse :y) zoom scale) (/ h -2)))
          :z z}))))
 
 (defn handle-reset [window screen-state-atom]
@@ -301,15 +314,61 @@
                #(swap! screen-state-atom
                        assoc :x 0 :y 0 :z 0 :zoom 1)))
 
+;; toggling split pane
 
-;(defn handle-open [window]
-;  (bind-window-keys window ["S"] create-dir-dialog))
+(defn redraw-frame [frame]
+  (doto (.getContentPane frame)
+    .revalidate
+    .repaint))  
 
-(defn make-view-controllable [panel screen-state-atom]
-  ((juxt handle-drags handle-arrow-pan handle-wheel
-         handle-resize handle-pointing)
-         panel screen-state-atom)
-  ((juxt handle-reset handle-zoom handle-dive) ; watch-keys)
-         (.getTopLevelAncestor panel) screen-state-atom))
+(def divider-locations (atom {}))
+
+(defn remember-divider-location! [split-pane]
+  (swap! divider-locations assoc split-pane
+         (.getDividerLocation split-pane)))
+
+(defn restore-divider-location! [split-pane]
+  (when-let [divider-loc (@divider-locations split-pane)]
+    (.setDividerLocation split-pane divider-loc)))
+
+(defn hide-1x-view [{:keys [frame content-pane split-pane left-panel right-panel]}]
+  (doto split-pane
+    remember-divider-location!
+    (.remove left-panel)
+    (.remove right-panel))
+  (doto content-pane
+    (.remove split-pane)
+    (.add left-panel))
+  (.setBounds right-panel 0 0 0 0) ; ensures redraw on restoration
+  (redraw-frame frame))  
+
+(defn show-1x-view [{:keys [frame content-pane split-pane left-panel right-panel]}]
+  (doto content-pane
+    (.remove left-panel)
+    (.add split-pane))
+  (doto split-pane
+    (.setLeftComponent left-panel)
+    (.setRightComponent right-panel)
+    restore-divider-location!)
+  (redraw-frame frame))
+
+(defn toggle-1x-view [{:keys [split-pane] :as widgets}]
+  (if (.getParent split-pane)
+    (hide-1x-view widgets)
+    (show-1x-view widgets)))
+
+(defn handle-toggle-split [widgets]
+  (bind-window-keys (:frame widgets) ["1"] #(toggle-1x-view widgets)))
+
+;; main function enabling controls
+
+(defn make-view-controllable [widgets screen-state-atom]
+  (let [panel (:left-panel widgets)]
+    ((juxt handle-drags handle-arrow-pan handle-wheel
+           handle-resize handle-pointing)
+           panel screen-state-atom)
+    ((juxt handle-reset handle-zoom handle-dive) ; watch-keys)
+           (.getTopLevelAncestor panel) screen-state-atom)
+    (handle-toggle-split widgets)))
     
  

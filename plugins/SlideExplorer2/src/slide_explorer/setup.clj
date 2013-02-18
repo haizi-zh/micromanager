@@ -15,12 +15,16 @@
 (def cheat-sheet-text
 "Slide Explorer controls:
 
-F: Enter fullscreen
-Esc: Exit fullscreen
-+/-: Zoom in/out
-</>: Slice up/down
-Shift+Click: Add/remove positions
-Double-Click: Navigate to present location")
+  +/-: Zoom in/out
+  </>: Slice up/down
+  F: Enter or exit full screen mode
+  Esc: Exit full screen mode
+  1: Hide or show 1x view
+
+For live data sets: 
+  Shift + Click: Add/remove positions
+  Double-click: Navigate to location
+")
     
 
 (defn cheat-sheet []

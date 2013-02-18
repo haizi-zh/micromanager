@@ -160,7 +160,7 @@ import org.zephyre.micromanager.AcqNameTagger;
 public class MMStudioMainFrame extends JFrame implements ScriptInterface, DeviceControlGUI {
 
    private static final String MICRO_MANAGER_TITLE = "Micro-Manager";
-   private static final String VERSION = "1.4.11  20121102";
+   private static final String VERSION = "1.4.x dev";
    private static final long serialVersionUID = 3556500289598574541L;
    private static final String MAIN_FRAME_X = "x";
    private static final String MAIN_FRAME_Y = "y";
@@ -2574,6 +2574,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
                ReportingUtils.logError(ex);
             }
          }
+         
       }
    }
 

@@ -12,7 +12,7 @@
    should have arguments [old-state new-state]."
   [reference function]
   (let [key (UUID/randomUUID)]
-    (add-watch reference key 
+    (add-watch reference key
                (fn [_ _ old-state new-state]
                  (try
                    (function old-state new-state)

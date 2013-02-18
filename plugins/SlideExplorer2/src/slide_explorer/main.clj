@@ -20,6 +20,7 @@
             [slide-explorer.canvas :as canvas]
             [slide-explorer.tiles :as tiles]
             [slide-explorer.persist :as persist]
+            [slide-explorer.disk :as disk]
             [slide-explorer.positions :as positions]
             [slide-explorer.store :as store]))
 
@@ -78,7 +79,7 @@
 (defn pixel-size-um
   "Compute the pixel size from a stage-to-pixel transform."
   [stage-to-pixel-transform]
-  (Math/pow (.getDeterminant stage-to-pixel-transform) -1/2))
+  (Math/pow (Math/abs (.getDeterminant stage-to-pixel-transform)) -1/2))
 
 ;; tagged image stuff
 
@@ -93,6 +94,12 @@
    :tags (mm/json-to-data (.tags tagged-image))})
 
 ;; stage communications
+
+(defn non-empty [x]
+  (when-not (empty? x) x))
+
+(defn focus-device []
+  (non-empty (mm/core getFocusDevice)))
 
 (defn get-xy-position []
   (mm/core waitForDevice (mm/core getXYStageDevice))
@@ -109,7 +116,7 @@
 
 (defn set-z-position
   [z]
-  (let [stage (mm/core getFocusDevice)]
+  (when-let [stage (focus-device)]
     (when (not= z (@current-z-positions stage))
       (mm/core setPosition stage z)
       (mm/core waitForDevice stage))
@@ -272,6 +279,13 @@ Would you like to run automatic pixel calibration?"
         (.setApp (MMStudioMainFrame/getInstance));
         .show))))
 
+(defn provide-constraints [screen-state-atom dir]
+  (let [available-keys (disk/available-keys dir)
+        tile-range (tiles/tile-range available-keys)
+        nav-range (tiles/nav-range tile-range (@screen-state-atom :tile-dimensions))]
+    (swap! screen-state-atom assoc :range nav-range) ))
+  
+
 ; Overall scheme
 ; the GUI is generally reactive.
 ; vars:
@@ -305,11 +319,12 @@ Would you like to run automatic pixel calibration?"
             acquired-images (atom #{})
             memory-tiles (tile-cache/create-tile-cache 200 dir (not new?))
             [screen-state panel] (view/show memory-tiles settings)]
-        (when new?
-          (mm/core waitForDevice (mm/core getXYStageDevice))
+        (if new?
           (let [acq-settings (create-acquisition-settings)
                 affine-stage-to-pixel (origin-here-stage-to-pixel-transform)
-                z-origin (mm/core getPosition (mm/core getFocusDevice))
+                z-origin (if-let [z-drive (focus-device)]
+                           (mm/core getPosition z-drive)
+                           0 )
                 first-seq (acquire-at (affine/inverse-transform
                                         (Point. 0 0) affine-stage-to-pixel)
                                       z-origin
@@ -317,8 +332,8 @@ Would you like to run automatic pixel calibration?"
                 explore-fn #(explore memory-tiles screen-state acquired-images
                                      affine-stage-to-pixel)
                 stage (mm/core getXYStageDevice)]
+            (mm/core waitForDevice stage)
             (.mkdirs dir)
-            (def mt memory-tiles)
             (def pnl panel)
             (def affine affine-stage-to-pixel)
             (user-controls/handle-double-click
@@ -346,8 +361,10 @@ Would you like to run automatic pixel calibration?"
                                       (mm/core getImageHeight)]})
             (add-watch screen-state "explore" (fn [_ _ old new] (when-not (= old new)
                                                                   (explore-fn))))
-            (explore-fn)))
+            (explore-fn))
+          (future (provide-constraints screen-state dir)))
         (save-settings dir @screen-state)
+        (def mt memory-tiles)
         (def ss screen-state)
         (def ai acquired-images))))
   ([]

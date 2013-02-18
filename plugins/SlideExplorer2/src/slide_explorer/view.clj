@@ -293,37 +293,50 @@
            copy-settings
            #(select-keys % [:positions :channels :xy-stage-position :z])))
 
+(defn within? [x [a b]]
+  (<= a x b))
+  
+(defn clip [x [a b]]
+  (-> x (max a) (min b)))
+
+(defn constrain [screen-state-atom axis]
+  (let [pos (get @screen-state-atom axis)
+        range (get-in @screen-state-atom [:range axis])]
+    (when (and pos range (not (within? pos range)))
+      (swap! screen-state-atom update-in [axis] clip range))))
+
+(defn enforce-constraints [screen-state-atom]
+  (reactive/add-watch-simple
+    screen-state-atom
+    (fn [_ _] (dorun (map #(constrain screen-state-atom %)
+                          [:x :y :z])))))
+
+(defn create-split-pane [parent left-panel right-panel]
+  (.add parent
+        (doto (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true
+                           left-panel right-panel)
+          (.setBorder nil)
+          (.setResizeWeight 0.5)
+          (.setDividerLocation 0.7))))
+
 (defn show [memory-tile-atom settings]
   (let [frame (main-frame)
         [panel screen-state] (view-panel memory-tile-atom settings)
         [panel2 screen-state2] (view-panel memory-tile-atom settings)
-        split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT true panel panel2)]
-    (doto split-pane
-      (.setBorder nil)
-      (.setResizeWeight 0.5)
-      (.setDividerLocation 0.7))
-    (def ss screen-state)
-    (def ss2 screen-state2)
-    (def pnl panel)
-    (def mt memory-tile-atom)
-    (def f frame)
-    (println ss ss2 mt)
-    (.add (.getContentPane frame) split-pane)
+        split-pane (create-split-pane (.getContentPane frame) panel panel2)
+        widgets {:frame frame :left-panel panel :right-panel panel2
+                 :split-pane split-pane :content-pane (.getContentPane frame)}]     
     (user-controls/setup-fullscreen frame)
-    (user-controls/make-view-controllable panel screen-state)
+    (enforce-constraints screen-state)
+    (user-controls/make-view-controllable widgets screen-state)
     (user-controls/handle-resize panel2 screen-state2)
     (handle-point-and-show screen-state screen-state2)
     ;(handle-stage-move-and-show screen-state screen-state2) ; make this optional?
     (handle-display-change-and-show screen-state screen-state2)
     (copy-settings screen-state screen-state2)
-    ;(handle-open frame)
     (.show frame)
+    (def w widgets)
+    (def ss screen-state)
+    (def ss2 screen-state2)
+    (def mt memory-tile-atom)
     [screen-state panel]))
-
-
-;; testing
-
-(defn big-region-contrast []
-  (swap! ss assoc
-         :channels {"Default" {:min 200 :max 800 :gamma 1.0 :color Color/WHITE}})
-  (swap! ss2 assoc :channels (:channels @ss)))

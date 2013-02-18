@@ -15,6 +15,7 @@ import ij.plugin.frame.RoiManager;
 import ij.process.ImageProcessor;
 import java.awt.Point;
 import java.awt.Polygon;
+import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -22,9 +23,12 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 import mmcorej.CMMCore;
+import mmcorej.Configuration;
 import mmcorej.TaggedImage;
 import org.micromanager.api.AcquisitionEngine;
 import org.micromanager.api.ScriptInterface;
@@ -50,7 +54,9 @@ public class ProjectorController {
    private int reps_ = 1;
    private long interval_us_ = 500000;
    private Map mapping_ = null;
-
+   private String mappingNode_ = null;
+   private String targetingChannel_;
+       
    public ProjectorController(ScriptInterface app) {
       gui = app;
       mmc = app.getMMCore();
@@ -64,7 +70,8 @@ public class ProjectorController {
       } else {
          dev = null;
       }
-      
+
+      loadMapping();
       pointAndShootMouseListener = setupPointAndShootMouseListener();
    }
 
@@ -90,7 +97,10 @@ public class ProjectorController {
          public void run() {
             Roi originalROI = IJ.getImage().getRoi();
             gui.snapSingleImage();
-            mapping_ = getMapping();
+            
+            AffineTransform firstApproxAffine = getFirstApproxTransform();
+            
+            HashMap<Polygon, AffineTransform> mapping = (HashMap<Polygon, AffineTransform>) getMapping(firstApproxAffine);
             //LocalWeightedMean lwm = multipleAffineTransforms(mapping_);
             //AffineTransform affineTransform = MathFunctions.generateAffineTransformFromPointPairs(mapping_);
             dev.turnOff();
@@ -99,6 +109,7 @@ public class ProjectorController {
             } catch (InterruptedException ex) {
                ReportingUtils.logError(ex);
             }
+            saveMapping((HashMap<Polygon, AffineTransform>) mapping);
             //saveAffineTransform(affineTransform);
             gui.enableLiveMode(liveModeRunning);
             JOptionPane.showMessageDialog(IJ.getImage().getWindow(), "Calibration finished.");
@@ -108,6 +119,22 @@ public class ProjectorController {
       th.start();
    }
 
+   private HashMap<Polygon, AffineTransform> loadMapping() {
+       String nodeStr = getCalibrationNode().toString();
+       if (mappingNode_ == null || !nodeStr.contentEquals(mappingNode_)) {
+           mappingNode_ = nodeStr;
+           mapping_ = (HashMap<Polygon, AffineTransform>) JavaUtils.getObjectFromPrefs(getCalibrationNode(), dev.getName(), new HashMap<Polygon, AffineTransform>());
+       }
+       return (HashMap<Polygon, AffineTransform>) mapping_;
+   }
+   
+   private void saveMapping(HashMap<Polygon, AffineTransform> mapping) {
+       JavaUtils.putObjectInPrefs(getCalibrationNode(), dev.getName(), mapping);
+       mapping_ = mapping;
+       mappingNode_ = getCalibrationNode().toString();
+   }
+   
+   
    private Preferences getCalibrationNode() {
        return Preferences.userNodeForPackage(ProjectorPlugin.class)
                .node("calibration")
@@ -213,15 +240,29 @@ public class ProjectorController {
        return new Point2D.Double(pt.x, pt.y);
    }
    
-   public Map getMapping() {
-      int w = (int) dev.getWidth()-1;
-      int h = (int) dev.getHeight()-1;
-      int n = 6;
+   public Map getMapping(AffineTransform firstApprox) {
+      int devWidth = (int) dev.getWidth()-1;
+      int devHeight = (int) dev.getHeight()-1;
+     Point2D.Double camCorner1 = (Point2D.Double) firstApprox.transform(new Point2D.Double(0,0), null);
+     Point2D.Double camCorner2 = (Point2D.Double) firstApprox.transform(new Point2D.Double((int )mmc.getImageWidth(), (int) mmc.getImageHeight()), null);
+     int camLeft = Math.min((int) camCorner1.x, (int) camCorner2.x);
+     int camRight = Math.max((int) camCorner1.x, (int) camCorner2.x);
+     int camTop = Math.min((int) camCorner1.y, (int) camCorner2.y);
+     int camBottom = Math.max((int) camCorner1.y, (int) camCorner2.y);
+     int left = Math.max(camLeft, 0);
+     int right = Math.min(camRight,devWidth);
+     int top = Math.max(camTop, 0);
+     int bottom = Math.min(camBottom,devHeight);
+     int width = right-left;
+     int height = bottom-top;
+   
+     
+      int n = 8;
       Point2D.Double dmdPoint[][] = new Point2D.Double[1+n][1+n];
       Point2D.Double resultPoint[][] = new Point2D.Double[1+n][1+n];
       for (int i = 0; i <= n; ++i) {
         for (int j = 0; j <= n; ++j) {
-           dmdPoint[i][j] = new Point2D.Double((int) (i*w/n),(int) (j*h/n));
+           dmdPoint[i][j] = new Point2D.Double((int) left + i*width/n,(int) top + j*height/n);
            resultPoint[i][j] = toDoublePoint(measureSpot(toIntPoint(dmdPoint[i][j])));
         }
       }
@@ -310,12 +351,44 @@ public class ProjectorController {
          return 0;
       }
    }
+   
+   private Polygon[] transformROIs(Roi[] rois, Map<Polygon, AffineTransform> mapping) {
+      ArrayList<Polygon> transformedROIs = new ArrayList<Polygon>();
+      for (Roi roi : rois) {
+         if ((roi.getType() == Roi.POINT)
+                 || (roi.getType() == Roi.POLYGON)
+                 || (roi.getType() == Roi.RECTANGLE)
+                 || (roi.getType() == Roi.OVAL)) {
+
+            Polygon poly = roi.getPolygon();
+            Polygon newPoly = new Polygon();
+            try {
+               Point2D galvoPoint;
+               for (int i = 0; i < poly.npoints; ++i) {
+                  Point imagePoint = new Point(poly.xpoints[i], poly.ypoints[i]);
+                  galvoPoint = transform(mapping, imagePoint);
+                  if (galvoPoint == null) throw new Exception();
+                  newPoly.addPoint((int) galvoPoint.getX(), (int) galvoPoint.getY());
+               }
+               transformedROIs.add(newPoly);
+            } catch (Exception ex) {
+               ReportingUtils.showError(ex);
+               break;
+            }
+
+         } else {
+            ReportingUtils.showError("Can't use this type of ROI.");
+            break;
+         }
+      }
+      return (Polygon[]) transformedROIs.toArray(new Polygon[0]);
+   }
 
    private void sendRoiData() {
       if (individualRois_.length > 0) {
-         AffineTransform transform = loadAffineTransform();
-         if (transform != null) {
-            dev.setRois(individualRois_, transform);
+         if (mapping_ != null) {
+            Polygon[] galvoROIs = transformROIs(individualRois_,mapping_);
+            dev.setRois(galvoROIs);
             dev.setPolygonRepetitions(reps_);
             dev.setSpotInterval(interval_us_);
          }
@@ -333,20 +406,50 @@ public class ProjectorController {
       }
    }
    
-   public MouseListener setupPointAndShootMouseListener() {
-      final ProjectorController thisController = this;
-      return new MouseAdapter() {
-         public void mouseClicked(MouseEvent e) {
-            Point p = e.getPoint();
-            ImageCanvas canvas = (ImageCanvas) e.getSource();
-            Point pOffscreen = new Point(canvas.offScreenX(p.x),canvas.offScreenY(p.y));
-            Point devP = transform((Map<Polygon, AffineTransform>) mapping_, new Point(pOffscreen.x, pOffscreen.y));
-            if (devP != null) {
-                displaySpot(devP.x, devP.y, thisController.getPointAndShootInterval());
+    public MouseListener setupPointAndShootMouseListener() {
+        final ProjectorController thisController = this;
+        return new MouseAdapter() {
+
+            public void mouseClicked(MouseEvent e) {
+                if (e.isControlDown()) {
+                    String originalConfig = null;
+                    String channelGroup = mmc.getChannelGroup();
+                    boolean acqEngineShouldRestart = false;
+                    AcquisitionEngine eng = gui.getAcquisitionEngine();
+                    try {
+                        if (targetingChannel_.length() > 0) {
+                            originalConfig = mmc.getCurrentConfig(channelGroup);
+                            if (!originalConfig.contentEquals(targetingChannel_)) {
+                                acqEngineShouldRestart = eng.isAcquisitionRunning() && !eng.isPaused();
+                                gui.getAcquisitionEngine().setPause(true);
+                                mmc.setConfig(channelGroup, targetingChannel_);
+                            }
+                        }
+                    } catch (Exception ex) {
+                        ReportingUtils.logError(ex);
+                    }
+
+                    Point p = e.getPoint();
+                    ImageCanvas canvas = (ImageCanvas) e.getSource();
+                    Point pOffscreen = new Point(canvas.offScreenX(p.x), canvas.offScreenY(p.y));
+                    Point devP = transform((Map<Polygon, AffineTransform>) loadMapping(), new Point(pOffscreen.x, pOffscreen.y));
+                    if (devP != null) {
+                        displaySpot(devP.x, devP.y, thisController.getPointAndShootInterval());
+                    }
+                    if (originalConfig != null) {
+                        try {
+                            mmc.setConfig(channelGroup, originalConfig);
+                            if (acqEngineShouldRestart) {
+                                eng.setPause(false);
+                            }
+                        } catch (Exception ex) {
+                            ReportingUtils.logError(ex);
+                        }
+                    }
+                }
             }
-         }
-      };
-   }
+        };
+    }
  
    public void activatePointAndShootMode(boolean on) {
       ImageCanvas canvas = null;
@@ -415,4 +518,10 @@ public class ProjectorController {
      interval_us_ = interval_us;
      this.sendRoiData();
    }
+
+    void setTargetingChannel(Object selectedItem) {
+        targetingChannel_ = (String) selectedItem;
+    }
+   
+
 }
