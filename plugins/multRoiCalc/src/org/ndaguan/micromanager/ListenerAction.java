@@ -38,7 +38,7 @@ public class ListenerAction {
 		function_.selectRoiAsReference();
 	}
 
-	public void live() {
+	public void liveView() {
 		(new Thread(new Runnable() { @Override public void run() {
 			function_.liveView();
 		}
@@ -78,5 +78,41 @@ public class ListenerAction {
 			function_.showPreferencesDialog();
 		}
 		})).start();
+	}
+
+	public void showChartManager() {
+		(new Thread(new Runnable() { @Override public void run() {
+			function_.showChartManager();
+		}
+		})).start();		
+	}
+
+	public void ShowMagnetManualDialBox() {
+		(new Thread(new Runnable() { @Override public void run() {
+			function_.ShowMagnetManualDialBox();
+		}
+		})).start();		
+	}
+
+	public void setAutoContrast() {
+		(new Thread(new Runnable() { @Override public void run() {
+			function_.setAutoContrast();
+		}
+		})).start();
+		
+	}
+
+	public void liveCapture() {
+		(new Thread(new Runnable() { @Override public void run() {
+			function_.liveCapture();
+		}
+		})).start();		
+	}
+
+	public void showGui() {
+		(new Thread(new Runnable() { @Override public void run() {
+			function_.showGui();
+		}
+		})).start();			
 	}
 }
