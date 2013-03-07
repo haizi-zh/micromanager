@@ -294,9 +294,3 @@ ImgBuffer* FrameBuffer::InsertNewImage(unsigned channel, unsigned slice)
    indexMap_[GetIndex(channel, slice)] = img;
    return img;
 }
-
-/*
-unsigned FrameBuffer::GetChannelFromIndex(unsigned long idx)
-{
-}
-*/

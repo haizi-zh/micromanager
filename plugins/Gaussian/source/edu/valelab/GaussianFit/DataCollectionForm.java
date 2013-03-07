@@ -1624,6 +1624,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
                int width = rowData_.get(row).width_;
                int height = rowData_.get(row).height_;
                double factor = rowData_.get(row).pixelSizeNm_;
+               boolean useS = useSeconds(rowData_.get(row));
                ij.ImageStack  stack = new ij.ImageStack(width, height); 
                
                ImagePlus sp = new ImagePlus("Errors in pairs");
@@ -1731,6 +1732,9 @@ public class DataCollectionForm extends javax.swing.JFrame {
                      double timePoint = frame;
                      if (rowData_.get(row).timePoints_ != null) {
                         timePoint = rowData_.get(row).timePoints_.get(frame);
+                        if (useS) {
+                           timePoint /= 1000;
+                        }
                      }
                      xData.add(timePoint, avgX);
                      yData.add(timePoint, avgY);
@@ -1781,11 +1785,14 @@ public class DataCollectionForm extends javax.swing.JFrame {
               
                
 
-               String yAxis = "Time (frameNr)";
+               String xAxis = "Time (frameNr)";
                if (rowData_.get(row).timePoints_ != null) {
-                  yAxis = "Time (s)";
+                  xAxis = "Time (ms)";
+                  if (useS) {
+                     xAxis = "Time (s)";
+                  }
                }
-               GaussianUtils.plotData2("Error in " + rowData_.get(row).name_, xData, yData, yAxis, "Error(nm)", 0, 400);
+               GaussianUtils.plotData2("Error in " + rowData_.get(row).name_, xData, yData, xAxis, "Error(nm)", 0, 400);
 
                ij.IJ.showStatus("");
 
@@ -1891,7 +1898,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
                
                //XYSeries xData = new XYSeries("XError");
                //XYSeries yData = new XYSeries("YError");
-               ArrayList<GsSpotPair> spotPairs = new ArrayList<GsSpotPair>();
+               //ArrayList<GsSpotPair> spotPairs = new ArrayList<GsSpotPair>();
                ArrayList<ArrayList<GsSpotPair>> spotPairsByFrame = 
                        new ArrayList<ArrayList<GsSpotPair>>(); 
                
@@ -1937,7 +1944,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
                         Point2D.Double pCh2 = np.findKDWSE(pCh1);
                         if (pCh2 != null) {
                            GsSpotPair pair = new GsSpotPair(gs, pCh1, pCh2);
-                           spotPairs.add(pair);
+                           //spotPairs.add(pair);
                            spotPairsByFrame.get(frame - 1).add(pair);
                         }
                      }
@@ -1959,7 +1966,6 @@ public class DataCollectionForm extends javax.swing.JFrame {
                   ReportingUtils.logError("Error parsing pairs max distance field");
                   return;
                }
-               final double maxDistance2 = maxDistance * maxDistance;
                
                // prepare NearestPoint objects to speed up finding closest pair 
                ArrayList<NearestPointGsSpotPair> npsp = new ArrayList<NearestPointGsSpotPair>();
@@ -1968,7 +1974,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
                }
                
                ArrayList<ArrayList<GsSpotPair>> tracks = new ArrayList<ArrayList<GsSpotPair>>();
-               //Iterator<GsSpotPair> iSpotPairs = spotPairs.iterator();
+               
                Iterator<GsSpotPair> iSpotPairs = spotPairsByFrame.get(0).iterator();
                int i = 0;
                while (iSpotPairs.hasNext()) {
@@ -1980,8 +1986,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
                      track.add(spotPair);
                      int frame = 2;
                      while (frame <= rowData_.get(row).nrFrames_) {
-                        //GsSpotPair newSpotPair = findNextSpotPair(spotPair, spotPairsByFrame, 
-                        //        frame);
+                        
                         GsSpotPair newSpotPair = npsp.get(frame - 1).findKDWSE(
                                 new Point2D.Double(spotPair.getfp().getX(), spotPair.getfp().getY()));
                         if (newSpotPair != null) {
@@ -3805,7 +3810,7 @@ public class DataCollectionForm extends javax.swing.JFrame {
                     rowData.zStackStepSizeNm_, rowData.shape_,
                     rowData.halfSize_, rowData.nrChannels_, rowData.nrFrames_,
                     rowData.nrSlices_, 1, rowData.maxNrSpots_, correctedData,
-                    null, 
+                    rowData.timePoints_, 
                     false, Coordinates.NM, false, 0.0, 0.0);
          }
       };
@@ -3833,6 +3838,8 @@ public class DataCollectionForm extends javax.swing.JFrame {
       }
 
       XYSeries[] datas = new XYSeries[rowDatas.length];
+      
+      boolean useS;
 
       String xAxis = null;
 
@@ -3921,10 +3928,14 @@ public class DataCollectionForm extends javax.swing.JFrame {
             } else {
                for (int index = 0; index < rowDatas.length; index++) {
                   datas[index] = new XYSeries(rowDatas[index].ID_);
+                  useS = useSeconds(rowDatas[index]);
                   for (int i = 0; i < rowDatas[index].spotList_.size(); i++) {
                      GaussianSpotData spot = rowDatas[index].spotList_.get(i);
                      if (rowDatas[index].timePoints_ != null) {
                         double timePoint = rowDatas[index].timePoints_.get(i);
+                        if (useS) {
+                           timePoint /= 1000;
+                        }
                         datas[index].add(timePoint, spot.getIntensity());
                      } else {
                         datas[index].add(i, spot.getIntensity());
@@ -3932,7 +3943,11 @@ public class DataCollectionForm extends javax.swing.JFrame {
                   }
                   xAxis = "Time (frameNr)";
                   if (rowDatas[index].timePoints_ != null) {
-                     xAxis = "Time (s)";
+                     xAxis = "Time (ms)";
+                     if (useS) {
+                        xAxis = "Time (s)";
+                     }
+                        
                   }
                }
                GaussianUtils.plotDataN(title, datas, xAxis, "Intensity (#photons)", 
@@ -3942,6 +3957,17 @@ public class DataCollectionForm extends javax.swing.JFrame {
          break;
       }
 
+   }
+   
+   private boolean useSeconds(MyRowData row) {
+      boolean useS = false;
+      if (row.timePoints_ != null) {
+         if (row.timePoints_.get(row.timePoints_.size() - 1)
+                 - row.timePoints_.get(0) > 10000) {
+            useS = true;
+         }
+      }
+      return useS;
    }
    
    /**

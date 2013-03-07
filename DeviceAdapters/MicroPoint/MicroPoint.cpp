@@ -132,7 +132,12 @@ int MicroPoint::WriteBytes(unsigned char* buf, int numBytes)
 
 int MicroPoint::Initialize()
 {
-   CreateAttenuatorProperty();
+   ConfigurePortDirectionRegisters();
+   int ret = CreateAttenuatorProperty();
+   if (ret != DEVICE_OK)
+   {
+      return ret;
+   }
    CreateRepetitionsProperty();
    initialized_ = true;
    return DEVICE_OK;
@@ -148,6 +153,31 @@ bool MicroPoint::Busy()
    return false;
 }
 
+int MicroPoint::ConfigurePortDirectionRegisters()
+{
+   int ret;
+   unsigned char bufA[] = {'!','A',0};
+   ret = WriteBytes(bufA, 3);
+   if (ret != DEVICE_OK) {
+      return ret;
+   }
+
+   unsigned char bufB[] = {'!','B',0};
+   ret = WriteBytes(bufB, 3);
+   if (ret != DEVICE_OK) {
+      return ret;
+   }
+
+   unsigned char bufC[] = {'!','C',16+8+4};
+   ret = WriteBytes(bufC, 3);
+   if (ret != DEVICE_OK) {
+      return ret;
+   }
+   
+   return DEVICE_OK;
+}
+
+
 ////////////////////////////////
 // Attenuator private functions
 ////////////////////////////////
@@ -162,8 +192,7 @@ double MicroPoint::AttenuatorTransmissionFromIndex(long n)
 int MicroPoint::StepAttenuatorPosition(bool positive)
 {
    unsigned char buf[] = {'C', (positive ? 0xc0 : 0x80), 'C', 0x00};
-   WriteBytes(buf, 4);
-   return DEVICE_OK;
+   return WriteBytes(buf, 4);
 }
 
 int MicroPoint::MoveAttenuator(long steps)
@@ -171,7 +200,7 @@ int MicroPoint::MoveAttenuator(long steps)
    if (steps != 0)
    {
       unsigned char buf[] = {'A', 0, 'B', 0};
-      WriteToComPort(port_.c_str(), buf, 4);
+      WriteBytes(buf, 4);
    
       for (long i=0; i<labs(steps); ++i)
       {
@@ -188,7 +217,7 @@ bool MicroPoint::IsAttenuatorHome()
    unsigned char response[1];
    unsigned long read;
    ReadFromComPort(port_.c_str(), response, 1, read);
-   return (response[0] == 0x14);    // When true, step succeeded. 
+   return (0 != (response[0] & 0x10));    // When true we are at home.
 }
 
 long MicroPoint::FindAttenuatorPosition()
@@ -196,10 +225,14 @@ long MicroPoint::FindAttenuatorPosition()
    long startingIndex = 0;
 
    // Go backwards until we hit the 0 position.
-   while(!IsAttenuatorHome())
+   while(!IsAttenuatorHome() && (startingIndex<100))
    {
       StepAttenuatorPosition(false);
       ++startingIndex;
+   }
+   if (!IsAttenuatorHome())
+   {
+      return -1;
    }
 
    // Make sure we are ready to step out of home.
@@ -231,6 +264,10 @@ int MicroPoint::CreateRepetitionsProperty()
 int MicroPoint::CreateAttenuatorProperty()
 {
    attenuatorPosition_ = FindAttenuatorPosition();
+   if (attenuatorPosition_ < 0)
+   {
+      return DEVICE_UNKNOWN_POSITION;
+   }
 
    CPropertyAction* pAct = new CPropertyAction (this, &MicroPoint::OnAttenuator);
    CreateProperty("AttenuatorTransmittance", "0.01", MM::String, false, pAct);
@@ -263,7 +300,7 @@ int MicroPoint::PointAndFire(double x, double y, double /*pulseTime_us*/)
 
 int MicroPoint::SetSpotInterval(double /*pulseTime_us*/)
 {
-   return DEVICE_NOT_YET_IMPLEMENTED;
+   return DEVICE_OK; // ignore
 }
 
 int MicroPoint::SetIlluminationState(bool on)
@@ -311,27 +348,45 @@ double MicroPoint::GetYRange()
 
 int MicroPoint::AddPolygonVertex(int polygonIndex, double x, double y)
 {
-   return DEVICE_NOT_YET_IMPLEMENTED;
+   if (polygons_.size() <  (1 + polygonIndex))
+   {
+      polygons_.resize(polygonIndex + 1);
+   }
+   polygons_[polygonIndex].push_back(std::pair<double,double>(x,y));
+   
+   return DEVICE_OK;
 }
 
 int MicroPoint::DeletePolygons()
 {
-   return DEVICE_NOT_YET_IMPLEMENTED;
+   polygons_.clear();
+   return DEVICE_OK;
 }
 
 int MicroPoint::LoadPolygons()
 {
-   return DEVICE_NOT_YET_IMPLEMENTED;
+   // Do nothing -- MicroPoint controller doesn't store polygons.
+   return DEVICE_OK;
 }
 
 int MicroPoint::SetPolygonRepetitions(int repetitions)
 {
-   return DEVICE_NOT_YET_IMPLEMENTED;
+   polygonRepetitions_ = repetitions;
+   return DEVICE_OK;
 }
 
 int MicroPoint::RunPolygons()
 {
-   return DEVICE_NOT_YET_IMPLEMENTED;
+   for (int j=0; j<polygonRepetitions_; ++j)
+   {
+      for (int i=0; i<polygons_.size(); ++i)
+      {
+         double x = polygons_[i][0].first;
+         double y = polygons_[i][0].second;
+         PointAndFire(x,y,0);
+      }
+   }
+   return DEVICE_OK;
 }
 
 int MicroPoint::RunSequence()

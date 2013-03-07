@@ -2,11 +2,11 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="QCam"
-	ProjectGUID="{43250DC7-A5AB-4795-9A54-7BF048465D00}"
-	RootNamespace="QCam"
+	Name="TSI_1_4_13"
+	ProjectGUID="{130E4BA6-B7D0-44EC-A395-26EFB61730F2}"
+	RootNamespace="TSI"
 	Keyword="Win32Proj"
-	TargetFrameworkVersion="131072"
+	TargetFrameworkVersion="196613"
 	>
 	<Platforms>
 		<Platform
@@ -21,10 +21,9 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			CharacterSet="2"
 			>
 			<Tool
@@ -45,18 +44,14 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\..\..\3rdparty\QImaging\QCam SDK\Headers&quot;;..\..\MMDevice"
+				AdditionalIncludeDirectories="&quot;../../../3rdparty/Thorlabs/TSI-SDK/sdk&quot;;../../../micromanager1.4.13/MMDevice"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;MODULE_EXPORTS"
 				MinimalRebuild="true"
-				ExceptionHandling="2"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
-				Detect64BitPortabilityProblems="false"
 				DebugInformationFormat="4"
-				DisableSpecificWarnings="4290"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -69,16 +64,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="qcamdriver.lib"
-				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
+				OutputFile="$(OutDir)\mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;..\..\..\3rdparty\QImaging\QCam SDK\libs&quot;"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)/QCam.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -101,15 +90,14 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\bin_$(PlatformName)"
+				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\..\micromanager1.4.13\bin_$(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			CharacterSet="2"
 			>
 			<Tool
@@ -131,18 +119,14 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\..\..\3rdparty\QImaging\QCam SDK\Headers&quot;;..\..\MMDevice"
+				AdditionalIncludeDirectories="&quot;../../../3rdparty/Thorlabs/TSI-SDK/sdk&quot;;../../../micromanager1.4.13/MMDevice"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;MODULE_EXPORTS"
 				MinimalRebuild="true"
-				ExceptionHandling="2"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
-				Detect64BitPortabilityProblems="false"
 				DebugInformationFormat="3"
-				DisableSpecificWarnings="4290"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -155,16 +139,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="qcamdriverx64.lib"
-				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
+				OutputFile="$(OutDir)\mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;..\..\..\3rdparty\QImaging\QCam SDK\libs&quot;"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)/QCam.lib"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -187,16 +165,16 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\bin_$(PlatformName)"
+				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\..\micromanager1.4.13\bin_$(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			CharacterSet="2"
+			WholeProgramOptimization="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -215,16 +193,15 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;..\..\..\3rdparty\QImaging\QCam SDK\Headers&quot;;..\..\MMDevice"
+				Optimization="2"
+				EnableIntrinsicFunctions="true"
+				AdditionalIncludeDirectories="&quot;../../../3rdparty/Thorlabs/TSI-SDK/sdk&quot;;../../../micromanager1.4.13/MMDevice"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;MODULE_EXPORTS"
-				ExceptionHandling="2"
 				RuntimeLibrary="0"
-				RuntimeTypeInfo="true"
+				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				WarningLevel="4"
-				Detect64BitPortabilityProblems="false"
+				WarningLevel="3"
 				DebugInformationFormat="3"
-				DisableSpecificWarnings="4290"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -237,17 +214,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="qcamdriver.lib"
-				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
+				OutputFile="$(OutDir)\mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;..\..\..\3rdparty\QImaging\QCam SDK\libs&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)/QCam.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -270,16 +242,16 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\bin_$(PlatformName)"
+				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\..\micromanager1.4.13\bin_$(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="2"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			CharacterSet="2"
+			WholeProgramOptimization="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
@@ -299,16 +271,15 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;..\..\..\3rdparty\QImaging\QCam SDK\Headers&quot;;..\..\MMDevice"
+				Optimization="2"
+				EnableIntrinsicFunctions="true"
+				AdditionalIncludeDirectories="&quot;../../../3rdparty/Thorlabs/TSI-SDK/sdk&quot;;../../../micromanager1.4.13/MMDevice"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;MODULE_EXPORTS"
-				ExceptionHandling="2"
 				RuntimeLibrary="0"
-				RuntimeTypeInfo="true"
+				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
-				WarningLevel="4"
-				Detect64BitPortabilityProblems="false"
+				WarningLevel="3"
 				DebugInformationFormat="3"
-				DisableSpecificWarnings="4290"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -321,17 +292,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="qcamdriverx64.lib"
-				OutputFile="$(OutDir)/mmgr_dal_$(ProjectName).dll"
+				OutputFile="$(OutDir)\mmgr_dal_$(ProjectName).dll"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;..\..\..\3rdparty\QImaging\QCam SDK\libs&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)/QCam.lib"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -354,7 +320,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\bin_$(PlatformName)"
+				CommandLine="copy &quot;$(TargetPath)&quot; ..\..\..\micromanager1.4.13\bin_$(PlatformName)"
 			/>
 		</Configuration>
 	</Configurations>
@@ -363,31 +329,31 @@
 	<Files>
 		<Filter
 			Name="Source Files"
-			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
+			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath="..\..\MMDevice\Debayer.cpp"
+				RelativePath="..\..\..\micromanager1.4.13\MMDevice\DeviceUtils.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\MMDevice\DeviceUtils.cpp"
+				RelativePath="..\..\..\micromanager1.4.13\MMDevice\ImgBuffer.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\MMDevice\ImgBuffer.cpp"
+				RelativePath="..\..\..\micromanager1.4.13\MMDevice\ModuleInterface.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\MMDevice\ModuleInterface.cpp"
+				RelativePath="..\..\..\micromanager1.4.13\MMDevice\Property.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\MMDevice\Property.cpp"
+				RelativePath=".\TSICam.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\QICamera.cpp"
+				RelativePath=".\TsiCamPropertyHandlers.cpp"
 				>
 			</File>
 		</Filter>
@@ -397,41 +363,13 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath="..\..\MMDevice\DeviceBase.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\MMDevice\DeviceUtils.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\MMDevice\ImgBuffer.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\MMDevice\MMDevice.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\MMDevice\MMDeviceConstants.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\MMDevice\ModuleInterface.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\MMDevice\Property.h"
-				>
-			</File>
-			<File
-				RelativePath=".\QICamera.h"
+				RelativePath=".\TSICam.h"
 				>
 			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
-			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx"
+			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 		</Filter>

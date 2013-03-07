@@ -5,32 +5,48 @@
 package org.micromanager.projector;
 
 import ij.IJ;
+import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.PointRoi;
 import ij.gui.Roi;
+import ij.io.RoiEncoder;
 import ij.plugin.filter.GaussianBlur;
 import ij.plugin.frame.RoiManager;
 import ij.process.ImageProcessor;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javax.swing.JOptionPane;
 import mmcorej.CMMCore;
 import mmcorej.Configuration;
 import mmcorej.TaggedImage;
+import org.micromanager.acquisition.VirtualAcquisitionDisplay;
 import org.micromanager.api.AcquisitionEngine;
+import org.micromanager.api.ImageCache;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.utils.ImageUtils;
 import org.micromanager.utils.JavaUtils;
@@ -56,6 +72,10 @@ public class ProjectorController {
    private Map mapping_ = null;
    private String mappingNode_ = null;
    private String targetingChannel_;
+   AtomicBoolean stopRequested_ = new AtomicBoolean(false);
+   AtomicBoolean isRunning_ = new AtomicBoolean(false);
+   private Set<OnStateListener> listeners_ = new HashSet<OnStateListener>();
+   
        
    public ProjectorController(ScriptInterface app) {
       gui = app;
@@ -90,33 +110,50 @@ public class ProjectorController {
        return null;
    }
    
+   public Point transformAndFlip(Map<Polygon, AffineTransform> mapping, ImagePlus imgp, Point pt) {
+       Point pOffscreen = mirrorIfNecessary(pt, imgp);
+       return transform(mapping, pOffscreen);
+   }
+   
    public void calibrate() {
       final boolean liveModeRunning = gui.isLiveModeOn();
       gui.enableLiveMode(false);
-      Thread th = new Thread("Projector calibration thread") {
-         public void run() {
-            Roi originalROI = IJ.getImage().getRoi();
-            gui.snapSingleImage();
-            
-            AffineTransform firstApproxAffine = getFirstApproxTransform();
-            
-            HashMap<Polygon, AffineTransform> mapping = (HashMap<Polygon, AffineTransform>) getMapping(firstApproxAffine);
-            //LocalWeightedMean lwm = multipleAffineTransforms(mapping_);
-            //AffineTransform affineTransform = MathFunctions.generateAffineTransformFromPointPairs(mapping_);
-            dev.turnOff();
-            try {
-               Thread.sleep(500);
-            } catch (InterruptedException ex) {
-               ReportingUtils.logError(ex);
-            }
-            saveMapping((HashMap<Polygon, AffineTransform>) mapping);
-            //saveAffineTransform(affineTransform);
-            gui.enableLiveMode(liveModeRunning);
-            JOptionPane.showMessageDialog(IJ.getImage().getWindow(), "Calibration finished.");
-            IJ.getImage().setRoi(originalROI);
-         }
-      };
-      th.start();
+      if (!isRunning_.get()) {
+          this.stopRequested_.set(false);
+          Thread th = new Thread("Projector calibration thread") {
+              public void run() {
+                  isRunning_.set(true);
+                  Roi originalROI = IJ.getImage().getRoi();
+                  gui.snapSingleImage();
+
+                  AffineTransform firstApproxAffine = getFirstApproxTransform();
+
+                  HashMap<Polygon, AffineTransform> mapping = (HashMap<Polygon, AffineTransform>) getMapping(firstApproxAffine);
+                  //LocalWeightedMean lwm = multipleAffineTransforms(mapping_);
+                  //AffineTransform affineTransform = MathFunctions.generateAffineTransformFromPointPairs(mapping_);
+                  dev.turnOff();
+                  try {
+                      Thread.sleep(500);
+                  } catch (InterruptedException ex) {
+                      ReportingUtils.logError(ex);
+                  }
+                  if (!stopRequested_.get()) {
+                      saveMapping((HashMap<Polygon, AffineTransform>) mapping);
+                  }
+                  //saveAffineTransform(affineTransform);
+                  gui.enableLiveMode(liveModeRunning);
+                  JOptionPane.showMessageDialog(IJ.getImage().getWindow(), "Calibration "
+                          + (!stopRequested_.get() ? "finished." : "canceled."));
+                  IJ.getImage().setRoi(originalROI);
+                  isRunning_.set(false);
+                  stopRequested_.set(false);
+                  for (OnStateListener listener : listeners_) {
+                      listener.calibrationDone();
+                  }
+              }
+          };
+          th.start();
+      }
    }
 
    private HashMap<Polygon, AffineTransform> loadMapping() {
@@ -157,6 +194,10 @@ public class ProjectorController {
    }
       
    public Point measureSpot(Point dmdPt) {
+      if ((boolean) stopRequested_.get()) {
+          return null;
+      }
+      
       try {
          mmc.snapImage();
          ImageProcessor proc1 = ImageUtils.makeProcessor(mmc.getTaggedImage());
@@ -169,7 +210,8 @@ public class ProjectorController {
          ImageProcessor proc2 = ImageUtils.makeProcessor(taggedImage2);
          gui.displayImage(taggedImage2);
 
-         Point maxPt = findPeak(ImageUtils.subtractImageProcessors(proc2, proc1));
+         Point peak = findPeak(ImageUtils.subtractImageProcessors(proc2, proc1));
+         Point maxPt = peak;
          IJ.getImage().setRoi(new PointRoi(maxPt.x, maxPt.y));
          mmc.sleep(500);
          return maxPt;
@@ -198,7 +240,9 @@ public class ProjectorController {
    }
 
    public void mapSpot(Map spotMap, Point2D.Double ptSLM) {
-      mapSpot(spotMap, new Point((int) ptSLM.x, (int) ptSLM.y));
+       if (!stopRequested_.get()) {
+            mapSpot(spotMap, new Point((int) ptSLM.x, (int) ptSLM.y));
+       }
    }
 
    public AffineTransform getFirstApproxTransform() {
@@ -213,7 +257,9 @@ public class ProjectorController {
       mapSpot(spotMap, new Point2D.Double(x + s, y));
       mapSpot(spotMap, new Point2D.Double(x, y - s));
       mapSpot(spotMap, new Point2D.Double(x - s, y));
-
+      if ((boolean) stopRequested_.get()) {
+          return null;
+      }
       return MathFunctions.generateAffineTransformFromPointPairs(spotMap);
    }
 
@@ -241,6 +287,9 @@ public class ProjectorController {
    }
    
    public Map getMapping(AffineTransform firstApprox) {
+       if (firstApprox == null) {
+           return null;
+       }
       int devWidth = (int) dev.getWidth()-1;
       int devHeight = (int) dev.getHeight()-1;
      Point2D.Double camCorner1 = (Point2D.Double) firstApprox.transform(new Point2D.Double(0,0), null);
@@ -257,14 +306,21 @@ public class ProjectorController {
      int height = bottom-top;
    
      
-      int n = 8;
+      int n = 7;
       Point2D.Double dmdPoint[][] = new Point2D.Double[1+n][1+n];
       Point2D.Double resultPoint[][] = new Point2D.Double[1+n][1+n];
       for (int i = 0; i <= n; ++i) {
         for (int j = 0; j <= n; ++j) {
            dmdPoint[i][j] = new Point2D.Double((int) left + i*width/n,(int) top + j*height/n);
-           resultPoint[i][j] = toDoublePoint(measureSpot(toIntPoint(dmdPoint[i][j])));
+                Point spot = measureSpot(toIntPoint(dmdPoint[i][j]));
+           if (spot != null) {
+                resultPoint[i][j] = toDoublePoint(spot);           
+           }
         }
+      }
+      
+      if (stopRequested_.get()) {
+          return null;
       }
       
       Map bigMap = new HashMap();
@@ -327,32 +383,39 @@ public class ProjectorController {
       return (Roi[]) roiList.toArray(rois);
    }
    
-   public int setRois(int reps) {
-      //AffineTransform transform = loadAffineTransform();
-      if (mapping_ != null) {
-         Roi[] rois = null;
-         Roi[] roiMgrRois = {};
-         Roi singleRoi = gui.getImageWin().getImagePlus().getRoi();
-         final RoiManager mgr = RoiManager.getInstance();
-         if (mgr != null) {
-            roiMgrRois = mgr.getRoisAsArray();
-         }
-         if (roiMgrRois.length > 0) {
-            rois = roiMgrRois;
-         } else if (singleRoi != null) {
-            rois = new Roi[] {singleRoi};
-         } else {
-            ReportingUtils.showError("Please first select ROI(s)");
-         }
-         individualRois_ = separateOutPointRois(rois);
-         sendRoiData();
-         return individualRois_.length;
-      } else {
-         return 0;
-      }
-   }
+    public int setRois(int reps, ImagePlus imgp) {
+        //AffineTransform transform = loadAffineTransform();
+        if (mapping_ != null) {
+            Roi[] rois = null;
+            Roi[] roiMgrRois = {};
+            ImageWindow window = WindowManager.getCurrentWindow();
+            if (window != null) {
+                Roi singleRoi = window.getImagePlus().getRoi();
+                final RoiManager mgr = RoiManager.getInstance();
+                if (mgr != null) {
+                    roiMgrRois = mgr.getRoisAsArray();
+                }
+                if (roiMgrRois.length > 0) {
+                    rois = roiMgrRois;
+                } else if (singleRoi != null) {
+                    rois = new Roi[]{singleRoi};
+                } else {
+                    ReportingUtils.showError("Please first select ROI(s)");
+                }
+                individualRois_ = separateOutPointRois(rois);
+                sendRoiData(imgp);
+                return individualRois_.length;
+            } else {
+                ReportingUtils.showError("No image window with ROIs is open.");
+                return 0;
+            }
+
+        } else {
+            return 0;
+        }
+    }
    
-   private Polygon[] transformROIs(Roi[] rois, Map<Polygon, AffineTransform> mapping) {
+   private Polygon[] transformROIs(ImagePlus imgp, Roi[] rois, Map<Polygon, AffineTransform> mapping) {
       ArrayList<Polygon> transformedROIs = new ArrayList<Polygon>();
       for (Roi roi : rois) {
          if ((roi.getType() == Roi.POINT)
@@ -366,7 +429,7 @@ public class ProjectorController {
                Point2D galvoPoint;
                for (int i = 0; i < poly.npoints; ++i) {
                   Point imagePoint = new Point(poly.xpoints[i], poly.ypoints[i]);
-                  galvoPoint = transform(mapping, imagePoint);
+                  galvoPoint = transformAndFlip(mapping, imgp, imagePoint);
                   if (galvoPoint == null) throw new Exception();
                   newPoly.addPoint((int) galvoPoint.getX(), (int) galvoPoint.getY());
                }
@@ -384,10 +447,10 @@ public class ProjectorController {
       return (Polygon[]) transformedROIs.toArray(new Polygon[0]);
    }
 
-   private void sendRoiData() {
+   private void sendRoiData(ImagePlus imgp) {
       if (individualRois_.length > 0) {
          if (mapping_ != null) {
-            Polygon[] galvoROIs = transformROIs(individualRois_,mapping_);
+            Polygon[] galvoROIs = transformROIs(imgp, individualRois_,mapping_);
             dev.setRois(galvoROIs);
             dev.setPolygonRepetitions(reps_);
             dev.setSpotInterval(interval_us_);
@@ -397,13 +460,67 @@ public class ProjectorController {
    
    public void setRoiRepetitions(int reps) {
       reps_ = reps;
-      sendRoiData();
+      sendRoiData(IJ.getImage());
    }
 
    public void displaySpot(double x, double y, double intervalUs) {
       if (x>=0 && x<dev.getWidth() && y>=0 && y<dev.getHeight()) {
          dev.displaySpot(x, y, intervalUs);
-      }
+      } 
+  }
+   
+    public Configuration prepareChannel() {
+        Configuration originalConfig = null;
+        String channelGroup = mmc.getChannelGroup();
+        AcquisitionEngine eng = gui.getAcquisitionEngine();
+        try {
+            if (targetingChannel_.length() > 0) {
+                originalConfig = mmc.getConfigGroupState(channelGroup);
+                if (!originalConfig.isConfigurationIncluded(mmc.getConfigData(channelGroup,targetingChannel_))) {
+                    if (eng.isAcquisitionRunning()) {
+                        eng.setPause(true);
+                    }
+                    mmc.setConfig(channelGroup, targetingChannel_);
+                }
+            }
+        } catch (Exception ex) {
+            ReportingUtils.logError(ex);
+        }
+        return originalConfig;
+    }
+
+    // Should be called with the value returned by prepareChannel.
+    public void returnChannel(Configuration originalConfig) {
+        String channelGroup = mmc.getChannelGroup();
+        if (originalConfig != null) {
+            try {
+                mmc.setSystemState(originalConfig);
+                final AcquisitionEngine eng = gui.getAcquisitionEngine();
+                if (eng.isAcquisitionRunning() && eng.isPaused()) {
+                    eng.setPause(false);
+                }
+            } catch (Exception ex) {
+                ReportingUtils.logError(ex);
+            }
+        }
+    }
+
+   public boolean isMirrored(ImagePlus imgp) {
+       try {
+       String mirrorString = VirtualAcquisitionDisplay.getDisplay(imgp)
+               .getCurrentMetadata().getString("ImageFlipper-Mirror");
+       return (mirrorString.contentEquals("On"));
+       } catch (Exception e) {
+           return false;
+       }
+   }
+   
+   public Point mirrorIfNecessary(Point pOffscreen, ImagePlus imgp) {
+       if (isMirrored(imgp)) {
+           return new Point(imgp.getWidth() - pOffscreen.x, pOffscreen.y);
+       } else {
+           return pOffscreen;
+       }
    }
    
     public MouseListener setupPointAndShootMouseListener() {
@@ -412,41 +529,16 @@ public class ProjectorController {
 
             public void mouseClicked(MouseEvent e) {
                 if (e.isControlDown()) {
-                    String originalConfig = null;
-                    String channelGroup = mmc.getChannelGroup();
-                    boolean acqEngineShouldRestart = false;
-                    AcquisitionEngine eng = gui.getAcquisitionEngine();
-                    try {
-                        if (targetingChannel_.length() > 0) {
-                            originalConfig = mmc.getCurrentConfig(channelGroup);
-                            if (!originalConfig.contentEquals(targetingChannel_)) {
-                                acqEngineShouldRestart = eng.isAcquisitionRunning() && !eng.isPaused();
-                                gui.getAcquisitionEngine().setPause(true);
-                                mmc.setConfig(channelGroup, targetingChannel_);
-                            }
-                        }
-                    } catch (Exception ex) {
-                        ReportingUtils.logError(ex);
-                    }
-
+                    Configuration originalConfig = prepareChannel();
                     Point p = e.getPoint();
                     ImageCanvas canvas = (ImageCanvas) e.getSource();
                     Point pOffscreen = new Point(canvas.offScreenX(p.x), canvas.offScreenY(p.y));
-                    Point devP = transform((Map<Polygon, AffineTransform>) loadMapping(), new Point(pOffscreen.x, pOffscreen.y));
+                    Point devP = transformAndFlip((Map<Polygon, AffineTransform>) loadMapping(), canvas.getImage(), new Point(pOffscreen.x, pOffscreen.y));
                     if (devP != null) {
                         displaySpot(devP.x, devP.y, thisController.getPointAndShootInterval());
                     }
-                    if (originalConfig != null) {
-                        try {
-                            mmc.setConfig(channelGroup, originalConfig);
-                            if (acqEngineShouldRestart) {
-                                eng.setPause(false);
-                            }
-                        } catch (Exception ex) {
-                            ReportingUtils.logError(ex);
-                        }
-                    }
-                }
+                    returnChannel(originalConfig);
+                }   
             }
         };
     }
@@ -475,6 +567,10 @@ public class ProjectorController {
          public void run() {
             runPolygons();
          }
+         
+         public String toString() {
+             return "Phototargeting of ROIs";
+         }
       };
 
       final AcquisitionEngine acq = gui.getAcquisitionEngine();
@@ -499,13 +595,17 @@ public class ProjectorController {
    public double getPointAndShootInterval() {
        return this.pointAndShootInterval;
    }
-   
-   void runPolygons() {
-      dev.runPolygons();
-   }
+
+    void runPolygons() {
+        Configuration originalConfig = prepareChannel();
+        dev.runPolygons();
+        recordPolygons();
+        returnChannel(originalConfig);
+    }
 
    void addOnStateListener(OnStateListener listener) {
       dev.addOnStateListener(listener);
+      listeners_.add(listener);
    }
 
    void moveToCenter() {
@@ -514,13 +614,92 @@ public class ProjectorController {
       dev.displaySpot(x, y);
    }
 
-   void setSpotInterval(long interval_us) {
-     interval_us_ = interval_us;
-     this.sendRoiData();
-   }
+    void setSpotInterval(long interval_us) {
+        interval_us_ = interval_us;
+        this.sendRoiData(IJ.getImage());
+    }
 
     void setTargetingChannel(Object selectedItem) {
         targetingChannel_ = (String) selectedItem;
+    }
+
+    private void recordPolygons() {
+        if (gui.getAcquisitionEngine().isAcquisitionRunning()) {
+            ImageCache cache = gui.getAcquisitionEngine().getImageCache();
+            if (cache != null) {
+                String location = cache.getDiskLocation();
+                if (location != null) {
+                    try {
+                        File f = new File(location, "ProjectorROIs.zip");
+                        if (!f.exists()) {
+                            saveROIs(f);
+                        }
+                    } catch (Exception ex) {
+                        ReportingUtils.logError(ex);
+                    }
+
+                }
+            }
+        }
+    }
+    
+    private String getROILabel(ImagePlus imp, Roi roi, int n) {
+        Rectangle r = roi.getBounds();
+        int xc = r.x + r.width/2;
+        int yc = r.y + r.height/2;
+        if (n>=0)
+            {xc = yc; yc=n;}
+        if (xc<0) xc = 0;
+        if (yc<0) yc = 0;
+        int digits = 4;
+        String xs = "" + xc;
+        if (xs.length()>digits) digits = xs.length();
+        String ys = "" + yc;
+        if (ys.length()>digits) digits = ys.length();
+        if (digits==4 && imp!=null && imp.getStackSize()>=10000) digits = 5;
+        xs = "000000" + xc;
+        ys = "000000" + yc;
+        String label = ys.substring(ys.length()-digits) + "-" + xs.substring(xs.length()-digits);
+        if (imp!=null && imp.getStackSize()>1) {
+            int slice = roi.getPosition();
+            if (slice==0)
+                slice = imp.getCurrentSlice();
+            String zs = "000000" + slice;
+            label = zs.substring(zs.length()-digits) + "-" + label;
+            roi.setPosition(slice);
+        }
+        return label;
+    }
+    
+    private void saveROIs(File path) {
+        try {
+            ImagePlus imgp = IJ.getImage();
+            ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(path));
+            DataOutputStream out = new DataOutputStream(new BufferedOutputStream(zos));
+            RoiEncoder re = new RoiEncoder(out);
+            int count = 0;
+            for (Roi roi : individualRois_) {
+                String label = getROILabel(imgp, roi, 0);
+                if (!label.endsWith(".roi")) {
+                    label += ".roi";
+                }
+                zos.putNextEntry(new ZipEntry(label));
+                re.write(roi);
+                out.flush();
+                ++count;
+            }
+            out.close();
+        } catch (Exception e) {
+            ReportingUtils.logError(e);
+        }
+    }
+
+    boolean isCalibrating() {
+        return isRunning_.get();
+    }
+
+    void stopCalibration() {
+        stopRequested_.set(true);
     }
    
 
