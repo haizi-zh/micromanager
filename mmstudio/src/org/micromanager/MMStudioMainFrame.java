@@ -34,9 +34,6 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
-import java.awt.dnd.DropTargetDragEvent;
-import java.awt.dnd.DropTargetDropEvent;
-import java.awt.dnd.DropTargetEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
@@ -51,8 +48,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.JButton;
@@ -122,12 +117,7 @@ import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
 import java.awt.Menu;
 import java.awt.MenuItem;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DropTarget;
-import java.awt.dnd.DropTargetListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collections;
@@ -174,7 +164,6 @@ public class MMStudioMainFrame extends JFrame implements
         DeviceControlGUI {
 
    private static final String MICRO_MANAGER_TITLE = "Micro-Manager";
-   private static final String VERSION = "1.4.x dev";
    private static final long serialVersionUID = 3556500289598574541L;
    private static final String MAIN_FRAME_X = "x";
    private static final String MAIN_FRAME_Y = "y";
@@ -523,7 +512,7 @@ public class MMStudioMainFrame extends JFrame implements
 
             public void actionPerformed(ActionEvent e) {
                 MMAboutDlg dlg = new MMAboutDlg();
-                String versionInfo = "MM Studio version: " + VERSION;
+                String versionInfo = "MM Studio version: " + MMVersion.VERSION_STRING;
                 versionInfo += "\n" + core_.getVersionInfo();
                 versionInfo += "\n" + core_.getAPIVersionInfo();
                 versionInfo += "\nUser: " + core_.getUserId();
@@ -991,7 +980,7 @@ public class MMStudioMainFrame extends JFrame implements
       
       setBounds(x, y, width, height);
       setExitStrategy(options_.closeOnExit_);
-      setTitle(MICRO_MANAGER_TITLE + " " + VERSION);
+      setTitle(MICRO_MANAGER_TITLE + " " + MMVersion.VERSION_STRING);
       setBackground(guiColors_.background.get((options_.displayBackground_)));
       SpringLayout topLayout = new SpringLayout();
       
@@ -1820,7 +1809,7 @@ public class MMStudioMainFrame extends JFrame implements
             toFront();
             
             if (!options_.doNotAskForConfigFile_) {
-               MMIntroDlg introDlg = new MMIntroDlg(VERSION, MRUConfigFiles_);
+               MMIntroDlg introDlg = new MMIntroDlg(MMVersion.VERSION_STRING, MRUConfigFiles_);
                introDlg.setConfigFile(sysConfigFile_);
                introDlg.setBackground(guiColors_.background.get((options_.displayBackground_)));
                introDlg.setVisible(true);
@@ -2340,7 +2329,7 @@ public class MMStudioMainFrame extends JFrame implements
    }
 
    private void updateTitle() {
-      this.setTitle(MICRO_MANAGER_TITLE + " " + VERSION + " - " + sysConfigFile_);
+      this.setTitle(MICRO_MANAGER_TITLE + " " + MMVersion.VERSION_STRING + " - " + sysConfigFile_);
    }
 
    public void updateLineProfile() {
@@ -2947,7 +2936,7 @@ public class MMStudioMainFrame extends JFrame implements
     */
    public boolean versionLessThan(String version) throws MMScriptException {
       try {
-         String[] v = VERSION.split(" ", 2);
+         String[] v = MMVersion.VERSION_STRING.split(" ", 2);
          String[] m = v[0].split("\\.", 3);
          String[] v2 = version.split(" ", 2);
          String[] m2 = v2[0].split("\\.", 3);
@@ -3341,7 +3330,7 @@ public class MMStudioMainFrame extends JFrame implements
    }
 
    public String getVersion() {
-      return VERSION;
+      return MMVersion.VERSION_STRING;
    }
 
    private void addPluginToMenu(final PluginItem plugin, Class<?> cl) {
@@ -3587,6 +3576,7 @@ public class MMStudioMainFrame extends JFrame implements
          if (core_ != null) {
             core_.logMessage("MMStudioMainFrame::closeSequence called while running_ is false");
          }
+         this.dispose();
          return;
       }
       
@@ -3629,8 +3619,8 @@ public class MMStudioMainFrame extends JFrame implements
                ij.quit();
             }
          }
-      }else{
-    	  this.dispose();
+      } else {
+         this.dispose();
       }
      
 
