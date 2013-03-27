@@ -17,10 +17,17 @@
   (doseq [callback (::tile-listeners (meta memory-tile-atom))]
     (callback)))
 
-(defn tile-dir [memory-tile-atom]
+(defn remove-tile-listeners! [memory-tile-atom]
+  (alter-meta! memory-tile-atom dissoc ::tile-listeners))
+
+(defn tile-dir
+  "Returns the associated directory for a tile cache."
+  [memory-tile-atom]
   (::directory (meta memory-tile-atom)))
 
-(defn tile-dir! [memory-tile-atom dir]
+(defn tile-dir!
+  "Sets the associated directory for a tile cache."
+  [memory-tile-atom dir]
   (alter-meta! memory-tile-atom assoc ::directory dir))
 
 (defn add-tile
@@ -38,7 +45,8 @@
   ([memory-tile-atom key hit?]
   (when-let [val (get @memory-tile-atom key)]
     (when hit?
-      (swap! memory-tile-atom cache/hit key))
+      (swap! memory-tile-atom #(try (cache/hit % key)
+                                    (catch Exception _))))
     val))
   ([memory-tile-atom key]
     (get-tile memory-tile-atom key false)))

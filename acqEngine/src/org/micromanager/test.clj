@@ -1,13 +1,17 @@
 (ns org.micromanager.test
   (:import (java.util ArrayList List)
-           (java.util.concurrent Executors LinkedBlockingQueue ConcurrentLinkedQueue)
+           (java.util.concurrent Executors LinkedBlockingQueue
+                                 ConcurrentLinkedQueue TimeUnit)
            (mmcorej TaggedImage)
            (org.json JSONArray JSONObject)
            (org.micromanager MMStudioMainFrame)
            (org.micromanager.api DataProcessor)
            (java.nio ByteBuffer ByteOrder)
+           (java.io RandomAccessFile)
+           (org.micromanager.utils ShortWriter)
            (org.micromanager.acquisition TaggedImageStorageMultipageTiff))
-  (:require [org.micromanager.mm :as mm])
+  (:require [org.micromanager.mm :as mm]
+            [clojure.java.io :as io])
   (:use [org.micromanager.mm :only (edt load-mm core gui mmc)]))
 
 (load-mm (MMStudioMainFrame/getInstance))
@@ -137,11 +141,11 @@
   (def temp-queue image-queue)
   (System/gc)
   (fill-circular-buffer n wait?)
-  (time (do (dotimes [i n]
+  (do (dotimes [i n]
               (pop-next-image image-queue))
             (while (or (core isSequenceRunning)
                        (pos? (core getRemainingImageCount)))
-              (Thread/sleep 1))))
+              (Thread/sleep 1)))
   (when (core isBufferOverflowed)
     (println "Buffer overflowed")))
 
@@ -235,7 +239,7 @@
   (let [tags (.tags image)
         summary (image-test-summary "test1" 1)
         storage (TaggedImageStorageMultipageTiff.
-                  "G:/acquisitions/" true summary false true)]
+                  "D:/acquisitions/" true summary false true)]
     (doto tags
       (.put "Slice" 0)
       (.put "ChannelIndex" 0)
@@ -254,17 +258,151 @@
      (println "Start saving procedure...")
        (save-images-fast image n)))
 
-(defn image-to-byte-buffer [pix]
-  (let [buffer (.. ByteBuffer
-                         (allocate (* (count pix) 2))
-                         (order ByteOrder/BIG_ENDIAN))]
-    (.. buffer asShortBuffer (put pix))))
+;; tests of: 
+;; 1. converting shorts to bytes
+;; 2. writing them to disk
+
+(def native-order (ByteOrder/nativeOrder))
+
+(defn image-size []
+  (* (core getBytesPerPixel)
+                    (core getImageWidth)
+                    (core getImageHeight)))
+
+(defn byte-buffer [size]
+  (.. ByteBuffer (allocateDirect size)
+      (order native-order)))
+
+(defn allocation-test [n size]
+  (let [q (LinkedBlockingQueue.)]
+    (dotimes [i n]
+      (when (zero? (mod i 100))
+        (println i))
+      (.add q (byte-buffer size)))))
+
+(defn image-to-byte-buffer [pix buffer]
+  (.. buffer asShortBuffer (put pix))
+  buffer)
+
+(defn image-test [m n]
+  (let [pix (core getImage)
+        size (* 2 (count pix))]
+    (time
+      (dotimes [_ m]
+        (dotimes [_ n]
+          (let [buf (byte-buffer size)]
+            (image-to-byte-buffer pix buf)))))))
 
 (defn byte-buffer-test [n]
   (let [img (core getImage)]
-    (time
-      (dorun
-        (repeatedly n #(image-to-byte-buffer img))))))
- 
+    (apply pcalls
+        (repeat n #(image-to-byte-buffer
+                         img (byte-buffer (* (count img) 2)))))))
+
+(defn byte-buffer-queue [nthreads nimages]
+  (let [image-queue (LinkedBlockingQueue. 1)]
+    (future (single-thread-pop-test nimages false image-queue))
+    (let [queue (LinkedBlockingQueue. 1)
+          service (Executors/newFixedThreadPool nthreads)]
+      (future (dotimes [_ nimages]
+        (let [submission  #(let [img (.take image-queue)]
+                             (.put queue
+                                 (image-to-byte-buffer
+                                   img
+                                   (byte-buffer (* (count img) 2)))))]
+          (.submit service ^Runnable submission))))
+      queue)))
+
+(defn simple-byte-buffer-queue [nimages]
+  (let [image-queue (LinkedBlockingQueue. 1)]
+    (future (single-thread-pop-test nimages false image-queue))
+    (let [queue (LinkedBlockingQueue. 1)]
+      (future (dotimes [_ nimages]
+                (let [img (.take image-queue)
+                      n (count img)]
+                  (.put queue
+                        (image-to-byte-buffer
+                          img
+                          (byte-buffer (* n 2)))
+                        )
+                  )))
+      queue)))
+
+(defn shorts-test [n]
+  (let [img (core getImage)
+        img-size (image-size)
+        filename (str "E:/acquisition/test" (rand-int 100000) ".dat")
+        writer (ShortWriter. (io/file filename))]
+    (println filename)
+    (dorun
+      (repeatedly n
+                  #(.write writer img)))
+    (.close writer)
+    ))
+
+
+(defn writing-speed-test [n]
+  (let [
+        filename (str "E:/acquisition/test" (rand-int 100000) ".dat")
+        file (RandomAccessFile. filename "rw")
+        channel (.getChannel file)buf (byte-buffer (image-size))]
+    (dotimes [i n]
+      (.write channel (byte-buffer (image-size)))
+      (when (zero? (mod i 100))
+          (future (.force channel true))))
+    (.force channel false)
+    (.close file)))
   
+
+(defn acquire-and-save-test [n]
+  (let [buffer-queue (time (simple-byte-buffer-queue n))
+        filename (str "E:/acquisition/test" (rand-int 100000) ".dat")
+        file (RandomAccessFile. filename "rw")
+        channel (.getChannel file)
+        t0 (System/currentTimeMillis)]
+    (println filename)
+    (dotimes [i n]
+      (when (zero? (mod i 100))
+        (println i (- (System/currentTimeMillis) t0)))
+      (let [buffer (.take buffer-queue)]
+        (.write channel buffer)
+        ))
+    (.close file)
+    filename))
+
+(defn acquire-and-store-in-ram [n]
+  (let [buffer-queue (time (simple-byte-buffer-queue n))
+       storage-queue (LinkedBlockingQueue.)
+       t0 (System/currentTimeMillis)]
+   (dotimes [i n]
+     (when (zero? (mod i 100))
+       (println i (- (System/currentTimeMillis) t0)))
+     (let [buffer (.take buffer-queue)]
+       (.put storage-queue buffer)))
+   (count storage-queue)))
+
+(defn run-in-parallel [n f]
+  (doall (apply pcalls (repeat n f))))
+
+(defmacro time-ms [& body]
+  `(let [start# (System/currentTimeMillis)]
+     ~@body
+     (- (System/currentTimeMillis) start#)))
+
+(defn time-per-run [nthreads f]
+  (/ (time-ms (dorun (run-in-parallel nthreads f)))
+     (double nthreads)))
+
+(defn parallel-titration [reps f]
+  (doseq [i (range 1 17)]
+    (dotimes [_ reps]
+      (println i "\t" (time-per-run i f)))))
+
+
+
+
+
+
+
+
 

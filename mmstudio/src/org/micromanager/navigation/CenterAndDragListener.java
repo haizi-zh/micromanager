@@ -6,17 +6,14 @@ package org.micromanager.navigation;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.Toolbar;
-
 import java.awt.Event;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-
+import java.util.Arrays;
 import javax.swing.JOptionPane;
-
 import mmcorej.CMMCore;
 import mmcorej.MMCoreJ;
-
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.utils.ReportingUtils;
 
@@ -71,11 +68,12 @@ public class CenterAndDragListener implements MouseListener, MouseMotionListener
 	      if (!isRunning_)
 	         return;
 	      canvas_ = win.getCanvas();
-	      canvas_.addMouseListener(this);
-	      canvas_.addMouseMotionListener(this);
-	      if (Toolbar.getInstance() != null)
-	    	  //TO DO: Set appropriate tool
-	         Toolbar.getInstance().setTool(Toolbar.HAND);
+         if (!Arrays.asList(canvas_.getMouseListeners()).contains(this)) {
+            canvas_.addMouseListener(this);
+         }
+         if (!Arrays.asList(canvas_.getMouseMotionListeners()).contains(this)) {
+            canvas_.addMouseMotionListener(this);
+         }
 
 	      getOrientation();
 	   }
@@ -117,57 +115,59 @@ public class CenterAndDragListener implements MouseListener, MouseMotionListener
 	   }
 
 	   public void mouseClicked(MouseEvent e) {
-         // TODO: evalute whether only to to respond when a specific Tool is chosen
+         if (Toolbar.getInstance() != null) {
+            if (Toolbar.getToolId() == Toolbar.HAND) {
+               // right click and single click: ignore
+               int nc=   e.getClickCount();
+               if ((e.getModifiers() & Event.META_MASK) != 0 || nc < 2) 
+                   return;
 
-         // right click and single click: ignore
-         int nc=   e.getClickCount();
-         if ((e.getModifiers() & Event.META_MASK) != 0 || nc < 2) 
-		       return;
+               // Get needed info from core
+               getOrientation();
+               String xyStage = core_.getXYStageDevice();
+               if (xyStage == null)
+                  return;
+               double pixSizeUm = core_.getPixelSizeUm();
+               if (! (pixSizeUm > 0.0)) {
+                  JOptionPane.showMessageDialog(null, "Please provide pixel size calibration data before using this function");
+                  return;
+               }
 
-         // Get needed info from core
-         getOrientation();
-         String xyStage = core_.getXYStageDevice();
-         if (xyStage == null)
-            return;
-         double pixSizeUm = core_.getPixelSizeUm();
-         if (! (pixSizeUm > 0.0)) {
-            JOptionPane.showMessageDialog(null, "Please provide pixel size calibration data before using this function");
-            return;
+               int width = (int) core_.getImageWidth();
+               int height = (int) core_.getImageHeight();
+
+               // Get coordinates of event
+               int x = e.getX();
+               int y = e.getY();
+               int cX = canvas_.offScreenX(x);
+               int cY = canvas_.offScreenY(y);
+
+               // calculate needed relative movement
+               double tmpXUm = ((0.5 * width) - cX) * pixSizeUm;
+               double tmpYUm = ((0.5 * height) - cY) * pixSizeUm;
+
+               double mXUm = tmpXUm;
+               double mYUm = tmpYUm;
+               // if camera does not correct image orientation, we'll correct for it here:
+               if (!correction_) {
+                  // Order: swapxy, then mirror axis
+                  if (transposeXY_) {mXUm = tmpYUm; mYUm = tmpXUm;}
+                  if (mirrorX_) {mXUm = -mXUm;}
+                  if (mirrorY_) {mYUm = -mYUm;}
+               }
+
+               // Move the stage
+               try {
+                  core_.setRelativeXYPosition(xyStage, mXUm, mYUm);
+               } catch (Exception ex) {
+                  ReportingUtils.showError(ex);
+                  return;
+               }
+
+               // refresh GUI x,y
+               gui_.updateXYStagePosition();
+            }
          }
-
-         int width = (int) core_.getImageWidth();
-         int height = (int) core_.getImageHeight();
-
-         // Get coordinates of event
-         int x = e.getX();
-         int y = e.getY();
-         int cX = canvas_.offScreenX(x);
-         int cY = canvas_.offScreenY(y);
-
-         // calculate needed relative movement
-         double tmpXUm = ((0.5 * width) - cX) * pixSizeUm;
-         double tmpYUm = ((0.5 * height) - cY) * pixSizeUm;
-
-         double mXUm = tmpXUm;
-         double mYUm = tmpYUm;
-         // if camera does not correct image orientation, we'll correct for it here:
-         if (!correction_) {
-            // Order: swapxy, then mirror axis
-            if (transposeXY_) {mXUm = tmpYUm; mYUm = tmpXUm;}
-            if (mirrorX_) {mXUm = -mXUm;}
-            if (mirrorY_) {mYUm = -mYUm;}
-         }
-
-         // Move the stage
-         try {
-            core_.setRelativeXYPosition(xyStage, mXUm, mYUm);
-         } catch (Exception ex) {
-            ReportingUtils.showError(ex);
-            return;
-         }
-
-         // refresh GUI x,y
-         gui_.updateXYStagePosition();
       } 
 
 

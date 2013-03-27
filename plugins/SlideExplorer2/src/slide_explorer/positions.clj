@@ -1,6 +1,8 @@
 (ns slide-explorer.positions
-  (:import (java.awt.geom Point2D$Double))
+  (:import (java.awt.geom Point2D$Double)
+           (javax.swing.event ChangeListener))
   (:require [slide-explorer.user-controls :as user-controls]
+            [slide-explorer.view :as view]
             [slide-explorer.affine :as affine]
             [org.micromanager.mm :as mm]))
 
@@ -32,9 +34,9 @@
                  (in-tile))
             available-positions)))
 
-(defn add-position-to-list [screen-state-atom position-map affine-stage-to-pixel]
+(defn add-position-to-list [screen-state-atom position-map]
   (let [{:keys [x y]} position-map
-        [x1 y1] (affine/inverse-transform [x y] affine-stage-to-pixel)
+        [x1 y1] (affine/inverse-transform [x y] (:affine-stage-to-pixel @screen-state-atom))
         {:keys [z-origin slice-size-um z]} @screen-state-atom
         zpos (+ z-origin (* z slice-size-um))
         label (str "Pos" (int (* 100000 (rand))))
@@ -42,8 +44,8 @@
     (mm/add-msp label x1 y1 zpos)
     (swap! screen-state-atom update-in [:positions] conj labeled-position)))
 
-(defn remove-position-from-list [screen-state-atom position-map affine-stage-to-pixel]
-  (let [positions (get-position-list-coords affine-stage-to-pixel)
+(defn remove-position-from-list [screen-state-atom position-map]
+  (let [positions (get-position-list-coords (:affine-stage-to-pixel @screen-state-atom))
         label-indices (zipmap (map :label positions) (range (count positions)))
         dead-label (:label position-map)
         dead-index (label-indices dead-label)]
@@ -51,29 +53,29 @@
       (mm/remove-msp dead-index)))
   (swap! screen-state-atom update-in [:positions] disj position-map))
 
-(defn toggle-position [screen-state-atom _ _ affine-stage-to-pixel]
+(defn toggle-position [screen-state-atom _ _]
   (let [pos (user-controls/absolute-mouse-position @screen-state-atom)
         [w h] (:tile-dimensions @screen-state-atom)]
     (locking position-lock
-    (if-let [old-pos (position-clicked (:positions @screen-state-atom) pos w h)]
-      (remove-position-from-list screen-state-atom old-pos affine-stage-to-pixel)
-      (add-position-to-list screen-state-atom pos affine-stage-to-pixel)))))
+      (if-let [old-pos (position-clicked (:positions @screen-state-atom) pos w h)]
+        (remove-position-from-list screen-state-atom old-pos)
+        (add-position-to-list screen-state-atom pos)))))
 
-(defn update-positions-atom! [screen-state-atom affine-stage-to-pixel]
+(defn update-positions-atom! [screen-state-atom]
   (locking position-lock
-  (let [external-value (set (get-position-list-coords affine-stage-to-pixel))
+  (let [external-value (set (get-position-list-coords (:affine-stage-to-pixel @screen-state-atom)))
         internal-value (:positions @screen-state-atom)]
     (when (not= external-value internal-value)
       (swap! screen-state-atom assoc :positions external-value)))))
 
-(defn follow-positions! [screen-state-atom affine-stage-to-pixel]
-  (future (loop []
-            (update-positions-atom! screen-state-atom affine-stage-to-pixel)
-            (Thread/sleep 1000)
-            (recur))))
+(defn follow-positions! [screen-state-atom]
+  (.addChangeListener (.. mm/gui getPositionList)
+    (proxy [ChangeListener] []
+      (stateChanged [_] (update-positions-atom! screen-state-atom)))))
 
-(defn handle-positions [panel screen-state-atom affine-stage-to-pixel]
+(defn handle-positions [screen-state-atom]
+  (update-positions-atom! screen-state-atom)
   (user-controls/handle-control-click
-    panel
-    (fn [x y] (toggle-position screen-state-atom x y affine-stage-to-pixel)))
-  (follow-positions! screen-state-atom affine-stage-to-pixel))
+    (view/panel screen-state-atom)
+    (fn [x y] (toggle-position screen-state-atom x y)))
+  (follow-positions! screen-state-atom))
