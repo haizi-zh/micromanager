@@ -509,7 +509,7 @@ public class MultipageTiffReader {
    //thereby preventing the multipage tiff writer from putting in the index map, comments, channels, and OME
    //XML in the ImageDescription tag location 
    private void fixIndexMap(long firstIFD) throws IOException, JSONException {  
-      int choice = JOptionPane.showConfirmDialog(null, "This dataset cannot be opened bcause it appears to have \n"
+      int choice = JOptionPane.showConfirmDialog(null, "This file cannot be opened bcause it appears to have \n"
               + "been improperly saved.  Would you like Micro-Manger to attempt to fix it?"
               , "Micro-Manager", JOptionPane.YES_NO_OPTION);
       if (choice == JOptionPane.NO_OPTION) {
@@ -517,8 +517,10 @@ public class MultipageTiffReader {
       }
       long filePosition = firstIFD;
       indexMap_ = new HashMap<String, Long>();
-      final ProgressBar progressBar = new ProgressBar("Fixing dataset", 0, (int) (fileChannel_.size() / 2L));
-      progressBar.setRange(0, (int) (fileChannel_.size() / 2L));
+      long progBarMax = (fileChannel_.size() / 2L);
+      final ProgressBar progressBar = new ProgressBar("Fixing dataset", 0, 
+              progBarMax >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) progBarMax);
+      progressBar.setRange(0, progBarMax >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) progBarMax);
       progressBar.setProgress(0);
       progressBar.setVisible(true);
       long nextIFDOffsetLocation = 0;
@@ -565,7 +567,8 @@ public class MultipageTiffReader {
       //reopen
       createFileChannel();
       
-      ReportingUtils.showMessage("Dataset succcessfully repaired! Resave file to reagain full funtionality");
+      ReportingUtils.showMessage("File succcessfully repaired! Resave data set when all files \n "
+              + "fixed to reagain full funtionality");
    }
    
    private int writeIndexMap(long filePosition) throws IOException {
