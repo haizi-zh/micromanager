@@ -1,5 +1,5 @@
 package org.ndaguan.micromanager;
-
+ 
 import ij.gui.Toolbar;
 
 import java.awt.Dimension;
@@ -503,21 +503,7 @@ public class MyForm extends JFrame {
 		temp_.setMaximumItemCount(ChartMaxItemCount);
 		dataset_ = new XYSeriesCollection();
 		dataset_.addSeries(temp_);
-
-		if(tableName.equals("Chart-Calfile")){
-			XYSeries progress_ =  new XYSeries("cal-progress");
-			progress_.setMaximumItemCount(ChartMaxItemCount);
-			dataset_.addSeries(progress_);
-			getDataSeries_().put(tableName+"-pro",progress_);	
-
-		}
-		if(tableName.equals("Chart-Corr")){
-			XYSeries progress1_ =  new XYSeries("corr-progress");
-			progress1_.setMaximumItemCount(ChartMaxItemCount);
-			dataset_.addSeries(progress1_);
-			getDataSeries_().put(tableName+"-pro",progress1_);	
-
-		}
+   
 		chart = ChartFactory.createXYLineChart(tableName, "-Time",
 				"-value", dataset_, PlotOrientation.VERTICAL, true, true,
 				false);
@@ -658,7 +644,7 @@ public class MyForm extends JFrame {
 	}
 
 	public void setMagnetAuto(boolean isMagnetAuto) {
-		MagnetManual.setSelected(isMagnetAuto);
+		MagnetManual.setSelected(!isMagnetAuto);
 	}
 
 	public HashMap<String, XYSeries> getDataSeries_() {
@@ -1095,7 +1081,7 @@ public class MyForm extends JFrame {
 					public void run() {
 						JFileChooser fileChooser = new JFileChooser(".");		 
 						fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-						fileChooser.setDialogTitle("请选择文件夹");
+						fileChooser.setDialogTitle("璇烽�鎷╂枃浠跺す");
 						int ret = fileChooser.showOpenDialog(null);
 						if (ret == JFileChooser.APPROVE_OPTION) {
 							setDataDir_(fileChooser.getSelectedFile().getAbsolutePath());

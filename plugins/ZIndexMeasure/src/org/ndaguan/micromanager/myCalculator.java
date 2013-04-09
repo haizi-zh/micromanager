@@ -1,5 +1,13 @@
 package org.ndaguan.micromanager;
 public class myCalculator {
+	private static myCalculator instance_;
+ 
+	public static myCalculator getInstance() {
+		if(instance_ == null)
+			instance_ = new myCalculator();
+		return instance_;
+
+	}
 	static {
 		System.loadLibrary("myCalculator");
 	}
@@ -58,5 +66,7 @@ public class myCalculator {
 	public native void DeleteData();
 
 	public native void SetBitDepth(int bitDepth_);
+
+
 
 }

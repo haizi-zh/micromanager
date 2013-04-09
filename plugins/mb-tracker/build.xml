@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="MBTracker_" default="build" basedir=".">
+	<description>
+		This plugin simply display the class loading info.
+    </description>
+
+	<property name="build.dir" value="build" />
+	<property name="src.dir" value="src" />
+	<property name="dist.dir" value="../trunk/Install_Win32/micro-manager" />
+	<property name="fiji.dir" value="c:\Fiji.app" />
+	<property name="target.name" value="${ant.project.name}" />
+	<property name="3rdparty" value="../3rdpartypublic" />
+	<property environment="env" />
+
+	<path id="project.class.path">
+		<pathelement location="lib/ij-1.47k.jar" />
+		<!--<pathelement location="lib/clojure-1.4.0.jar" />-->
+	</path>
+
+	<target description="Creates necessary directories" name="init">
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${dist.dir}/plugins" />
+		<mkdir dir="${fiji.dir}/plugins/Zephyre" />
+	</target>
+
+	<target name="compile" depends="init" description="Compile.">
+		<javac includeantruntime="false" srcdir="${src.dir}" destdir="${build.dir}" source="1.6" target="1.6" encoding="UTF-8" optimize="on" debug="on" verbose="off">
+			<classpath refid="project.class.path" />
+		</javac>
+		<!--
+		<java classname="clojure.lang.Compile" fork="true" failonerror="true">
+			<classpath refid="project.class.path" />
+			<classpath>
+				<pathelement location="${src.dir}" />
+			</classpath>
+			<sysproperty key="clojure.compile.path" value="${build.dir}" />
+			<arg value="mb-tracker" />
+		</java>
+		-->
+	</target>
+
+	<target name="build" depends="compile" description="Build .jar.">
+		<jar destfile="${target.name}.jar">
+			<fileset dir="." includes="plugins.config" />
+			<fileset dir="${build.dir}" includes="**/**" />
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+			</manifest>
+		</jar>
+		<copy file="${target.name}.jar" toDir="${dist.dir}/plugins" preservelastmodified="true" />
+		<copy file="${target.name}.jar" toDir="${fiji.dir}/plugins/Zephyre" preservelastmodified="true" />
+	</target>
+
+	<target name="clean" description="Delete the build files.">
+		<echo>
+			Deleting the build files.
+		</echo>
+		<delete dir="${build.dir}" />
+		<delete file="${target.name}.jar" />
+	</target>
+</project>

@@ -1,119 +1,55 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
-		<cconfiguration id="org.eclipse.cdt.msvc.dll.debug.823448236">
-			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="org.eclipse.cdt.msvc.dll.debug.823448236" moduleId="org.eclipse.cdt.core.settings" name="Debug">
+		<cconfiguration id="cdt.managedbuild.toolchain.gnu.mingw.base.933399820">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.toolchain.gnu.mingw.base.933399820" moduleId="org.eclipse.cdt.core.settings" name="Default">
 				<externalSettings>
 					<externalSetting>
 						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/DemoCamera"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/DemoCamera/Debug"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="mmgr_dal_DemoCamera" srcPrefixMapping="" srcRootPath=""/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/DemoCamera/Default"/>
+						<entry flags="RESOLVED" kind="libraryFile" name="DemoCamera" srcPrefixMapping="" srcRootPath=""/>
 					</externalSetting>
 				</externalSettings>
 				<extensions>
 					<extension id="org.eclipse.cdt.core.PE" point="org.eclipse.cdt.core.BinaryParser"/>
-					<extension id="org.eclipse.cdt.core.VCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="dll" artifactName="mmgr_dal_${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" description="" id="org.eclipse.cdt.msvc.dll.debug.823448236" name="Debug" parent="org.eclipse.cdt.msvc.dll.debug">
-					<folderInfo id="org.eclipse.cdt.msvc.dll.debug.823448236." name="/" resourcePath="">
-						<toolChain id="org.eclipse.cdt.msvc.toolchain.dll.debug.2139042130" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.dll.debug">
-							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.dll.debug.347505157" superClass="org.eclipse.cdt.msvc.targetPlatform.dll.debug"/>
-							<builder buildPath="${workspace_loc:/DemoCamera/Debug}" id="org.eclipse.cdt.build.core.internal.builder.759329072" keepEnvironmentInBuildfile="false" name="CDT Internal Builder" superClass="org.eclipse.cdt.build.core.internal.builder"/>
-							<tool command="cl /c" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG}${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="org.eclipse.cdt.msvc.cl.c.dll.debug.2089596440" name="C Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.c.dll.debug">
-								<option id="org.eclipse.cdt.msvc.cl.option.optimization.141268326" name="Optimization" superClass="org.eclipse.cdt.msvc.cl.option.optimization" value="org.eclipse.cdt.msvc.cl.option.optimization.default" valueType="enumerated"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.debugFormat.1149668846" name="Debug Information Format" superClass="org.eclipse.cdt.msvc.cl.option.debugFormat" value="org.eclipse.cdt.msvc.cl.option.debugFormat.complete" valueType="enumerated"/>
-								<inputType id="org.eclipse.cdt.msvc.cl.inputType.c.1651613474" superClass="org.eclipse.cdt.msvc.cl.inputType.c"/>
+				<configuration artifactExtension="dll" artifactName="DemoCamera" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" description="" id="cdt.managedbuild.toolchain.gnu.mingw.base.933399820" name="Default" parent="org.eclipse.cdt.build.core.emptycfg">
+					<folderInfo id="cdt.managedbuild.toolchain.gnu.mingw.base.933399820.187509827" name="/" resourcePath="">
+						<toolChain id="cdt.managedbuild.toolchain.gnu.mingw.base.2126259971" name="cdt.managedbuild.toolchain.gnu.mingw.base" superClass="cdt.managedbuild.toolchain.gnu.mingw.base">
+							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.PE" id="cdt.managedbuild.target.gnu.platform.mingw.base.1909412934" name="Debug Platform" osList="win32" superClass="cdt.managedbuild.target.gnu.platform.mingw.base"/>
+							<builder buildPath="${workspace_loc:/DemoCamera/Default}" id="cdt.managedbuild.tool.gnu.builder.mingw.base.1828126465" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="CDT Internal Builder" superClass="cdt.managedbuild.tool.gnu.builder.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.assembler.mingw.base.2053548563" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.mingw.base">
+								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.2085742224" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
-							<tool id="org.eclipse.cdt.msvc.cl.dll.debug.1365871914" name="C++ Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.dll.debug">
-								<option id="org.eclipse.cdt.msvc.cl.option.optimization.912059274" name="Optimization" superClass="org.eclipse.cdt.msvc.cl.option.optimization" value="org.eclipse.cdt.msvc.cl.option.optimization.default" valueType="enumerated"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.debugFormat.724547893" name="Debug Information Format" superClass="org.eclipse.cdt.msvc.cl.option.debugFormat" value="org.eclipse.cdt.msvc.cl.option.debugFormat.complete" valueType="enumerated"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.macros.1506364509" name="Defines (/D)" superClass="org.eclipse.cdt.msvc.cl.option.macros" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="WIN32"/>
-									<listOptionValue builtIn="false" value="MODULE_EXPORTS"/>
-								</option>
-								<option id="org.eclipse.cdt.msvc.cl.option.includes.743871025" name="Include Path (/I)" superClass="org.eclipse.cdt.msvc.cl.option.includes" valueType="includePath"/>
-								<inputType id="org.eclipse.cdt.msvc.cl.inputType.1488924503" superClass="org.eclipse.cdt.msvc.cl.inputType"/>
+							<tool id="cdt.managedbuild.tool.gnu.archiver.mingw.base.2027332600" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.base.1071122040" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.base">
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.952110764" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
-							<tool id="org.eclipse.cdt.msvc.rc.dll.debug.2111478271" name="Resource Compiler (rc)" superClass="org.eclipse.cdt.msvc.rc.dll.debug">
-								<inputType id="org.eclipse.cdt.msvc.rc.inputType.174252888" superClass="org.eclipse.cdt.msvc.rc.inputType"/>
+							<tool id="cdt.managedbuild.tool.gnu.c.compiler.mingw.base.1699215115" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.mingw.base">
+								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1790780811" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
-							<tool id="org.eclipse.cdt.msvc.link.dll.debug.1320528852" name="Linker (link)" superClass="org.eclipse.cdt.msvc.link.dll.debug">
-								<option defaultValue="true" id="org.eclipse.cdt.msvc.link.option.dll.806039719" name="Build a DLL" superClass="org.eclipse.cdt.msvc.link.option.dll" valueType="boolean"/>
-								<option id="org.eclipse.cdt.msvc.link.option.debug.602303756" name="Generate Debug Info (/debug)" superClass="org.eclipse.cdt.msvc.link.option.debug" value="true" valueType="boolean"/>
-								<option id="org.eclipse.cdt.msvc.link.option.libpath.1648038599" name="Additional Libpath (/libpath)" superClass="org.eclipse.cdt.msvc.link.option.libpath" valueType="stringList">
-									<listOptionValue builtIn="false" value="&quot;${WIN_SDK}/lib&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${VC_SKD}/lib&quot;"/>
-								</option>
-								<inputType id="org.eclipse.cdt.msvc.link.inputType.477461173" superClass="org.eclipse.cdt.msvc.link.inputType"/>
+							<tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.base.1363534961" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.base">
+								<option defaultValue="true" id="gnu.c.link.option.shared.1492205894" superClass="gnu.c.link.option.shared" valueType="boolean"/>
 							</tool>
-							<tool id="org.eclipse.cdt.msvc.lib.212599786" name="Library Manager (lib)" superClass="org.eclipse.cdt.msvc.lib"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.mingw.base.1381603984" name="MinGW C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.mingw.base">
+								<option defaultValue="true" id="gnu.cpp.link.option.shared.76504748" superClass="gnu.cpp.link.option.shared" valueType="boolean"/>
+								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1148822886" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
+									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
+									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
+								</inputType>
+								<outputType id="cdt.managedbuild.tool.gnu.cpp.linker.mingw.so.output.base.642658028" outputPrefix="mmgr_dal_" superClass="cdt.managedbuild.tool.gnu.cpp.linker.mingw.so.output.base"/>
+							</tool>
 						</toolChain>
 					</folderInfo>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
 		</cconfiguration>
-		<cconfiguration id="org.eclipse.cdt.msvc.dll.release.1511778499">
-			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="org.eclipse.cdt.msvc.dll.release.1511778499" moduleId="org.eclipse.cdt.core.settings" name="Release">
-				<externalSettings>
-					<externalSetting>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="includePath" name="/DemoCamera"/>
-						<entry flags="VALUE_WORKSPACE_PATH" kind="libraryPath" name="/DemoCamera/Release"/>
-						<entry flags="RESOLVED" kind="libraryFile" name="mmgr_dal_DemoCamera" srcPrefixMapping="" srcRootPath=""/>
-					</externalSetting>
-				</externalSettings>
-				<extensions>
-					<extension id="org.eclipse.cdt.core.PE" point="org.eclipse.cdt.core.BinaryParser"/>
-					<extension id="org.eclipse.cdt.core.VCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-				</extensions>
-			</storageModule>
-			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="dll" artifactName="mmgr_dal_${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.release,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" description="" id="org.eclipse.cdt.msvc.dll.release.1511778499" name="Release" parent="org.eclipse.cdt.msvc.dll.release">
-					<folderInfo id="org.eclipse.cdt.msvc.dll.release.1511778499." name="/" resourcePath="">
-						<toolChain id="org.eclipse.cdt.msvc.toolchain.dll.release.373196822" name="Microsoft Visual C++" superClass="org.eclipse.cdt.msvc.toolchain.dll.release">
-							<targetPlatform id="org.eclipse.cdt.msvc.targetPlatform.dll.release.76094530" superClass="org.eclipse.cdt.msvc.targetPlatform.dll.release"/>
-							<builder buildPath="${workspace_loc:/DemoCamera/Release}" id="org.eclipse.cdt.msvc.builder.1274233969" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CDT Internal Builder" superClass="org.eclipse.cdt.msvc.builder"/>
-							<tool id="org.eclipse.cdt.msvc.cl.c.dll.release.1906004287" name="C Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.c.dll.release">
-								<option id="org.eclipse.cdt.msvc.cl.option.optimization.1114295468" name="Optimization" superClass="org.eclipse.cdt.msvc.cl.option.optimization"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.debugFormat.2091387229" name="Debug Information Format" superClass="org.eclipse.cdt.msvc.cl.option.debugFormat"/>
-								<inputType id="org.eclipse.cdt.msvc.cl.inputType.c.949754527" superClass="org.eclipse.cdt.msvc.cl.inputType.c"/>
-							</tool>
-							<tool id="org.eclipse.cdt.msvc.cl.dll.release.1221295902" name="C++ Compiler (cl)" superClass="org.eclipse.cdt.msvc.cl.dll.release">
-								<option id="org.eclipse.cdt.msvc.cl.option.optimization.642372108" name="Optimization" superClass="org.eclipse.cdt.msvc.cl.option.optimization"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.debugFormat.1329389989" name="Debug Information Format" superClass="org.eclipse.cdt.msvc.cl.option.debugFormat"/>
-								<option id="org.eclipse.cdt.msvc.cl.option.macros.1926580476" name="Defines (/D)" superClass="org.eclipse.cdt.msvc.cl.option.macros" valueType="definedSymbols">
-									<listOptionValue builtIn="false" value="WIN32"/>
-									<listOptionValue builtIn="false" value="MODULE_EXPORTS"/>
-								</option>
-								<option id="org.eclipse.cdt.msvc.cl.option.includes.443553589" name="Include Path (/I)" superClass="org.eclipse.cdt.msvc.cl.option.includes" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${WIN_SDK}/include&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${VC_SKD}/include&quot;"/>
-								</option>
-								<inputType id="org.eclipse.cdt.msvc.cl.inputType.1834248575" superClass="org.eclipse.cdt.msvc.cl.inputType"/>
-							</tool>
-							<tool id="org.eclipse.cdt.msvc.rc.dll.release.361683319" name="Resource Compiler (rc)" superClass="org.eclipse.cdt.msvc.rc.dll.release">
-								<inputType id="org.eclipse.cdt.msvc.rc.inputType.1965684101" superClass="org.eclipse.cdt.msvc.rc.inputType"/>
-							</tool>
-							<tool id="org.eclipse.cdt.msvc.link.dll.release.1331040169" name="Linker (link)" superClass="org.eclipse.cdt.msvc.link.dll.release">
-								<option defaultValue="true" id="org.eclipse.cdt.msvc.link.option.dll.1205414389" name="Build a DLL" superClass="org.eclipse.cdt.msvc.link.option.dll" valueType="boolean"/>
-								<option id="org.eclipse.cdt.msvc.link.option.libpath.2074251966" name="Additional Libpath (/libpath)" superClass="org.eclipse.cdt.msvc.link.option.libpath" valueType="stringList">
-									<listOptionValue builtIn="false" value="&quot;${WIN_SDK}/lib&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${VC_SKD}/lib&quot;"/>
-								</option>
-								<inputType id="org.eclipse.cdt.msvc.link.inputType.1936953758" superClass="org.eclipse.cdt.msvc.link.inputType"/>
-							</tool>
-							<tool id="org.eclipse.cdt.msvc.lib.1552061998" name="Library Manager (lib)" superClass="org.eclipse.cdt.msvc.lib"/>
-						</toolChain>
-					</folderInfo>
-				</configuration>
-			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
-		</cconfiguration>
-	</storageModule>
-	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-		<project id="DemoCamera.org.eclipse.cdt.msvc.projectType.dll.434792207" name="Shared Library" projectType="org.eclipse.cdt.msvc.projectType.dll"/>
 	</storageModule>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
@@ -124,41 +60,10 @@
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.msw.build.clScannerInfo"/>
 		</scannerConfigBuildInfo>
 	</storageModule>
+	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+		<project id="DemoCamera.null.1631998703" name="DemoCamera"/>
+	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
-	<storageModule moduleId="refreshScope" versionNumber="2">
-		<configuration configurationName="Release">
-			<resource resourceType="PROJECT" workspacePath="/DemoCamera"/>
-		</configuration>
-		<configuration configurationName="Debug">
-			<resource resourceType="PROJECT" workspacePath="/DemoCamera"/>
-		</configuration>
-	</storageModule>
-	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
-		<buildTargets>
-			<target name="Clean" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>make</buildCommand>
-				<buildArguments/>
-				<buildTarget>clean</buildTarget>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>true</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-			<target name="Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>make</buildCommand>
-				<buildArguments/>
-				<buildTarget>all</buildTarget>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>true</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-			<target name="Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>make</buildCommand>
-				<buildArguments/>
-				<buildTarget>debug</buildTarget>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>true</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-		</buildTargets>
-	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
+	<storageModule moduleId="refreshScope"/>
 </cproject>
