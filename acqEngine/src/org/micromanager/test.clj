@@ -1,10 +1,13 @@
 (ns org.micromanager.test
-  (:import (java.util List)
-           (java.util.concurrent Executors)
+  (:import (java.util ArrayList List)
+           (java.util.concurrent Executors LinkedBlockingQueue ConcurrentLinkedQueue)
            (mmcorej TaggedImage)
-           (org.json JSONObject)
+           (org.json JSONArray JSONObject)
            (org.micromanager MMStudioMainFrame)
-           (org.micromanager.api DataProcessor))
+           (org.micromanager.api DataProcessor)
+           (java.nio ByteBuffer ByteOrder)
+           (org.micromanager.acquisition TaggedImageStorageMultipageTiff))
+  (:require [org.micromanager.mm :as mm])
   (:use [org.micromanager.mm :only (edt load-mm core gui mmc)]))
 
 (load-mm (MMStudioMainFrame/getInstance))
@@ -90,12 +93,12 @@
 (def pop-lock (Object.))
 
 (defn pop-next []
-  (locking pop-lock
-           (when (or (core isSequenceRunning)
-                     (pos? (core getRemainingImageCount)))
-             (while (zero? (core getRemainingImageCount))
-               (Thread/sleep 10))
-             (core popNextImage))))
+  (when (or true 
+          ;(core isSequenceRunning)
+            (pos? (core getRemainingImageCount)))
+    (while (zero? (core getRemainingImageCount))
+      (Thread/sleep 1))
+    (core popNextImage)))
 
 (defn pop-n [n]
   (repeatedly n pop-next))
@@ -104,36 +107,164 @@
   (pmap (fn [_] (pop-next)) (range n)))
 
 (defn test-speed [n]
-  (do (core startSequenceAcquisition n 0 true)
-      (time (dotimes [i n] (pop-next))))
+  (println
+    (do (core startSequenceAcquisition n 0 true) ;(Thread/sleep 1000)
+        (count (remove nil? (time (doall (repeatedly n pop-next)))))))
   (println (core isBufferOverflowed)))
 
-(defn fill-circular-buffer [n]
-  (core startSequenceAcquisition n 0 true)
-  (while (core isSequenceRunning) (Thread/sleep 10)))
+(defn fill-circular-buffer
+  ([n wait?]
+    (core startSequenceAcquisition n 0 true)
+    (when wait?
+      (while (core isSequenceRunning) (Thread/sleep 2))))
+  ([n] (fill-circular-buffer n true)))
 
-(defn single-thread-pop-test [n]
-  (fill-circular-buffer n)
-  (time (dotimes [i n]
-          (core popNextImage))))
+ 
+(def pop-lock (Object.))
 
-  
-(defn multithread-pop [nthreads n]
-  (fill-circular-buffer n)
-  (let [pop-service (Executors/newFixedThreadPool nthreads)
-        pop-fn (cast Runnable #(core popNextImage))]
+(defn pop-next-image [image-queue]
+  (when-let [image
+             (locking pop-lock
+                      (while (and (zero? (core getRemainingImageCount))
+                                  (not (core isBufferOverflowed)))
+                        (Thread/sleep 0))
+                      (when (pos? (core getRemainingImageCount))
+                        (core popNextImage)))]
+    (when (and image image-queue)
+      (.put image-queue image))))
+
+(defn single-thread-pop-test [n wait? image-queue]
+  (def temp-queue image-queue)
+  (System/gc)
+  (fill-circular-buffer n wait?)
+  (time (do (dotimes [i n]
+              (pop-next-image image-queue))
+            (while (or (core isSequenceRunning)
+                       (pos? (core getRemainingImageCount)))
+              (Thread/sleep 1))))
+  (when (core isBufferOverflowed)
+    (println "Buffer overflowed")))
+
+(defn multithread-pop [nthreads n wait? image-queue]
+  (let [pop (fn [] (pop-next-image image-queue))]
+    (fill-circular-buffer n wait?)
     (time
-      (do
+    (let [pop-service (Executors/newFixedThreadPool nthreads)]
+      (dorun
         (dotimes [i n]
-          (.submit pop-service pop-fn))
-        (while (pos? (core getRemainingImageCount))
-          (Thread/sleep 1))))))
+          (.submit pop-service ^Runnable pop))
+        (while (or (core isSequenceRunning)
+                   (and (pos? (core getRemainingImageCount))
+                        (pos? (count (.getQueue pop-service)))))
+          (Thread/sleep 1)))))
+        (when (core isBufferOverflowed) (println "Buffer overflowed"))
+    (Thread/sleep 10)
+    image-queue))
 
 (defn repeat-with-params [f & more]
   (doseq [[n args] (partition 2 more)]
     (println n args)
     (doall
       (repeatedly n #(apply f args)))))
+
+(defn memory []
+  (let [runtime (Runtime/getRuntime)
+        ->mb #(/ % 1024 1024.)]
+    {:total (->mb (.totalMemory runtime))
+     :free (->mb (.freeMemory runtime))
+     :max (->mb (.maxMemory runtime))}))
+
+(defn pre-expand-heap
+  "Generates a queue of empty image arrays, as a way to pre-expand
+   the JVM's heap."
+  [image-size n]
+  (let [q (LinkedBlockingQueue.)]
+    (dotimes [_ n]
+      (.add q (byte-array image-size)))))
     
-    
+(defn compute-sleep [start-time-ms ms-per-event n]
+  (Math/max 0
+            (- (+ (* n ms-per-event) start-time-ms)
+               (System/currentTimeMillis))))
+
+(defmacro doseq-throttle
+  "Like doseq, but throttles the rate to ms-per-event."
+  [ms-per-event seq-exprs & body]
+  `(let [start# (System/currentTimeMillis)
+         count# (atom 0)
+         wait-ms# (long ~ms-per-event)]
+     (doseq ~seq-exprs
+       (Thread/sleep (compute-sleep start# wait-ms# @count#))
+       (swap! count# inc)
+       ~@body)))
+
+(defn simulate-queue-test
+  "Simulates a somewhat realistic image queue, where, after an initial delay,
+   images are removed at the exposure rate."
+  [n]
+  (core stopSequenceAcquisition)
+  (let [queue (LinkedBlockingQueue.)
+        wait-ms 0];(core getExposure)]
+    (future (single-thread-pop-test n false queue))
+    (Thread/sleep 1000)
+    (println "Images taken out | Images in queue")
+    (doseq [i (range n) :when (not (core isBufferOverflowed))]
+      (.take queue)
+      (when (zero? (mod i 100))
+        (println i "|" (core getRemainingImageCount) "|" (count queue))))))
+
+(defn image-test-summary [filename num-frames]
+  (mm/to-json
+    {"SlicesFirst" true
+     "TimeFirst" true
+     "NumSlices" 1
+     "NumPositions" 1
+     "NumChannels" 1
+     "NumFrames" num-frames
+     "Positions" 1
+     "PixelType" (mm/get-pixel-type)
+     "Width" (core getImageWidth)
+     "Height" (core getImageHeight)
+     "Prefix" filename
+     "ChColors" [1]
+     "ChNames" ["ch"]
+     "ChMins" [0]
+     "ChMaxes" [100]}))
+   
+(defn save-images-fast [image n]
+  (let [tags (.tags image)
+        summary (image-test-summary "test1" 1)
+        storage (TaggedImageStorageMultipageTiff.
+                  "G:/acquisitions/" true summary false true)]
+    (doto tags
+      (.put "Slice" 0)
+      (.put "ChannelIndex" 0)
+      (.put "PositionIndex" 0)
+      (.put "PixelType" "GRAY16"))
+    (time
+      (dotimes [i n]
+        (.put tags "Frame" i)
+        (.putImage storage image)
+        ))
+    (doto storage .finished .close)))
+ 
+ (defn fast-image-saving-test [n]
+   (fill-circular-buffer 1 true)
+   (let [image (core popNextTaggedImage)]
+     (println "Start saving procedure...")
+       (save-images-fast image n)))
+
+(defn image-to-byte-buffer [pix]
+  (let [buffer (.. ByteBuffer
+                         (allocate (* (count pix) 2))
+                         (order ByteOrder/BIG_ENDIAN))]
+    (.. buffer asShortBuffer (put pix))))
+
+(defn byte-buffer-test [n]
+  (let [img (core getImage)]
+    (time
+      (dorun
+        (repeatedly n #(image-to-byte-buffer img))))))
+ 
+  
 

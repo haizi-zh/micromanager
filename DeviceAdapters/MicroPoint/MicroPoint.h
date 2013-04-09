@@ -29,7 +29,6 @@
 #include <string>
 #include <map>
 
-
 class MicroPoint : public CGalvoBase<MicroPoint>
 {
 public:
@@ -79,6 +78,7 @@ private:
    std::string attenuatorText_;
 
    int WriteBytes(unsigned char* buf, int numBytes);
+   int ConfigurePortDirectionRegisters();
 
    double AttenuatorTransmissionFromIndex(long n);
    int StepAttenuatorPosition(bool positive);
@@ -87,6 +87,9 @@ private:
    int CreateRepetitionsProperty();
    bool IsAttenuatorHome();
    long FindAttenuatorPosition();
+   
+   std::vector<std::vector<std::pair<double,double>>> polygons_;
+   long polygonRepetitions_;
 };
 
 #endif //_MicroPoint_H_

@@ -117,6 +117,7 @@ import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
 import java.awt.Menu;
 import java.awt.MenuItem;
+import java.awt.dnd.DropTarget;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collections;
@@ -142,6 +143,7 @@ import org.micromanager.acquisition.TaggedImageStorageMultipageTiff;
 import org.micromanager.acquisition.VirtualAcquisitionDisplay;
 import org.micromanager.api.DeviceControlGUI;
 import org.micromanager.api.IAcquisitionEngine2010;
+import org.micromanager.utils.DragDropUtil;
 import org.micromanager.utils.FileDialogs;
 import org.micromanager.utils.FileDialogs.FileType;
 import org.micromanager.utils.HotKeysDialog;
@@ -157,10 +159,11 @@ import org.zephyre.micromanager.AcqNameTagger;
 /*
  * Main panel and application class for the MMStudio.
  */
-public class MMStudioMainFrame extends JFrame implements ScriptInterface, DeviceControlGUI {
+public class MMStudioMainFrame extends JFrame implements 
+        ScriptInterface, 
+        DeviceControlGUI {
 
    private static final String MICRO_MANAGER_TITLE = "Micro-Manager";
-   private static final String VERSION = "1.4.x dev";
    private static final long serialVersionUID = 3556500289598574541L;
    private static final String MAIN_FRAME_X = "x";
    private static final String MAIN_FRAME_Y = "y";
@@ -287,6 +290,8 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 
    private JButton setRoiButton_;
    private  JButton clearRoiButton_;
+   
+   private DropTarget dt_;
 
    public ImageWindow getImageWin() {
       return getSnapLiveWin();
@@ -507,7 +512,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 
             public void actionPerformed(ActionEvent e) {
                 MMAboutDlg dlg = new MMAboutDlg();
-                String versionInfo = "MM Studio version: " + VERSION;
+                String versionInfo = "MM Studio version: " + MMVersion.VERSION_STRING;
                 versionInfo += "\n" + core_.getVersionInfo();
                 versionInfo += "\n" + core_.getAPIVersionInfo();
                 versionInfo += "\nUser: " + core_.getUserId();
@@ -708,6 +713,8 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
 		displayThread.setDaemon(true);
 		displayThread.start();
 	}
+
+  
 
    public interface DisplayImageRoutine {
       public void show(TaggedImage image);
@@ -973,7 +980,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       
       setBounds(x, y, width, height);
       setExitStrategy(options_.closeOnExit_);
-      setTitle(MICRO_MANAGER_TITLE + " " + VERSION);
+      setTitle(MICRO_MANAGER_TITLE + " " + MMVersion.VERSION_STRING);
       setBackground(guiColors_.background.get((options_.displayBackground_)));
       SpringLayout topLayout = new SpringLayout();
       
@@ -1802,7 +1809,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
             toFront();
             
             if (!options_.doNotAskForConfigFile_) {
-               MMIntroDlg introDlg = new MMIntroDlg(VERSION, MRUConfigFiles_);
+               MMIntroDlg introDlg = new MMIntroDlg(MMVersion.VERSION_STRING, MRUConfigFiles_);
                introDlg.setConfigFile(sysConfigFile_);
                introDlg.setBackground(guiColors_.background.get((options_.displayBackground_)));
                introDlg.setVisible(true);
@@ -2145,6 +2152,8 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       MMKeyDispatcher mmKD = new MMKeyDispatcher(gui_);
       KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(mmKD);
 
+      dt_ = new DropTarget(this, new DragDropUtil());
+      
       overrideImageJMenu();
    }
    
@@ -2320,7 +2329,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    }
 
    private void updateTitle() {
-      this.setTitle(MICRO_MANAGER_TITLE + " " + VERSION + " - " + sysConfigFile_);
+      this.setTitle(MICRO_MANAGER_TITLE + " " + MMVersion.VERSION_STRING + " - " + sysConfigFile_);
    }
 
    public void updateLineProfile() {
@@ -2594,6 +2603,10 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       return name;
    }
 
+   /**
+    * Opens an existing data set. Shows the acquisition in a window.
+    * @return The acquisition object.
+    */
    public String openAcquisitionData(String dir, boolean inRam) throws MMScriptException {
       return openAcquisitionData(dir, inRam, true);
    }
@@ -2923,7 +2936,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
     */
    public boolean versionLessThan(String version) throws MMScriptException {
       try {
-         String[] v = VERSION.split(" ", 2);
+         String[] v = MMVersion.VERSION_STRING.split(" ", 2);
          String[] m = v[0].split("\\.", 3);
          String[] v2 = version.split(" ", 2);
          String[] m2 = v2[0].split("\\.", 3);
@@ -3317,7 +3330,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
    }
 
    public String getVersion() {
-      return VERSION;
+      return MMVersion.VERSION_STRING;
    }
 
    private void addPluginToMenu(final PluginItem plugin, Class<?> cl) {
@@ -3563,6 +3576,7 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
          if (core_ != null) {
             core_.logMessage("MMStudioMainFrame::closeSequence called while running_ is false");
          }
+         this.dispose();
          return;
       }
       
@@ -3605,8 +3619,8 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
                ij.quit();
             }
          }
-      }else{
-    	  this.dispose();
+      } else {
+         this.dispose();
       }
      
 
@@ -3945,6 +3959,11 @@ public class MMStudioMainFrame extends JFrame implements ScriptInterface, Device
       return runAcquisition(name, root);
    }
 
+   /**
+    * Loads acquisition settings from file
+    * @param path file containing previously saved acquisition settings
+    * @throws MMScriptException 
+    */
    @Override
    public void loadAcquisition(String path) throws MMScriptException {
       testForAbortRequests();
