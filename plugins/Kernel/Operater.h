@@ -14,9 +14,8 @@ using namespace std;
 #define ERR_IMAGE_NULL_POINTER 5.0;
 
 //LAST_ERR[0] ERR_CODE,LAST_ERR[1] cost time
-
+static double * LAST_ERR;
 static double * sOpt;
-
 static vector<double*>  sCalProfile;
 static vector<double*>  sPosProfie;
 static vector<double> sCalPos;
@@ -83,7 +82,7 @@ struct Option
 	int zIndexCorrPartNum;
 };
 
-bool boundaryCheck(double xpos_,double ypos_,double radius_,double imgwidth_,double imgheight_);
+bool IsBallOutOfImage(double xpos_,double ypos_,double radius_,double imgwidth_,double imgheight_);
 
 double convolution(double* posProfile_,double*  pcalProfile_,int len_);
 void quadraticFit(double* x_, double* Pdata_, int start, int len, double* para_);

@@ -24,64 +24,7 @@ import org.micromanager.utils.MMScriptException;
  * 
  */
 public class OverlayRender {
-	/**
-	 * 每个Item，代表追踪到的一个目标，包括：定为圆心的十字叉，以及一个text层， 显示相关的信息，比如坐标：(x, y)，亮度，等等。
-	 * 
-	 * @author Zephyre
-	 * 
-	 */
-
 	
-	public static class RenderItem {
-		ItemData itemdata_;
-		private Color itemColor_;
-		boolean isSelected_;
-		boolean isFocus_;
-		private RenderItem(double[] itemData,boolean isSelected) {
-			itemdata_ = new ItemData(itemData);
-			isFocus_ = true;
-			if(isSelected){
-				setItemColor(Color.RED);
-			}
-			else{
-				setItemColor(Color.GREEN);
-			}
-		}
-		public String getMsg(){
-			return String.format("(%.2f, %.2f,%.2f)(%.2f,%.2f)",itemdata_.x_,itemdata_.y_,itemdata_.z_,itemdata_.fx_,itemdata_.fy_);
-		}
-		public void setSelect(boolean isSelected){
-			isSelected_ = isSelected;
-			if(isSelected){
-				setItemColor(Color.RED);
-			}
-			else{
-				setItemColor(Color.GREEN);
-			}
-
-		}
-		public Color getItemColor() {
-			return itemColor_;
-		}
-
-		public void setItemColor(Color clr) {
-			itemColor_ = clr;
-		}
-
-		/**
-		 * 创建实例。
-		 * 
-		 * @param loc
-		 *            十字叉的坐标，原点为整个图像的左上角。
-		 * @param msg
-		 *            需要显式的信息。
-		 * @return
-		 */
-		public static RenderItem createInstance(double[] itemData,boolean isSelected) {
-			return new RenderItem(itemData,isSelected);
-		}
-	}
-
 	protected ScriptInterface gui_;
 	private Color labelColor_;
 	private Font labelFont_;
@@ -89,9 +32,6 @@ public class OverlayRender {
 	private Preferences preferences_;
 	private static OverlayRender instance_;
 
-	/**
-	 * @param gui 
-	 */
 	private OverlayRender(MMStudioMainFrame gui, Preferences preferences) {
 		gui_ = gui;
 		preferences_ =preferences;
@@ -138,11 +78,6 @@ public class OverlayRender {
 		return instance_;
 	}
 
-	/**
-	 * 圆心十字叉丝的大小。
-	 * 
-	 * @param size
-	 */
 	public void setCrossHairSize(int size) {
 		sizeCrossHair_ = size;
 	}
@@ -151,20 +86,7 @@ public class OverlayRender {
 		return gui_;
 	}
 
-	/**
-	 * 叠加一个渲染图层。
-	 * 
-	 * @param acqName
-	 *            MMAcquisition的名字，用于指定渲染的目标窗口。
-	 * @param itemList
-	 *            渲染目标的集合。
-	 * @param frameNumber
-	 * @param update
-	 *            是否立刻重绘图像。
-	 * @throws MMScriptException
-	 *             acqName指定的MMAcquisition不存在。
-	 */
-	public void render(String acqName, Collection<RenderItem> itemList,
+	public  void render(String acqName, Collection<RoiItem> itemList,
 			long frameNumber, boolean update) throws MMScriptException {
 		render(gui_.getAcquisition(acqName).getAcquisitionWindow()
 				.getHyperImage(), itemList, frameNumber, update);
@@ -180,26 +102,21 @@ public class OverlayRender {
 	 * @param update
 	 *            是否立刻重绘图像。
 	 */
-	public void render(final ImagePlus image, Collection<RenderItem> itemList,
+	public void render(final ImagePlus image, Collection<RoiItem> itemList,
 			long frameNumber, boolean update) {
 		if (image == null || itemList == null)
 			return;
-
-		if( itemList.size() == 0){
-			Overlay overlay = new Overlay();
-			image.setOverlay(overlay);
-			image.updateAndDraw();
-		}
 		// 新建Overlay
 		Overlay overlay = new Overlay();
 
 		// 清空原有的ROI，新建。
-		Iterator<RenderItem> it = itemList.iterator();
+		Iterator<RoiItem> it = itemList.iterator();
 		int beanRadius = (int) preferences_.beanRadiusPiexl_;
 		while (it.hasNext()) {
-			RenderItem item = it.next();
-			int x = (int)item.itemdata_.x_;
-			int y = (int)item.itemdata_.y_;
+			RoiItem item = it.next();
+			if(item.isdelete_)continue;
+			int x = (int)item.x_;
+			int y = (int)item.y_;
 			ShapeRoi sr = new ShapeRoi(new float[] { PathIterator.SEG_MOVETO,
 					x - sizeCrossHair_, y, PathIterator.SEG_LINETO,
 					x + sizeCrossHair_, y, PathIterator.SEG_MOVETO, x,

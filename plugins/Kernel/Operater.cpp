@@ -11,9 +11,12 @@
 #include "interp_1d.h"
 
 using namespace std;
+
+
 void quadraticFit(double x[], double data[], int start, int len, double parameters[])
 {
-	double s40=0;
+	LAST_ERR[0] = ERR_OK
+			double s40=0;
 	double s30=0;
 	double s20=0;
 	double s10=0;
@@ -82,9 +85,11 @@ void serialization(double* pdata,int len)
 }
 
 void initialize(double* pOpt_){
-	releaseBuffer();
 	sOpt = new double[11];
 	memcpy(sOpt,pOpt_,11*sizeof(double));
+
+	LAST_ERR =  new double[1];
+	LAST_ERR[0]  = ERR_OK;
 }
 void deleteRoi(int index){
 	double* temp;
@@ -117,6 +122,11 @@ void releaseBuffer(){
 	if(sOpt){
 		delete[] sOpt;
 		sOpt = NULL;
+	}
+	if(LAST_ERR)
+	{
+		delete[] LAST_ERR;
+		LAST_ERR = NULL;
 	}
 }
 
@@ -184,25 +194,25 @@ DWORD WINAPI getXYCenter(void* parameter){
 	ParameterPackage* para = (ParameterPackage*)parameter;
 	Option opt;
 	getOption(opt);
-
-	if(!boundaryCheck(para->xCenter,para->yCenter,opt.beanRadius,opt.imgWidth,opt.imgHeight)){
+	if(IsBallOutOfImage(para->xCenter,para->yCenter,opt.beanRadius,opt.imgWidth,opt.imgHeight)){
 		*(para->location) = -1;
-		*(para->location+1)  = -1;
-		printf(">ERR>boundary check false\r\n");
+		*(para->location+1)  =-1;
+		printf("Ball out of center\r\n");
 		return 0;
 	}
-
 	int roiX = para->xCenter - opt.beanRadius;
 	int roiY = para->yCenter - opt.beanRadius;
-	int border = 2*opt.beanRadius;
-	int bitDepth = opt.bitDepth;
-	int imgwidth = opt.imgWidth;
 
+	int border = 2*opt.beanRadius;
+
+	int bitDepth = opt.bitDepth;
+
+	int imgwidth = opt.imgWidth;
+	int imgSqure = opt.imgWidth*opt.imgHeight;
 	// Calculate the 1-D arrays
 	double* pSumX = new double[border];
 	double* pSumY = new double[border];
 	double intensitySum = 0;
-
 	memset(pSumX, 0, border * sizeof(double));
 	memset(pSumY, 0, border * sizeof(double));
 
@@ -271,7 +281,7 @@ DWORD WINAPI getXYCenter(void* parameter){
 	ydata.origin = roiY;
 	ydata.location = para->location+1;
 	//save intensitySum
-	*(para->location+2) = intensitySum;
+	*(para->location+2) = intensitySum/imgSqure;
 
 	HANDLE aThread[2];
 	aThread[0] = ::CreateThread(NULL, 0, gosseCenter,(void* ) &xdata, 0, NULL);
@@ -279,8 +289,6 @@ DWORD WINAPI getXYCenter(void* parameter){
 	WaitForMultipleObjects(2, aThread, TRUE, INFINITE);
 	CloseHandle(aThread[0]);
 	CloseHandle(aThread[1]);
-	delete[] pSumX;
-	delete[] pSumY;
 
 	return 0;
 }
@@ -427,23 +435,22 @@ DWORD WINAPI getZPostion(void* parameter){
 	ParameterPackage* para = (ParameterPackage*)parameter;
 	Option opt;
 	getOption(opt);
-	if(sCalProfile[para->currRoiIndex] == NULL)return 0;//empty ROI
-	calibration(parameter);
-	if((int)(para->location[0]) == -1 )return 0;
+	int currRoiIndex = para->currRoiIndex;
+	if(sCalProfile[currRoiIndex] == NULL)return 0;
 
+	calibration(parameter);
 	int posProfilelen = (int)(opt.beanRadius/opt.rInterStep);
 	int strackSize = (int)(opt.zRange/opt.zStep);
 	int halfQuadWindow = opt.halfQuadWidth;
 
-	double* posProfile = getPosProfile(para->currRoiIndex);
-	double* calProfile = getCalProfile(para->currRoiIndex,0);
+	double* posProfile = getPosProfile(currRoiIndex);
+	double* calProfile = getCalProfile(currRoiIndex,0);
 
 	double* corrValue = new double[strackSize];
 	memset(corrValue,0,strackSize*sizeof(double));
 
 	int threadNum = opt.zIndexCorrPartNum;
 	int partLen =  strackSize/threadNum;
-
 	if(strackSize%threadNum != 0){
 		threadNum += 1;
 	}
@@ -469,7 +476,6 @@ DWORD WINAPI getZPostion(void* parameter){
 	}
 	delete[] aThread;
 	delete[] corrParameter;
-
 	int pos = -1;
 	double max = 0;
 	for (int i = 0; i < strackSize ; ++i) {
@@ -496,8 +502,6 @@ DWORD WINAPI getZPostion(void* parameter){
 	}
 	quadraticFit(calPos,corrValue,start, 2*halfQuadWindow, paraRet);
 	delete[] calPos;
-	delete[] corrValue;
-
 	*(para->location+2) = - paraRet[1] / (2 * paraRet[0]);
 	return 0;
 }
@@ -506,9 +510,6 @@ DWORD WINAPI calibration(void* parameter)
 {
 	getXYCenter(parameter);
 	ParameterPackage* para = (ParameterPackage*)parameter;
-	if((int)(para->location[0]) == -1 )return 0;
-
-
 	Option opt;
 	getOption(opt);
 
@@ -518,10 +519,10 @@ DWORD WINAPI calibration(void* parameter)
 	int bitDepth = opt.bitDepth;
 	int imgwidth = opt.imgWidth;
 	int currCalProfilelen = (int)(radius/step);
-
 	double xpos = para->location[0];
 	double ypos = para->location[1];
-
+	if(xpos + 1 <0.001)
+		return 0;
 	int currRoiIndex = para->currRoiIndex;
 	int currZIndex = para->currZIndex;
 	int offset = currZIndex*currCalProfilelen;
@@ -673,17 +674,19 @@ int myLog2(long length)
 	return -1;
 }
 
-bool boundaryCheck(double xCenter,double yCenter,double radius,double imgwidth,double imgheight){
-	int bigradius = radius + 20;
-	if(xCenter + bigradius >imgwidth)
-		return false;
-	if(xCenter - bigradius <0)
-		return false;
-	if(yCenter + bigradius >imgheight)
-		return false;
-	if(yCenter - bigradius <0)
-		return false;
-	return true;
+bool IsBallOutOfImage(double xpos,double ypos,double radius_,double imgwidth,double imgheight){
+	int border = 10;
+	double radius = border+radius_;
+	if(floor(xpos + radius - imgwidth) >= 0)
+		return true;
+	if(floor(xpos - radius) <=0)
+		return true;
+	if(floor(ypos + radius - imgheight) >=0)
+		return true;
+	if(floor(ypos - radius) <0)
+		return true;
+	return false;
+
 }
 
 void  addCalPos(double zPos){
@@ -733,6 +736,10 @@ vector<double* >getPosProfile(){
 
 vector<double> getCalPos(){
 	return sCalPos;
+}
+
+double* GetErrCode(){
+	return LAST_ERR;
 }
 
 
@@ -792,4 +799,3 @@ void releaseImage(JNIEnv * env,jobject image,void* pImage,int bitDepth){
 	}
 
 }
-

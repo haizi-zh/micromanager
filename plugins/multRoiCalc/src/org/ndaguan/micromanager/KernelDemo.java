@@ -9,35 +9,32 @@ public class KernelDemo {
 		rand_ = new Random();
 	}
 
-	Object[] GosseCenter(Object image, double[][] roi,double[] opt){
+	double[] gosseCenter(Object image, double[][] roi){
 		int size = roi.length;
-		double[][] ret = new double[size][2];
-		for (int i = 0; i < ret.length; i++) {
-			for (int j = 0; j < ret[0].length; j++) {
-				ret[i][j] = roi[i][j]+Math.round(rand_.nextGaussian());;
+		double[] ret = new double[size*3];
+		for (int i = 0; i <  size; i++) {
+			for (int k = 0; k < 2; k++) {
+				ret[i*3+k] = roi[i][k]+Math.round(rand_.nextGaussian());
 			}
+			ret[i*3+2] =Math.round(rand_.nextGaussian());
 		}
 		return ret;
 	}	
 
-	Object[] Calibration(Object image,  double[][] roi,double[] opt, int zIndex){
-		return roi;
+	double[] calibration(Object image,  double[][] roi,int zIndex,double zPos){
+		
+		return new double[]{roi[0][0]*10,roi[0][1]*10};
 	}
 
-	Object[] GetZPosition(Object image, double[][] roi,double[] opt){
+	double[] getZPosition(Object image, double[][] roi){
 		int size = roi.length;
-		double[][] ret = new double[size][5];
-		for (int i = 0; i < ret.length; i++) {
-			for (int j = 0; j < 2; j++) {
-				ret[i][j] = roi[i][j]+Math.round(rand_.nextGaussian()/2);
+		double[] ret = new double[size*3];
+		for (int i = 0; i <  size; i++) {
+			for (int k = 0; k < 2; k++) {
+				ret[i*3+k] = roi[i][k]+Math.round(rand_.nextGaussian());
 			}
-			ret[i][2] = Math.round(2 * rand_.nextGaussian());
-			ret[i][3] = Math.round(2 * rand_.nextGaussian());
-			ret[i][4] = Math.round(2 * rand_.nextGaussian());
+			ret[i*3+2] =Math.round(rand_.nextGaussian());
 		}
-
 		return ret;
 	}
-
-
 }
