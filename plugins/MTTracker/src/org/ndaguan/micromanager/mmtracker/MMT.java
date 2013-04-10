@@ -3,6 +3,7 @@ package org.ndaguan.micromanager.mmtracker;
 public class MMT {
 	public static final String menuName = "MultZIndexMeasure";
 	public static final String tooltipDescription = "MultZIndexMeasure";
+	public static String DEFAULT_TITLE = "Magnetic Tweezers Images Analyzer(SM4.IOP.CAS.CN)";
 
 	public static  String magnetXYstage_ = "MP285 XY Stage";
 	public static  String magnetZStage_ = "MP285 Z Stage";
