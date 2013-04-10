@@ -39,7 +39,7 @@
 #include <string>
 #include <map>
 #include <algorithm>
-
+using namespace std;
 //////////////////////////////////////////////////////////////////////////////
 // Error codes
 //
@@ -183,6 +183,10 @@ public:
 	//int OnSwitch(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnPixelType(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnXPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnYPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnNosie(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnZPosition(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnBitDepth(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnReadoutTime(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnScanMode(MM::PropertyBase* pProp, MM::ActionType eAct);
@@ -202,10 +206,16 @@ private:
    void TestResourceLocking(const bool);
    void GenerateEmptyImage(ImgBuffer& img);
    void GenerateSyntheticImage(ImgBuffer& img, double exp);
+   void GetImageFromFile(double index,float* data,int dataSize);
    int ResizeImageBuffer();
 
    static const double nominalPixelSizeUm_;
 
+   double xPostion_;
+   double yPostion_;
+   double zPostion_;
+   double nosie_;
+   float* imageFielData_;
    double dPhase_;
    ImgBuffer img_;
    bool busy_;

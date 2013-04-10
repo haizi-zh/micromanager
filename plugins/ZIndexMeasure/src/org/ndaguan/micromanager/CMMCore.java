@@ -1,5 +1,5 @@
 package org.ndaguan.micromanager;
-
+ 
 public class CMMCore {
 
 	public void loadSystemConfiguration(String string) {

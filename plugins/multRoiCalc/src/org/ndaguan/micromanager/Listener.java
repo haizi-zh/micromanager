@@ -134,6 +134,9 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		if(e.getKeyCode() == KeyEvent.VK_S){
 			listenerAction_.selectRoiAsReference();
 		}
+		if(e.getKeyCode() == KeyEvent.VK_C){
+			listenerAction_.showChartManager();
+		}
 
 	}
 	public void keyReleased(KeyEvent e) {}
@@ -146,14 +149,35 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 			cmdString = ((javax.swing.JButton)e.getSource()).getToolTipText();
 		if(e.getSource().getClass().toString().equals("class javax.swing.JMenuItem"))
 			cmdString = ((javax.swing.JMenuItem)e.getSource()).getToolTipText();
+		if(e.getSource().getClass().toString().equals("class javax.swing.JRadioButtonMenuItem"))
+			cmdString = ((javax.swing.JRadioButtonMenuItem)e.getSource()).getToolTipText();
 		switch(cmdString){
-		case "Live view":
-			listenerAction_.live();
+		case "Capture under Live View(fast)":
+			listenerAction_.liveCapture();
+			break;	
+		case "Live View":
+			listenerAction_.liveView();
 			break;	
 		case "Calibrate":
 			listenerAction_.calibrate();
 			break;
-		case "Mutil-ACQ with the default preferences":
+		case "hide/show gui":
+			listenerAction_.showGui();
+			break;
+		case "Add ROI":
+			Rectangle rectangle = canvas_.getImage().getRoi().getBounds();
+			listenerAction_.addRoi(rectangle);
+			break;
+		case "Delete ROI":
+			listenerAction_.deleteRoi();
+			break;
+		case "Set Current ROI as Preferences":
+			listenerAction_.selectRoiAsReference();
+			break;
+		case "Show Detail in Chart":
+			listenerAction_.showChartManager();
+			break;
+		case "Capture under Multi-DACQ(full)":
 			listenerAction_.multiAcq();
 			break;
 		case "Preferences":
@@ -162,8 +186,11 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		case "Install callback":
 			listenerAction_.installCallback();
 			break;
-		case "Set up":
-			listenerAction_.setScale();
+		case "Auto Contrast":
+			listenerAction_.setAutoContrast();
+			break;
+		case "MagnetManual":
+			listenerAction_.ShowMagnetManualDialBox();
 			break;
 		case "Rectangle tool for select a ROI":
 			if (Toolbar.getInstance() == null)

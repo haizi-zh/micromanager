@@ -19,7 +19,7 @@ import org.jfree.data.xy.XYSeries;
 //import org.ndaguan.study.std_MyGUI;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.utils.MMException;
-
+ 
 public class MyGUI {
 	// main instance
 	private static ZIndexMeasure mainInstance_ = null;
@@ -40,7 +40,7 @@ public class MyGUI {
 	private double ZStep_;
 
 
-
+ 
 
 	// ROI
 	public Rectangle roi_rectangle;
@@ -118,13 +118,20 @@ public class MyGUI {
 		calcRoi_[3] = roi_rectangle.height;
 		WindowManager.getCurrentImage().setRoi(roi_rectangle);
 	}
-
+	
+	public static MyGUI getInstance(ZIndexMeasure zIndexMeasure,
+			MMStudioMainFrame gui) {
+		if(instance_ != null)
+			return instance_;
+		else{
+			instance_ = new MyGUI(zIndexMeasure,gui);
+			return instance_;
+		}
+	}
 	public MyGUI(ZIndexMeasure mainInstance,MMStudioMainFrame gui) {
 		//GUIInitialization();
 		mainInstance_ = mainInstance;
 		gui_ = (MMStudioMainFrame) gui;
-		instance_ = this;
-
 		myForm_ = new MyForm(this);
 		myForm_.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);	
 		myForm_.setVisible(true);
@@ -167,7 +174,7 @@ public class MyGUI {
 			xyCalRange_ = 2;
 			ZStep_ = 0.5;
 			setDNALen_(2.4);// um
-			movingWindowLen_ = 500;
+			movingWindowLen_ = 2000;
 			ballRadiusPix = 50.0;
 			zInterpStep_ = 5;
 			method_  =0;
@@ -177,7 +184,10 @@ public class MyGUI {
 
 	}
 
-
+	public double getCurrCenter(int currTab) {
+		// TODO Auto-generated method stub
+		return movingWindowLen_;
+	}
 	public void SetScale() {
 		myForm_.log("SetScale Start......");
 		if (WindowManager.getCurrentImage() == null) {
@@ -220,13 +230,13 @@ public class MyGUI {
 		mainInstance_.isSetScale = true;
 	}
 
-	private void setCalProfile() {
+	public void setCalProfile() {
 		int nSteps = (int) (ZScale_ / ZStep_);
 		this.calPosLen = nSteps;
 		double[] calPosZ = new double[nSteps];
 		double[][] calPosXY = new double[2][];
 		for (int i = 0; i < nSteps; i++) {
-			calPosZ[i] = mainInstance_.currzpos_ - ZScale_ / 2 + i * ZStep_;
+			calPosZ[i] = mainInstance_.currzpos_ -ZScale_/2 +  i * ZStep_;
 		}
 
 		// Set the x/y positions
@@ -263,14 +273,14 @@ public class MyGUI {
 		getCalcOpt_()[11] = method_;
 	}
 
-	public double getCurrCenter(int currTab) {
+
+
+	public int getWindowSize() {
 		// TODO Auto-generated method stub
 		return 0;
 	}
-
 	public void calibrate() {
-		if(!mainInstance_.isCalibrationRunning){
-			mainInstance_.isUserStop = false;
+		if(!mainInstance_.isCalibrationRunning && !mainInstance_.isTestingRunning){
 			myForm_.getTabbedPane().setSelectedIndex(2);		
 			mainInstance_.mCalc.DataInit(this.calcOpt_);
 			
@@ -278,20 +288,18 @@ public class MyGUI {
 				mainInstance_.gui_.enableLiveMode(false);
 				myForm_.setLiveIcon(true);
 			} 
-			
-			if(isInstall )
-			{	
-				mainInstance_.UninstallCallback();	
-				myForm_.setInstallIcon(true);
-				isInstall = false;
-			}
 			myForm_.setCalIcon(false);
 			mainInstance_.StartCalibration();	
 		}
 		else{
 			myForm_.setCalIcon(true);
-			mainInstance_.isUserStop = true;
+			mainInstance_.calibrationState_ = 0;
 			mainInstance_.isCalibrationRunning = false;
+			mainInstance_.isTestingRunning = false;
+			if(mainInstance_.isTestingRunning)
+				mainInstance_.UninstallTestCallback();
+			if(mainInstance_.isCalibrationRunning)
+				mainInstance_.UninstallCallback();
 		}
 	}
 
@@ -350,16 +358,14 @@ public class MyGUI {
 		return DNALen_;
 	}
 	public void installCallback() {
-		if(!isInstall ){
+		if(!mainInstance_.isInstallCallback_){
 			mainInstance_.InstallCallback();	
 			myForm_.setInstallIcon(false);
-			isInstall = true;
 		}
 		else
 		{	
 			mainInstance_.UninstallCallback();
 			myForm_.setInstallIcon(true);
-			isInstall = false;
 		}
 	}
 
@@ -382,4 +388,9 @@ public class MyGUI {
 	public void setCalcOpt_(double[] calcOpt_) {
 		this.calcOpt_ = calcOpt_;
 	}
+
+
+
+
+	
 }

@@ -6,7 +6,7 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-
+ 
 public class TCPServerTest {
 	private static PackageAnalyzer packAnalyzer;
 	private static int port_ = 50501;

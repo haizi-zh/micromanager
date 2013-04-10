@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HashMap;
-
+  
 public class PackageAnalyzer {
 	private final short START_FLAG = (short) 0xFFFE;
 	private static HashMap<Class<?>, Byte> typeMap_;

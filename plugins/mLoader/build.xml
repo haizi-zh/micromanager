@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="mLoader" default="build" basedir=".">
+	<description>
+		This plugin calculates CCD gains by fitting the relationship between 
+		image intensity and its variations.
+    </description>
+
+	<property name="build.dir" value="bin" />
+	<property name="src.dir" value="src" />
+	<property name="mm.dir" value="../trunk/bin_Win32" />
+	<property name="dist.dir" value="../trunk/Install_Win32/micro-manager" />
+	<property name="3rdparty" value="../3rdpartypublic" />
+	<property name="target.name" value="${ant.project.name}" />
+	<property environment="env" />
+	
+	<path id="project.class.path">
+		<pathelement location="${3rdparty}/classext/ij.jar" />
+		<pathelement location="${mm.dir}/MMCoreJ.jar" />
+		<pathelement location="${mm.dir}/plugins/Micro-Manager/MMJ_.jar" />
+		<pathelement location="${3rdparty}/classext/commons-math3-3.0.jar" />
+		<pathelement location="${3rdparty}/classext/jfreechart-1.0.14.jar" />
+		<pathelement location="${3rdparty}/classext/jcommon-1.0.17.jar" />
+	</path>
+
+	<target description="Creates necessary directories" name="init">
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${dist.dir}/mmplugins" />
+	</target>
+
+	<target name="compile" depends="init" description="Compile.">
+	<!--
+		<javac includeantruntime="false" srcdir="${src.dir}" destdir="${build.dir}" source="1.7" target="1.7" encoding="UTF-8" optimize="on" debug="on" verbose="off">
+			<classpath refid="project.class.path" />
+		</javac>
+	-->
+	</target>
+
+	<target name="build" depends="compile" description="Build .jar.">
+		<jar destfile="${target.name}.jar">
+			<fileset dir="." includes="plugins.config" />
+			<fileset dir="${build.dir}" includes="**/**" />
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+			</manifest>
+		</jar>
+		<copy file="${target.name}.jar" toDir="${dist.dir}/mmplugins" preservelastmodified="true" />
+	</target>
+
+	<target name="clean" description="Delete the build files.">
+		<echo>
+			Deleting the build files.
+		</echo>
+		<delete dir="${build.dir}" />
+		<delete file="${target.name}.jar" />
+	</target>
+</project>

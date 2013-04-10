@@ -31,12 +31,11 @@ import org.micromanager.acquisition.TaggedImageQueue;
 import org.micromanager.api.ScriptInterface;
 import org.micromanager.api.TaggedImageAnalyzer;
 import org.micromanager.utils.MMScriptException;
-import org.zephyre.micromanager.OverlayRender;
-import org.zephyre.micromanager.OverlayRender.RenderItem;
+import org.zephyre.micromanager.ZIndexMeasure.OverlayRender;
+import org.zephyre.micromanager.ZIndexMeasure.OverlayRender.RenderItem;
 
 public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private static final long minAnalyzeWindow = 100;
-	private static final int DRAWWINDOW = 5000;
 	private ZIndexMeasure main;
 	private MyGUI myGUI_;
 	private ScriptInterface mainWnd_;
@@ -46,7 +45,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private double beadRadius_;
 	private double kT_;
 	private double contourLength_;
-	private int windowSize_;
+	private int windowSize_ = 2000;
 	private double[] pixelToPhys_;
 
 	public void setPixelToPhys(double[] transform) {
@@ -68,11 +67,15 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	private XYSeries fxDataSeries_;
 	private XYSeries fyDataSeries_;
 
-	protected AcqAnalyzer(ScriptInterface gui, ZIndexMeasure main_, MyGUI mygui_) {
+	public AcqAnalyzer(String srt){
+		System.out.print(srt);
+	}
+	public AcqAnalyzer(MMStudioMainFrame gui, ZIndexMeasure main_, MyGUI mygui_) {
 		myGUI_ = mygui_;
 		main = main_;
-		mainWnd_ = gui;
-		
+		mainWnd_ =(ScriptInterface) gui;
+		if (instance_ == null);
+		instance_ = this;
 		zDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-Z");
 		xDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-X");
 		yDataSeries_ = myGUI_.myForm_.getDataSeries_().get("Chart-Y");
@@ -82,10 +85,10 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		xDataChart = myGUI_.myForm_.getChartSeries_().get("Chart-X");
 		yDataChart = myGUI_.myForm_.getChartSeries_().get("Chart-Y");
 		corrSeries_ = mygui_.myForm_.getDataSeries_().get("Chart-Corr");
-		
+ 
 		render_ = OverlayRender.getInstance(gui);
 		stats_ = new DescriptiveStatistics[3];
-		windowSize_ = 1000;
+		//windowSize_ = mygui_.getWindowSize();
 		for (int i = 0; i < stats_.length; i++) {
 			stats_[i] = new DescriptiveStatistics(windowSize_);
 		}
@@ -96,10 +99,11 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 		contourLength_ = mygui_.getDNALen_()*1000;//16700;//
 	}
 
-	public static AcqAnalyzer getInstance(ScriptInterface gui,
+	public static AcqAnalyzer getInstance(MMStudioMainFrame gui,
 			ZIndexMeasure main_, MyGUI mygui_) {
 		if (instance_ == null)
 			instance_ = new AcqAnalyzer(gui, main_, mygui_);
+
 		return instance_;
 	}
 
@@ -112,6 +116,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	long index = 0;
 	private long frame=0;
 	long timest =0;
+	 
 	@Override
 	protected void analyze(final TaggedImage taggedImage) {
 		// Retrieving a POISON image indicates that current acquisition is
@@ -128,7 +133,27 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				}
 			}
 		}
+		//calibration start
+		if(main.isCalibrationRunning){
+			if(main.calibrationState_ < main.getCalibrateLenth()-1){
+				main.calibration(taggedImage.pix,main.calibrationState_);
+				main.calibrationState_++;
+				main.setXYZCalPosition(main.calibrationState_);
+				mainWnd_.snapSingleImage();
+				mainWnd_.logMessage(String.format("\t\t\t%d",main.calibrationState_));
+				return;
+			}
+			else{
+				setPixelToPhys(main.getPixelToPyhs());
+ 				main.isCalibrationRunning = false;
+				resetData_ = true;
+				main.calibrationState_ = 0;
+				main.testing();
+			}
+		}
+		//calibration end
 
+		
 		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON
 				|| !main.isCalibrated)
 			return;
@@ -278,36 +303,37 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 					main.mp285StepCounter = 0;
 				} 
 				//ZPOS
-
-				double center =  Math.floor(pos[11]*100)/100;//.2f
-				double scale = 5*pos[8];
-				if(scale<0.05)
-					scale = 0.05;	
-
+				if (stats_[0].getN() < minAnalyzeWindow)
+				{
+					zDataSeries_.add(index_, pos[2]);	
+					xDataSeries_.add(index_,xPhys);	
+					yDataSeries_.add(index_, yPhys);
+				}else{
+				double center =  Math.floor(stats_[2].getMean()*100)/100;//.2f
+				double scale = 2*stats_[2].getStandardDeviation();
+				if(scale <50)
+					scale =0.1;
 				zDataChart.getXYPlot().getRangeAxis().setRange(center - scale,center +  scale);				
 				zDataSeries_.add(index_, pos[2]);	
 
 				//XPOS
-				double xphycenter = pixelToPhys_[0] + pixelToPhys_[1]*pos[9];
-				center =  Math.floor(xphycenter*100)/100;
-				scale = 2*pos[6];
-				if(scale<0.1)
-					scale = 0.1;	
-
+				center =  Math.floor(stats_[0].getMean()/10)/100;//.2f
+				scale = 2*stats_[0].getStandardDeviation()/1000;
+				if(scale<50)
+					scale = 0.1;
 				xDataChart.getXYPlot().getRangeAxis().setRange(center - scale,center +  scale);				
 				xDataSeries_.add(index_,xPhys);	
 
 				//YPOS
 
-				double yphycenter = pixelToPhys_[2] + pixelToPhys_[3]*pos[10];
-				center =  Math.floor(yphycenter*100)/100;
-				scale = 2*pos[7];
-				if(scale<0.1)
-					scale = 0.1;		
+				center =  Math.floor(stats_[1].getMean()/10)/100;//.2f
+				scale = 2*stats_[1].getStandardDeviation()/1000;
+				if(scale<50)
+					scale = 0.1;
 
 				yDataChart.getXYPlot().getRangeAxis().setRange(center - scale,center +  scale);				
 				yDataSeries_.add(index_, yPhys);
-
+				}
 				//FX,FY
 
 				fxDataSeries_.add(index_,forces[0]);
