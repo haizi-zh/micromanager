@@ -46,7 +46,7 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
    private int numPositions_;
    private CachedImages cached_;
    final public boolean omeTiff_;
-   final private boolean seperateMetadataFile_;
+   final private boolean separateMetadataFile_;
    private boolean splitByXYPosition_ = true;
    private boolean finished_ = false;
    private boolean expectedImageOrder_ = true;
@@ -54,6 +54,8 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
    private String omeXML_ = null;
    private OMEMetadata omeMetadata_;
    private int lastFrame_ = 0;
+   private boolean fixIndexMap_ = false;
+   private final boolean fastStorageMode_;
   
    //used for estimating total length of ome xml
    private int totalNumImagePlanes_ = 0;
@@ -66,17 +68,19 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
   
    public TaggedImageStorageMultipageTiff(String dir, Boolean newDataSet, JSONObject summaryMetadata) throws IOException {            
       this(dir, newDataSet, summaryMetadata, MMStudioMainFrame.getInstance().getMetadataFileWithMultipageTiff(),
-              MMStudioMainFrame.getInstance().getSeperateFilesForPositionsMPTiff());
+              MMStudioMainFrame.getInstance().getSeparateFilesForPositionsMPTiff(),
+              MMStudioMainFrame.getInstance().getFastStorageOption());
    }
    
    /*
-    * Constructor that doesnt make reference to MMStudioMainFrame so it can be used independently of MM GUI
+    * Constructor that doesn't make reference to MMStudioMainFrame so it can be used independently of MM GUI
     */
    public TaggedImageStorageMultipageTiff(String dir, boolean newDataSet, JSONObject summaryMetadata, 
-         boolean seperateMDFile, boolean seperateFilesForPositions) throws IOException {
+         boolean separateMDFile, boolean separateFilesForPositions, boolean fastStorageMode) throws IOException {
+      fastStorageMode_ = fastStorageMode;
       omeTiff_ = true;
-      seperateMetadataFile_ = seperateMDFile;
-      splitByXYPosition_ = seperateFilesForPositions;
+      separateMetadataFile_ = separateMDFile;
+      splitByXYPosition_ = separateFilesForPositions;
 
       newDataSet_ = newDataSet;
       directory_ = dir;
@@ -130,6 +134,14 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
    boolean timeFirst() {
       return ((ImageLabelComparator) tiffReadersByLabel_.comparator()).getTimeFirst();
    }
+   
+   public boolean getFixIndexMap() {
+      return fixIndexMap_;
+   }
+   
+   public void setFixIndexMap() {
+      fixIndexMap_ = true;
+   }
 
    private void openExistingDataSet() throws IOException {
       //Need to throw error if file not found
@@ -138,7 +150,8 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
       File dir = new File(directory_);
       for (File f : dir.listFiles()) {
          if (f.getName().endsWith(".tif") || f.getName().endsWith(".TIF")) {
-            reader = new MultipageTiffReader(f);
+            //this is where fixing dataset code occurs
+            reader = new MultipageTiffReader(f);         
             Set<String> labels = reader.getIndexKeys();
             for (String label : labels) {
                tiffReadersByLabel_.put(label, reader);
@@ -147,6 +160,8 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
             }
          }
       }
+      //reset this static variable to false so the prompt is delivered if a new data set is opened
+      reader.fixIndexMapWithoutPrompt_ = false;
 
       try {
          setSummaryMetadata(reader.getSummaryMetadata());
@@ -392,10 +407,11 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
          baseFilename_ = createBaseFilename(firstImageTags);
          currentTiffFilename_ = baseFilename_ + (omeTiff_ ? ".ome.tif" : ".tif");
          //make first writer
-         tiffWriters_.add(new MultipageTiffWriter(directory_, currentTiffFilename_, summaryMetadata_, mpt));
+         tiffWriters_.add(new MultipageTiffWriter(directory_, currentTiffFilename_, summaryMetadata_, mpt,
+                 fastStorageMode_));
    
          try {
-            if (seperateMetadataFile_) {
+            if (separateMetadataFile_) {
                startMetadataFile();
             }
          } catch (JSONException ex) {
@@ -409,7 +425,7 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
          }
 
          try {
-            if (seperateMetadataFile_) {
+            if (separateMetadataFile_) {
                finishMetadataFile();
             }
          } catch (JSONException ex) {
@@ -418,6 +434,7 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
          if (omeXML_ == null) {
             omeXML_ = omeMetadata_.toString();
          }
+         tiffWriters_.getLast().finish();
          for (MultipageTiffWriter w : tiffWriters_) {
             w.close(omeXML_);
          }
@@ -431,9 +448,13 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
       public void writeImage(TaggedImage img) throws IOException {
          //check if current writer is out of space, if so, make a new one
          if (!tiffWriters_.getLast().hasSpaceToWrite(img, omeTiff_ ? estimateOMEMDSize(): 0  )) {
+            //write index map here but still need to call close() at end of acq
+            tiffWriters_.getLast().finish();          
+            
             currentTiffFilename_ = baseFilename_ + "_" + tiffWriters_.size() + (omeTiff_ ? ".ome.tif" : ".tif");
             ifdCount_ = 0;
-            tiffWriters_.add(new MultipageTiffWriter(directory_ ,currentTiffFilename_, summaryMetadata_, mpTiff_));
+            tiffWriters_.add(new MultipageTiffWriter(directory_ ,currentTiffFilename_, summaryMetadata_, mpTiff_,
+                    fastStorageMode_));
          }      
 
          //Add filename to image tags
@@ -471,7 +492,7 @@ public final class TaggedImageStorageMultipageTiff implements TaggedImageStorage
          }       
          
          try {
-            if (seperateMetadataFile_) {
+            if (separateMetadataFile_) {
                writeToMetadataFile(img.tags);
             }
          } catch (JSONException ex) {

@@ -19,6 +19,7 @@
 //
 package org.micromanager;
 
+import org.micromanager.AcqControlDlg;
 import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
@@ -112,6 +113,7 @@ import com.swtdesigner.SwingResourceManager;
 import ij.Menus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
+import ij.gui.Toolbar;
 import java.awt.Cursor;
 import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
@@ -343,6 +345,7 @@ public class MMStudioMainFrame extends JFrame implements
             initializeSimpleAcquisition(SIMPLE_ACQ, width, height, depth, bitDepth, numCamChannels);
             getAcquisition(SIMPLE_ACQ).promptToSave(false);
             getAcquisition(SIMPLE_ACQ).toFront();
+            this.updateCenterAndDragListener();
          }
       } catch (Exception ex) {
          ReportingUtils.showError(ex);
@@ -384,6 +387,7 @@ public class MMStudioMainFrame extends JFrame implements
             initializeSimpleAcquisition(SIMPLE_ACQ, width, height, depth, bitDepth, numCamChannels);
             getAcquisition(SIMPLE_ACQ).promptToSave(false);
             getAcquisition(SIMPLE_ACQ).toFront();
+            this.updateCenterAndDragListener();
          }
       } catch (Exception ex) {
          ReportingUtils.showError(ex);
@@ -1363,19 +1367,13 @@ public class MMStudioMainFrame extends JFrame implements
       
       centerAndDragMenuItem_ = new JCheckBoxMenuItem();
 
+      
+      
       centerAndDragMenuItem_.addActionListener(new ActionListener() {
 
          public void actionPerformed(ActionEvent e) {
-            if (centerAndDragListener_ == null) {
-               centerAndDragListener_ = new CenterAndDragListener(core_, gui_);
-            }
-            if (!centerAndDragListener_.isRunning()) {
-               centerAndDragListener_.start();
-               centerAndDragMenuItem_.setSelected(true);
-            } else {
-               centerAndDragListener_.stop();
-               centerAndDragMenuItem_.setSelected(false);
-            }
+            updateCenterAndDragListener();
+            IJ.setTool(Toolbar.HAND);
             mainPrefs_.putBoolean(MOUSE_MOVES_STAGE, centerAndDragMenuItem_.isSelected());
          }
       });
@@ -1868,6 +1866,9 @@ public class MMStudioMainFrame extends JFrame implements
                }
             }
             
+            
+             centerAndDragListener_ = new CenterAndDragListener(gui_);
+             
             // switch error reporting back on
             ReportingUtils.showErrorOn(true);
          }
@@ -2322,12 +2323,16 @@ public class MMStudioMainFrame extends JFrame implements
       return options_.mpTiffMetadataFile_;
    }
 
-   public boolean getSeperateFilesForPositionsMPTiff() {
-      return options_.mpTiffSeperateFilesForPositions_;
+   public boolean getSeparateFilesForPositionsMPTiff() {
+      return options_.mpTiffSeparateFilesForPositions_;
    }
    
    public boolean getHideMDADisplayOption() {
       return options_.hideMDADisplay_;
+   }
+   
+   public boolean getFastStorageOption() {
+      return options_.fastStorage_;
    }
 
    private void updateTitle() {
@@ -2827,7 +2832,14 @@ public class MMStudioMainFrame extends JFrame implements
       }
    }
 
-
+   private void updateCenterAndDragListener() {
+      if (centerAndDragMenuItem_.isSelected()) {
+         centerAndDragListener_.start();
+      } else {
+         centerAndDragListener_.stop();
+      }
+   }
+   
    private void setShutterButton(boolean state) {
       if (state) {
 //         toggleButtonShutter_.setSelected(true);
