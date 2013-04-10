@@ -22,7 +22,8 @@ public class Preferences {
 	public int beanRadiuPixel_;
 	public double persistance_;
 	public double kT_;
-	public double pixelToPhys_;
+	public double pixelToPhysX_;
+	public double pixelToPhysY_;
 	public double precision_;
 	
 	private static Preferences instance_;
@@ -47,7 +48,8 @@ public class Preferences {
 		beanRadiuPixel_ = 40;
 		persistance_ = 50;
 		kT_ = 4.2;
-		pixelToPhys_ = 0.075;
+		pixelToPhysX_ = 0.075;
+		pixelToPhysY_ = 0.075;
 		precision_ = 0.01;
 
 		double[] data = getUserData();
@@ -63,7 +65,8 @@ public class Preferences {
 			beanRadiuPixel_ = (int) data[i++];
 			persistance_ = data[i++];
 			kT_ = data[i++];
-			pixelToPhys_ = data[i++];
+			pixelToPhysX_ = data[i++];
+			pixelToPhysY_ = data[i++];
 			precision_ = data[i];
 		}
 		saveUserData();
@@ -82,7 +85,8 @@ public class Preferences {
 			beanRadiuPixel_ = (int) data[i++];
 			persistance_ = data[i++];
 			kT_ = data[i++];
-			pixelToPhys_ = data[i++];
+			pixelToPhysX_ = data[i++];
+			pixelToPhysY_ = data[i++];
 			precision_ = data[i];
 		}
 		saveUserData();
@@ -137,7 +141,8 @@ public class Preferences {
 			sData += Double.toString( (double) beanRadiuPixel_) + " , ";
 			sData += Double.toString( (double) persistance_) + " , ";
 			sData += Double.toString( (double) kT_) + " , ";
-			sData += Double.toString( (double) pixelToPhys_) + " , ";
+			sData += Double.toString( (double) pixelToPhysX_) + " , ";
+			sData += Double.toString( (double) pixelToPhysY_) + " , ";
 			sData += Double.toString( (double) precision_) + " , ";
 
 			sData += "\r\n"+ userDataDir_;

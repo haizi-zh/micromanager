@@ -21,10 +21,11 @@ public class MMT {
 		"beanRadiuPixel",
 		"persistance",
 		"kT",
-		"pixelToPhys",
+		"pixelToPhysX",
+		"pixelToPhysY",
 		"precision",};
-	public static String[] UNIT = new String[]{"/uM","/uM","/uM","/uM","/pixel","/uM","","/pixel","nM","pN/nM","(Um/pixel)","/uM"};
-	public static int[] PRECISION = new int[]{3,3,3,3,2,0,0,0,0,1,3,3};
+	public static String[] UNIT = new String[]{"/uM","/uM","/uM","/uM","/pixel","/uM","","/pixel","nM","pN/nM","(Um/pixel)","(Um/pixel)","/uM"};
+	public static int[] PRECISION = new int[]{3,3,3,3,2,0,0,0,0,1,3,3,3};
 	public static String[] CHARTLIST = new String[]{"Chart-Z","Chart-X","Chart-Y","Chart-FX","Chart-FY","Chart-STDXDY","Chart-SKREWNESS","Chart-Debug"};
 
 	public static void logError(String string) 

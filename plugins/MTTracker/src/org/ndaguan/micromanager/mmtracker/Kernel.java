@@ -32,30 +32,32 @@ public class Kernel {
 	private FastFourierTransformer FFT_;
 	private SplineInterpolator interpolator;
 	private PearsonsCorrelation pearCorrelation_;
-	public  double[] zPosProfiles;
-	public  double[] xPosProfiles;
-	public  double[] yPosProfiles;
+	
 	public  List< double[][]> calProfiles;
 	private SimpleRegression regrX;
 	private SimpleRegression regrY;
+	public List<RoiItem> roiList_;
+	
+	public  double[] zPosProfiles;
+	public  double[] xPosProfiles;
+	public  double[] yPosProfiles;
 	public int imageWidth = 512;
 	public int imageHeight = 512;
 	private Preferences preferences_;
-	public List<RoiItem> roiList_;
 	public boolean isCalibrated_ = false;
 	private double[] pixelToPhys;
 	public Kernel(Preferences preferences, List<RoiItem> roiList){
 		preferences_ = preferences;
 		roiList_ = roiList;
-		FFT_ = new FastFourierTransformer(DftNormalization.STANDARD);
-		interpolator = new SplineInterpolator();
-		statis_ = new DescriptiveStatistics();	
-		sumX_ = new DescriptiveStatistics();	
-		sumY_ = new DescriptiveStatistics();	
-		pearCorrelation_ = new PearsonsCorrelation();
+		FFT_ = new FastFourierTransformer(DftNormalization.STANDARD);//gosseCenter
+		interpolator = new SplineInterpolator(); // gosseCenter and getZlocation
+		statis_ = new DescriptiveStatistics();	//get zScore of posProfile
+		sumX_ = new DescriptiveStatistics();	//gosseCenter
+		sumY_ = new DescriptiveStatistics();	//gosseCenter
+		pearCorrelation_ = new PearsonsCorrelation();// getZlocation
 		calProfiles = Collections.synchronizedList(new ArrayList< double[][]>());
-		regrX = new SimpleRegression();
-		regrY = new SimpleRegression();
+		regrX = new SimpleRegression(); //XY calibration
+		regrY = new SimpleRegression(); //XY calibration
 
 	}
 	public static  Kernel getInstance(Preferences preferences, List<RoiItem> roiList) 
@@ -154,7 +156,7 @@ public class Kernel {
 		pr.beanRadiuPixel_ = 100;
 		pr.calRange_ = 9;
 		pr.calStepSize_ = 1;
-		pr.pixelToPhys_ = 1;
+		pr.pixelToPhysX_ = 1;
 		pr.userDataDir_ = "Z:\\";
 		pr.frameToCalcForce_ = 50;
 		//		rt.add(RoiItem.createInstance(pr,new double[]{160,160},"bean1"));
@@ -401,7 +403,6 @@ public class Kernel {
 
 	public  boolean calibration(Object image,int index,double currZPos) {
 		boolean ret = gosseCenter(image);
-
 		zPosProfiles [index] = currZPos;
 		for (int k = 0; k < roiList_.size(); k++) {
 			calProfiles.get(k)[index] = polarIntegral(image,roiList_.get(k).x_,roiList_.get(k).y_);
@@ -410,6 +411,10 @@ public class Kernel {
 	}
 	public  boolean calibration(Object image,int index,double currXPos,double currYPos,double currZPos) {
 		boolean ret = gosseCenter(image);
+		if(index == 0){
+			regrX.clear();
+			regrX.clear();
+		}
 		regrX.addData(currXPos,roiList_.get(0).x_);
 		regrY.addData(currYPos,roiList_.get(0).y_);
 		zPosProfiles [index] = currZPos;
@@ -454,12 +459,15 @@ public class Kernel {
 		return true;
 	}
 	private double[] getPixelToPhys() {
-		boolean isXYCalibration = false;
-		if(MMT.xyStage_ != null && isXYCalibration){
-			pixelToPhys = new double[]{regrX.getIntercept(),regrX.getSlope(),regrY.getIntercept(),regrY.getSlope()};
-			return this.pixelToPhys;
-		}else{
-			pixelToPhys = new double[]{0,preferences_.pixelToPhys_,0,preferences_.pixelToPhys_};
+		if(pixelToPhys == null){
+			if(MMT.xyStage_ != null && isCalibrated_){
+				preferences_.pixelToPhysX_ = regrX.getSlope();
+				preferences_.pixelToPhysY_ = regrY.getSlope();
+				preferences_.saveUserData();
+				pixelToPhys = new double[]{regrX.getIntercept(),regrX.getSlope(),regrY.getIntercept(),regrY.getSlope()};
+			}else{
+				pixelToPhys = new double[]{0,preferences_.pixelToPhysX_,0,preferences_.pixelToPhysY_};
+			}
 		}
 		return pixelToPhys;
 	}
@@ -472,8 +480,10 @@ public class Kernel {
 
 			int roiX = (int) (roiList_.get(i).x_ - preferences_.beanRadiuPixel_);
 			int roiY = (int) (roiList_.get(i).y_ - preferences_.beanRadiuPixel_);
-			if(RoiOutOfImage(roiX,roiY))
+			if(RoiOutOfImage(roiX,roiY)){
+				roiList_.remove(i);
 				return false;
+			}
 			double[][] sumXY = getXYSum(image, roiX,roiY);
 			if(sumXY == null)
 				return false;
@@ -490,14 +500,14 @@ public class Kernel {
 			roiList_.get(i).xPhy_ = xPhys;
 			roiList_.get(i).yPhy_ = yPhys;
 
-			roiList_.get(i).stats_[0].addValue(xPhys);//xPos uM
-			roiList_.get(i).stats_[1].addValue(yPhys );//yPos uM
+			roiList_.get(i).stats_[0].addValue(xPhys*1000);//xPos nM
+			roiList_.get(i).stats_[1].addValue(yPhys*1000);//yPos uM
 			if(!isCalibrated_)
 			{
-				roiList_.get(i).stats_[2].addValue(sumXY[2][0]);//yPos uM
+				roiList_.get(i).stats_[2].addValue(sumXY[2][0]);//intense
 				roiList_.get(i).z_ = sumXY[2][0];
 			}
-			roiList_.get(i).statCross_.addValue(xPhys * yPhys);//crossStd
+			roiList_.get(i).statCross_.addValue(xPhys * yPhys * 10e6);//crossStd
 
 
 
