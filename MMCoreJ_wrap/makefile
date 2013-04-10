@@ -39,7 +39,7 @@ pre-build:
 	@test -d $(CONFIG) || mkdir $(CONFIG)
 	@echo Pre-building done.
 	@echo Target: $(TARGET)
-	@echo.
+	@echo
 	
 main-build: $(TARGET) $(JAR_FILE) 
 
@@ -47,7 +47,7 @@ MMCoreJ_wrap.cxx MMCoreJ_wrap.h: MMCoreJ.i TaggedImage.java
 	@echo swig processing...
 	-rm -f mmcorej/*.java
 	swig -c++ -java -package mmcorej -outdir mmcorej -module MMCoreJ MMCoreJ.i
-	@echo.
+	@echo
 
 $(JAR_FILE):
 	@echo Maker .jar files...
@@ -55,21 +55,21 @@ $(JAR_FILE):
 	-rm -f mmcorej/*.class
 	javac -source 5 -target 1.6 mmcorej/*.java ../mmstudio/src/org/json/*.java
 	jar cvf $(JAR_FILE) mmcorej/*.class
-	@echo.
+	@echo
 
 $(TARGET): $(OBJ_FILES)
 	@echo Building target: $@, configuration: $(CONFIG).
 	@echo Invoking: Linker \(link\)
 	"$(VC_SDK)/bin/link" $(LINK_FLAGS) -OUT:$(TARGET) $< $(LIBS) $(LIB_FLAGS)
 	@echo Finished building target: $@
-	@echo.
+	@echo
 	
 $(OBJ_FILES): MMCoreJ_wrap.cxx MMCoreJ_wrap.h
 	@echo Building file: $<
 	@echo Invoking: C++ Compiler \(cl\)
 	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
 	@echo Finished building: $<, out: $@
-	@echo.
+	@echo
 	
 post-build:
 	@echo $(PROJ_NAME): post-build:	
@@ -77,7 +77,7 @@ post-build:
 	@cp -v -f $(JAR_FILE) $(MM_ROOT)/trunk/Install_Win32/micro-manager/plugins/Micro-Manager
 	@cp -v -f $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	@cp -v -f $(TARGET) $(MM_ROOT)/trunk/Install_Win32/micro-manager
-	@echo.
+	@echo
 	
 clean:
 	@echo Cleaning project...
@@ -92,4 +92,4 @@ clean:
 	$(if $(wildcard $(JAR_FILE)),-@rm -f $(JAR_FILE),)
 	$(if $(wildcard mmcorej/*.java),-@rm -f mmcorej/*.java,)
 	$(if $(wildcard mmcorej/*.class),-@rm -f mmcorej/*.class,)
-	@echo.	
+	@echo	

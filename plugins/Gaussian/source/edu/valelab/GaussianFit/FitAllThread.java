@@ -154,7 +154,9 @@ public class FitAllThread extends GaussianInfo implements Runnable  {
       ArrayList<Double> timePoints = new ArrayList<Double>();
       // ugly code to deal with 1-based frame numbers and their relation to timePoints
       timePoints.add(0.0);
-      for (int i=1; i <= nrFrames; i++) {
+      // ZEPHYRE
+      for (int i=1; i <= resultList_.size(); i++) {
+//      for (int i=1; i <= nrFrames; i++) {
          timePoints.add((i - 1) * timeIntervalMs_);
       }
 

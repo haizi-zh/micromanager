@@ -15,3 +15,4 @@ jar cf Gaussian.jar -C ./build .
 
 rem install
 copy /Y Gaussian.jar ..\..\Install_AllPlatforms\micro-manager\mmplugins 
+copy /Y Gaussian.jar ..\..\Install_Win32\micro-manager\mmplugins 

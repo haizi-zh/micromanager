@@ -3856,6 +3856,8 @@ public class DataCollectionForm extends javax.swing.JFrame {
       boolean logLog = logLogCheckBox_.isSelected();
       boolean doPSD = powerSpectrumCheckBox_.isSelected();
       boolean useShapes = true;
+      // ZEPHYRE
+      useShapes = false;
       if (logLog || doPSD)
          useShapes = false;
       if (rowDatas.length == 1) {

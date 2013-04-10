@@ -3,7 +3,7 @@
 BUILDMODE=$1
 
 echo Building Micro-Manger, mode: $BUILDMODE
-echo.
+echo
 
 echo Building MMCore:
 pushd MMCore
@@ -11,7 +11,7 @@ make $BUILDMODE
 popd
 
 echo Building DeviceAdapters:
-echo.
+echo
 pushd DeviceAdapters
 
 echo Building AAAOTF:
@@ -63,7 +63,7 @@ popd
 
 echo Building MMCorePy_wrap:
 pushd MMCorePy_wrap
-make $BUILDMODE
+#make $BUILDMODE
 popd
 
 echo Building Micro-Manger Studio:

@@ -25,11 +25,14 @@ public class GaussianTrack_ implements PlugIn, MMPlugin {
     private CMMCore core_;
     private ScriptInterface gui_;
     private MainForm theForm_;
+    private static MainForm formInstance_;
 
     public void run(String arg) {
-      if (!MainForm.WINDOWOPEN) {
-         theForm_ = new MainForm();
-      }
+		if (!MainForm.WINDOWOPEN) {
+			theForm_ = new MainForm();
+			formInstance_ = theForm_;
+		} else
+			theForm_ = formInstance_;
       theForm_.setVisible(true);
       if (gui_ != null) {
          theForm_.setBackground(gui_.getBackgroundColor());

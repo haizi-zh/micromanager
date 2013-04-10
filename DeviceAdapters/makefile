@@ -37,7 +37,7 @@ pre-build:
 	@echo Building $(PROJ_NAME): pre-building, configuration: $(CONFIG)
 	@test -d $(CONFIG) || mkdir $(CONFIG)
 	@echo Pre-building done.
-	@echo.
+	@echo
 
 main-build: $(TARGET)
 
@@ -46,7 +46,7 @@ $(TARGET): $(OBJ_FILES) $(MM_OBJ_FILES)
 	@echo Invoking: Linker \(link\)
 	"$(VC_SDK)/bin/link" $(LINK_FLAGS) -OUT:$(TARGET) $^ $(LIBS) $(LIB_FLAGS)
 	@echo Finished building target: $@
-	@echo.
+	@echo
 	
 %.d: %.cpp 
 	@echo Building dependencies...
@@ -66,20 +66,20 @@ $(OBJ_FILES): %.o: %.cpp
 	@echo Invoking: C++ Compiler \(cl\)
 	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
 	@echo Finished building: $<, out: $@
-	@echo.
+	@echo
 
 $(MM_OBJ_FILES): %.o: $(MM_ROOT)/trunk/MMDevice/%.cpp
 	@echo Building file: $<
 	@echo Invoking: C++ Compiler \(cl\)
 	cl $(CFLAGS) $(PREPROC_FLAGS) $(IFLAGS) -Fo$@ $<
 	@echo Finished building: $<, out: $@
-	@echo. 
+	@echo 
 	
 post-build:
 	@echo $(PROJ_NAME): post-build:	
 	-@cp -fv $(TARGET) $(MM_ROOT)/trunk/bin_Win32
 	-@cp -fv $(TARGET) $(MM_ROOT)/trunk/Install_Win32/micro-manager
-	@echo.
+	@echo
 	
 clean:
 	@echo Cleaning project...
@@ -87,4 +87,4 @@ clean:
 	$(if $(wildcard *.o),-@rm -f *.o,)
 	$(if $(wildcard *.pdb),-@rm -f *.pdb,)
 	$(if $(wildcard *.idb),-@rm -f *.idb,)
-	@echo.
+	@echo
