@@ -25,6 +25,8 @@ public class Preferences {
 	public double pixelToPhysX_;
 	public double pixelToPhysY_;
 	public double precision_;
+	public double xFactor_;
+	public double yFactor_;
 	
 	private static Preferences instance_;
 
@@ -51,6 +53,8 @@ public class Preferences {
 		pixelToPhysX_ = 0.075;
 		pixelToPhysY_ = 0.075;
 		precision_ = 0.01;
+		xFactor_ = 1;
+		yFactor_ = 1;
 
 		double[] data = getUserData();
 		if(data != null){
@@ -67,7 +71,9 @@ public class Preferences {
 			kT_ = data[i++];
 			pixelToPhysX_ = data[i++];
 			pixelToPhysY_ = data[i++];
-			precision_ = data[i];
+			precision_ = data[i++];
+			xFactor_ = data[i++];
+			yFactor_ = data[i];
 		}
 		saveUserData();
 
@@ -87,7 +93,9 @@ public class Preferences {
 			kT_ = data[i++];
 			pixelToPhysX_ = data[i++];
 			pixelToPhysY_ = data[i++];
-			precision_ = data[i];
+			precision_ = data[i++];
+			xFactor_ = data[i++];
+			yFactor_ = data[i];
 		}
 		saveUserData();
 	}
@@ -144,7 +152,8 @@ public class Preferences {
 			sData += Double.toString( (double) pixelToPhysX_) + " , ";
 			sData += Double.toString( (double) pixelToPhysY_) + " , ";
 			sData += Double.toString( (double) precision_) + " , ";
-
+			sData += Double.toString( (double) xFactor_) + " , ";
+			sData += Double.toString( (double) yFactor_) + " , ";
 			sData += "\r\n"+ userDataDir_;
 			out.write(sData);
 			out.close(); 

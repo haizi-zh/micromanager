@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import javax.swing.SwingUtilities;
+
 import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
@@ -80,9 +82,22 @@ public class Kernel {
 		ret = gosseCenter(image);
 
 		if (isCalibrated_ ) {
-			double[] currProfiles = new double[(int) (preferences_.beanRadiuPixel_/preferences_.rInterStep_)];
+			 double[] currProfiles = new double[(int) (preferences_.beanRadiuPixel_/preferences_.rInterStep_)];
 			for (int k = 0; k < roiList_.size(); k++) {
 				currProfiles = polarIntegral(image,roiList_.get(k).x_,roiList_.get(k).y_);
+				final  double[] posProfile = currProfiles;
+				if(MMT.debug){
+					final int roiIndex = k;
+					roiList_.get(roiIndex).chart_.getDataSeries().get("Chart-PosProfile").clear();
+					SwingUtilities.invokeLater(new Runnable() {
+						@Override
+						public void run() {
+							for (int j = 0; j < posProfile.length; j++) {
+								roiList_.get(roiIndex).chart_.getDataSeries().get("Chart-PosProfile").add(j,posProfile[j]);
+							}
+						}
+					});
+				}
 				ret = getZLocation(k,currProfiles);
 			}	
 		}
@@ -157,8 +172,11 @@ public class Kernel {
 		pr.calRange_ = 9;
 		pr.calStepSize_ = 1;
 		pr.pixelToPhysX_ = 1;
+		pr.pixelToPhysY_ = 1;
 		pr.userDataDir_ = "Z:\\";
 		pr.frameToCalcForce_ = 50;
+		pr.xFactor_ = 1;
+		Function fc = new Function( rt);
 		//		rt.add(RoiItem.createInstance(pr,new double[]{160,160},"bean1"));
 		rt.add(RoiItem.createInstance(pr,new double[]{130,130},"bean2"));
 
@@ -182,19 +200,23 @@ public class Kernel {
 			}
 
 		if(!flag){
+			for (int i = 0; i < rt.size(); i++) {
+				 rt.get(i).chart_.setVisible(true);
+			}
 			kl.updateCalibrationProfile();
 			for (int i = 0; i < pr.calRange_; i++) {
 				Object image = getImg(i+1,bitDepth);
 				kl.calibration(image,i,i+1);
 			}
 			kl.isCalibrated_ = true;
-			for (int jj = 0; jj < 50; jj++) {
+			for (int jj = 0; jj < 1000; jj++) {
 
 				for (int i = 0; i < pr.calRange_; i++) {
-					double img = i + 1.2;				
+					double img = 2 + 1.2;				
 					Object image = getImg(img,bitDepth);
 					double timeConsume = System.nanoTime();
 					kl.getPosition(image);
+					fc.updateChart(jj);
 					try {
 						kl.saveRoiData("Acq",i,(System.nanoTime() -timeConsume)/10e6 );
 					} catch (IOException e) {
@@ -262,8 +284,8 @@ public class Kernel {
 				for(int j = 0;j<nTheta;j++)
 				{
 
-					double x = (xpos+r*Math.cos(dTheta*j));
-					double y = (ypos+r*Math.sin(dTheta*j));
+					double x = (xpos+preferences_.xFactor_*r*Math.cos(dTheta*j));
+					double y = (ypos+preferences_.yFactor_*r*Math.sin(dTheta*j));
 					int x0 = (int)x;
 					int y0 = (int)y;
 					int x1 = x0 +1;
@@ -293,8 +315,8 @@ public class Kernel {
 				for(int j = 0;j<nTheta;j++)
 				{
 
-					double x = (xpos+r*Math.cos(dTheta*j));
-					double y = (ypos+r*Math.sin(dTheta*j));
+					double x = (xpos+preferences_.xFactor_*r*Math.cos(dTheta*j));
+					double y = (ypos+preferences_.yFactor_*r*Math.sin(dTheta*j));
 					int x0 = (int)x;
 					int y0 = (int)y;
 					int x1 = x0 +1;
@@ -324,8 +346,8 @@ public class Kernel {
 				for(int j = 0;j<nTheta;j++)
 				{
 
-					double x = (xpos+r*Math.cos(dTheta*j));
-					double y = (ypos+r*Math.sin(dTheta*j));
+					double x = (xpos+preferences_.xFactor_*r*Math.cos(dTheta*j));
+					double y = (ypos+preferences_.yFactor_*r*Math.sin(dTheta*j));
 					int x0 = (int)x;
 					int y0 = (int)y;
 					int x1 = x0 +1;
@@ -355,8 +377,8 @@ public class Kernel {
 				for(int j = 0;j<nTheta;j++)
 				{
 
-					double x = (xpos+r*Math.cos(dTheta*j));
-					double y = (ypos+r*Math.sin(dTheta*j));
+					double x = (xpos+preferences_.xFactor_*r*Math.cos(dTheta*j));
+					double y = (ypos+preferences_.yFactor_*r*Math.sin(dTheta*j));
 					int x0 = (int)x;
 					int y0 = (int)y;
 					int x1 = x0 +1;
@@ -436,6 +458,20 @@ public class Kernel {
 				max = value;
 				index = j;
 			}
+		}
+		
+		if(MMT.debug){
+			final double[] y = yArray;
+			final int roi = roiIndex;
+			roiList_.get(roiIndex).chart_.getDataSeries().get("Chart-Corr").clear();
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					for (int j = 0; j < y.length; j++) {
+						roiList_.get(roi).chart_.getDataSeries().get("Chart-Corr").add(j,y[j]);
+					}
+				}
+			});
 		}
 		UnivariateFunction function = interpolator.interpolate(zPosProfiles, yArray);
 
@@ -681,7 +717,7 @@ public class Kernel {
 	}
 
 	private static String[] getimgString(Object nameext)  {
-		File imgFile = new File("F:/Developement/CalImages/img"+nameext+".txt");
+		File imgFile = new File("F:/Development/CalImages/img"+nameext+".txt");
 		if(!imgFile.exists())
 			return null;		
 		try {

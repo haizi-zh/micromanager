@@ -50,6 +50,12 @@ public class Function {
 		kernel_ = Kernel.getInstance();
 
 	}
+	public Function(List<RoiItem> roiList) {
+		roiList_ = roiList;
+		preferences_ = Preferences.getInstance();
+		kernel_ = Kernel.getInstance();
+		
+	}
 
 	public static Function getInstance(MMStudioMainFrame gui,List<RoiItem> roiList) {
 		if(instance_ == null)
@@ -451,7 +457,7 @@ public class Function {
 			public void run() {
 				for(int i = 0;i<roiList_.size();i++)
 				{
-					roiList_.get(i).chart_.getDataSeries().get("Chart-Debug").add(currZpos,roiList_.get(i).z_ - currZpos);
+					roiList_.get(i).chart_.getDataSeries().get("Chart-Testing").add(currZpos,roiList_.get(i).z_ - currZpos);
 				}
 			}
 		});
@@ -464,7 +470,6 @@ public class Function {
 	}
 	public void updateChart(final long frameNum) {
 		SwingUtilities.invokeLater(new Runnable(){
-
 			@Override
 			public void run() {
 				for (int i = 0; i < roiList_.size(); i++) {
@@ -476,16 +481,15 @@ public class Function {
 					roiList_.get(i).chart_.getDataSeries().get("Chart-STDXDY").add(frameNum,roiList_.get(i).stdXdY_);
 					roiList_.get(i).chart_.getDataSeries().get("Chart-SKREWNESS").add(frameNum,roiList_.get(i).skrewness_);
 
-					double meanx = roiList_.get(i).stats_[0].getMean();
-					double meany = roiList_.get(i).stats_[1].getMean();
-					double meanz = roiList_.get(i).stats_[2].getMean();
+					
+					double pointNum = 0.01;
+					double meanx = ((int) (roiList_.get(i).stats_[0].getMean()/10))*pointNum ;//GUI unit uM
+					double meany = ((int) (roiList_.get(i).stats_[1].getMean()/10))*pointNum ;//GUI unit uM
+					double meanz = ((int) (roiList_.get(i).stats_[2].getMean()/pointNum))*pointNum ;//GUI unit uM
+				 
 
-					meanx = Math.floor(meanx*100)/100;
-					meany = Math.floor(meany*100)/100;
-					meanz = Math.floor(meanz*100)/100;
-
-					double stdx = roiList_.get(i).stats_[0].getStandardDeviation();
-					double stdy = roiList_.get(i).stats_[1].getStandardDeviation();
+					double stdx = roiList_.get(i).stats_[0].getStandardDeviation()/10e3;
+					double stdy = roiList_.get(i).stats_[1].getStandardDeviation()/10e3;
 					double stdz = roiList_.get(i).stats_[2].getStandardDeviation();
 
 
