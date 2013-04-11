@@ -1,4 +1,4 @@
-package org.ndaguan.micromanager.mmtracker;
+﻿package org.ndaguan.micromanager.mmtracker;
 /**
  * StageControlFrame.java
  *

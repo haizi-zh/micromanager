@@ -136,8 +136,8 @@ public class Kernel {
 		LaguerreSolver solver = new LaguerreSolver();
 		double[] forces = new double[2];
 		double persistance = preferences_.persistance_;
-		double contourLength = preferences_.contourLen_;
-		double beanRadius = preferences_.beanRadius_;
+		double contourLength = preferences_.contourLen_*1000;
+		double beanRadius = preferences_.beanRadius_*1000;
 		double kT = preferences_.kT_;
 
 		for (int i = 0; i < forces.length; i++) {

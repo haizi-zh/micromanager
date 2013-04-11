@@ -1,4 +1,4 @@
-package org.ndaguan.micromanager.mmtracker;
+﻿package org.ndaguan.micromanager.mmtracker;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -11,6 +11,7 @@ import java.io.IOException;
  *
  */
 public class Preferences {
+	private static Preferences instance_;
 
 	public double beanRadius_;
 	public double contourLen_;
@@ -28,10 +29,7 @@ public class Preferences {
 	public double xFactor_;
 	public double yFactor_;
 	
-	private static Preferences instance_;
-
 	String userDataDir_ = "";
-
 
 	public static Preferences getInstance() {
 		if(instance_ == null)

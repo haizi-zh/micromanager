@@ -1,4 +1,4 @@
-package org.ndaguan.micromanager.mmtracker;
+﻿package org.ndaguan.micromanager.mmtracker;
 
 import ij.ImageListener;
 
@@ -96,10 +96,7 @@ public class OverlayRender {
 			long frameNumber, boolean update) {
 		if (image == null || itemList == null)
 			return;
-		// 閺傛澘缂揙verlay
 		Overlay overlay = new Overlay();
-
-		// 濞撳懐鈹栭崢鐔告箒閻ㄥ嚧OI閿涘本鏌婂鎭�
 		Iterator<RoiItem> it = itemList.iterator();
 		int beanRadius = preferences_.beanRadiuPixel_;
 		while (it.hasNext()) {
@@ -133,8 +130,6 @@ public class OverlayRender {
 		overlay.setLabelFont(labelFont_);
 		overlay.drawNames(true);
 		image.setOverlay(overlay);
-
-		// }
 		if (update)
 			image.updateAndDraw();
 		else{
@@ -148,8 +143,6 @@ public class OverlayRender {
 	}
 
 	private HashMap<ImagePlus, HashMap<Long, Overlay>> overlayMap_;
-
-
 
 	public Color getLabelColor() {
 		return labelColor_;

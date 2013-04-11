@@ -1,4 +1,4 @@
-package org.ndaguan.micromanager.mmtracker;
+﻿package org.ndaguan.micromanager.mmtracker;
 
 import ij.IJ;
 
@@ -19,9 +19,6 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
 public class PreferDailog extends JFrame {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	final private int ITEMWIDTH = 140;
 	final private int ITEMHEIGHT = 25;
