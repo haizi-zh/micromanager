@@ -30,8 +30,6 @@ public class CalibrateAnalyzer extends TaggedImageAnalyzer {
 
 		if (!Function.isCalibrationRunning || taggedImage == null || taggedImage == TaggedImageQueue.POISON)
 		{
-			Function.getInstance().dataReset();
-			calibrationState_ = 0;
 			return;
 		}
 		//calibration start
@@ -44,11 +42,12 @@ public class CalibrateAnalyzer extends TaggedImageAnalyzer {
 			}
 			Function.getInstance().reDraw(MMStudioMainFrame.SIMPLE_ACQ,calibrationState_, true);
 			MMT.logMessage((String.format("Z\t%d/%d\tXP\t%f\tYP\t%f\tZP\t%f\n",calibrationState_,kernel_.zPosProfiles.length,pos[0],pos[1],pos[2])));
-
 		} catch (Exception e) {
 			Function.isCalibrationRunning = false;
 			calibrationState_ = 0;
 		}
+		calibrationState_ ++;
+		MMT.isAnalyzerBusy_ = false;
 
 	}
 	//calibration end

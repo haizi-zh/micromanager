@@ -34,12 +34,12 @@ public class Kernel {
 	private FastFourierTransformer FFT_;
 	private SplineInterpolator interpolator;
 	private PearsonsCorrelation pearCorrelation_;
-	
+
 	public  List< double[][]> calProfiles;
 	private SimpleRegression regrX;
 	private SimpleRegression regrY;
 	public List<RoiItem> roiList_;
-	
+
 	public  double[] zPosProfiles;
 	public  double[] xPosProfiles;
 	public  double[] yPosProfiles;
@@ -48,6 +48,8 @@ public class Kernel {
 	private Preferences preferences_;
 	public boolean isCalibrated_ = false;
 	private double[] pixelToPhys;
+
+	public double[] zTestingPosProfiles;
 	public Kernel(Preferences preferences, List<RoiItem> roiList){
 		preferences_ = preferences;
 		roiList_ = roiList;
@@ -82,11 +84,12 @@ public class Kernel {
 		ret = gosseCenter(image);
 
 		if (isCalibrated_ ) {
-			 double[] currProfiles = new double[(int) (preferences_.beanRadiuPixel_/preferences_.rInterStep_)];
+			MMT.frameIndex++;
+			double[] currProfiles = new double[(int) (preferences_.beanRadiuPixel_/preferences_.rInterStep_)];
 			for (int k = 0; k < roiList_.size(); k++) {
 				currProfiles = polarIntegral(image,roiList_.get(k).x_,roiList_.get(k).y_);
 				final  double[] posProfile = currProfiles;
-				if(MMT.debug){
+				if(MMT.debug && MMT.frameIndex%preferences_.showDebugTime == 0){
 					final int roiIndex = k;
 					roiList_.get(roiIndex).chart_.getDataSeries().get("Chart-PosProfile").clear();
 					SwingUtilities.invokeLater(new Runnable() {
@@ -200,7 +203,7 @@ public class Kernel {
 
 		if(!flag){
 			for (int i = 0; i < rt.size(); i++) {
-				 rt.get(i).chart_.setVisible(true);
+				rt.get(i).chart_.setVisible(true);
 			}
 			kl.updateCalibrationProfile();
 			for (int i = 0; i < pr.calRange_; i++) {
@@ -416,7 +419,7 @@ public class Kernel {
 		zPosProfiles = new double[ (int) (preferences_.calRange_/preferences_.calStepSize_)];
 		xPosProfiles = new double[ (int) (preferences_.calRange_/preferences_.calStepSize_)];
 		yPosProfiles = new double[ (int) (preferences_.calRange_/preferences_.calStepSize_)];
-
+		calProfiles.clear();
 		for (int i = 0; i < roiList_.size(); i++) {
 			calProfiles.add(cal);
 		}
@@ -428,15 +431,15 @@ public class Kernel {
 			regrX.clear();
 			regrX.clear();
 		}
-		regrX.addData(currXPos,roiList_.get(0).x_);
-		regrY.addData(currYPos,roiList_.get(0).y_);
+		regrX.addData(roiList_.get(0).x_,currXPos);
+		regrY.addData(roiList_.get(0).y_,currYPos);
 		zPosProfiles [index] = currZPos;
 		for (int k = 0; k < roiList_.size(); k++) {
 			calProfiles.get(k)[index] = polarIntegral(image,roiList_.get(k).x_,roiList_.get(k).y_);
 		}
 		return ret;
 	}
-	
+
 	private boolean getZLocation(int roiIndex, double[] currrProfiles) {
 		double max = 0;
 		int index = 0;
@@ -450,8 +453,8 @@ public class Kernel {
 				index = j;
 			}
 		}
-		
-		if(MMT.debug){
+
+		if(MMT.debug && MMT.frameIndex%preferences_.showDebugTime == 0){
 			final double[] y = yArray;
 			final int roi = roiIndex;
 			roiList_.get(roiIndex).chart_.getDataSeries().get("Chart-Corr").clear();
@@ -485,22 +488,13 @@ public class Kernel {
 		roiList_.get(roiIndex).z_ = pos;
 		return true;
 	}
-	private double[] getPixelToPhys() {
-		if(pixelToPhys == null){
-			if(MMT.xyStage_ != null && isCalibrated_){
-				preferences_.pixelToPhysX_ = regrX.getSlope();
-				preferences_.pixelToPhysY_ = regrY.getSlope();
-				preferences_.saveUserData();
-				pixelToPhys = new double[]{regrX.getIntercept(),regrX.getSlope(),regrY.getIntercept(),regrY.getSlope()};
-			}else{
-				pixelToPhys = new double[]{0,preferences_.pixelToPhysX_,0,preferences_.pixelToPhysY_};
-			}
-		}
-		return pixelToPhys;
+	public  void setPixelToPhys() {
+		preferences_.pixelToPhysX_ = regrX.getSlope();
+		preferences_.pixelToPhysY_ = regrY.getSlope();
+		preferences_.saveUserData();
 	}
 	public boolean gosseCenter(Object image){
 		int roiNum = roiList_.size();
-		double[] pixelToPhys = getPixelToPhys();
 		double xPhys = 0;
 		double yPhys = 0;
 		for (int i = 0; i < roiNum; i++) {
@@ -521,8 +515,8 @@ public class Kernel {
 			roiList_.get(i).x_ = xPos;
 			roiList_.get(i).y_ = yPos;
 
-			xPhys = pixelToPhys[0] + pixelToPhys[1] * xPos;
-			yPhys = pixelToPhys[2] + pixelToPhys[3] * yPos;
+			xPhys = preferences_.pixelToPhysX_ * xPos;
+			yPhys = preferences_.pixelToPhysY_ * yPos;
 
 			roiList_.get(i).xPhy_ = xPhys;
 			roiList_.get(i).yPhy_ = yPhys;

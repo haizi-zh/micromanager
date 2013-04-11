@@ -278,6 +278,7 @@ public class Function {
 	}
 
 	public void showPreferencesDialog() {
+		MMTFrame.getInstance().preferDailog.UpdateData(false);
 		MMTFrame.getInstance().preferDailog.setVisible(true);
 	}
 
@@ -373,7 +374,8 @@ public class Function {
 	public void updateCalibrationProfile(){
 		double[][] cal = new double[ (int) (preferences_.calRange_/preferences_.calStepSize_)][(int) (preferences_.beanRadiuPixel_/preferences_.rInterStep_)];
 		kernel_.zPosProfiles = new double[ (int) (preferences_.calRange_/preferences_.calStepSize_)];
-
+		kernel_.zTestingPosProfiles = new double [(int) (preferences_.calRange_/preferences_.testingPrecision_)];
+		kernel_.calProfiles.clear();
 		for (int i = 0; i < roiList_.size(); i++) {
 			kernel_.calProfiles.add(cal);
 		}
@@ -386,6 +388,9 @@ public class Function {
 		int midPoint = (int) (preferences_.calRange_ / 2);
 		for (int i = 0; i < calSize; i++) {
 			kernel_.zPosProfiles[i] = currzpos_ - midPoint + i * preferences_.calStepSize_;
+		}
+		for (int i = 0; i < kernel_.zTestingPosProfiles.length; i++) {
+			kernel_.zTestingPosProfiles[i] = kernel_.zPosProfiles[0] +  (i+ Math.floor(Math.random()*100)/100) * preferences_.testingPrecision_;
 		}
 		midPoint = (int) (calSize / 2);
 		if(MMT.xyStage_ != null){
@@ -406,9 +411,8 @@ public class Function {
 		kernel_.xPosProfiles = null;
 		kernel_.yPosProfiles = null;
 		kernel_.zPosProfiles = null;
-		for (int i = 0; i < kernel_.calProfiles.size(); i++) {
-			kernel_.calProfiles.remove(i);
-		}
+
+		kernel_.calProfiles.clear();
 	}
 	public void snapImage(){
 		gui_.snapSingleImage();		
@@ -429,7 +433,7 @@ public class Function {
 		installTestingAnalyzer(false);
 		installCalibrateAnalyzer(true);
 		updateCalibrationProfile();
-
+		kernel_.isCalibrated_ = false; 
 		isCalibrationRunning = true;
 		MMTFrame.getInstance().setCalibrateIcon(false);
 
@@ -445,21 +449,24 @@ public class Function {
 			if(isCalibrationRunning){
 				try {
 					Function.getInstance().setXYZCalPosition(i);
+					MMT.isAnalyzerBusy_ = true;
 					snapImage();
+					while(MMT.isAnalyzerBusy_){
+						TimeUnit.MICROSECONDS.sleep(10);
+					}
 				} catch (Exception e) {
 					calibrateEnd(false); 
-					MMT.logError("Calbration error");
+					MMT.logError("Calbration error1");
 					return;
 				}
 			}
 			else{
 				calibrateEnd(false); 
-				MMT.logError("Calbration error");
+				MMT.logError("Calbration error2");
 				return;
 			}
-
-			calibrateEnd(true); 
 		}//for end
+		calibrateEnd(true); 
 
 	}
 
@@ -477,7 +484,7 @@ public class Function {
 			kernel_.isCalibrated_ = false;
 			CalProfileDataCleanup();
 		}
-		
+
 		try {
 			Function.getInstance().StageGoHome();
 		} catch (Exception e1) {
@@ -491,6 +498,8 @@ public class Function {
 		installCalibrateAnalyzer(false);
 
 		if(flag){//OK
+			isTestingRunning_ = true;
+			kernel_.isCalibrated_ = true;
 			testing();
 		}else{//error
 			isTestingRunning_ = false;
@@ -517,15 +526,17 @@ public class Function {
 			MMT.logError("Set xyz postion error");
 			return;
 		}
-		//calibration start
-		double testingStepSize = 0.01;//uM
-		Random rd = new Random();
-		for (double i = 0; i < kernel_.zPosProfiles[kernel_.zPosProfiles.length -1]; i += testingStepSize) {
-			double zPos =kernel_.zPosProfiles[0]+ i + rd.nextGaussian()*testingStepSize/2;
+		cleanTestingData();
+		//testing start
+		for (int i = 0; i <kernel_.zTestingPosProfiles.length; i ++) {
 			if(isTestingRunning_){
 				try {
-					this.setStageZPosition(zPos);
+					setStageZPosition(kernel_.zTestingPosProfiles[i]);
+					MMT.isAnalyzerBusy_ = true;
 					snapImage();
+					while(MMT.isAnalyzerBusy_){
+						TimeUnit.MICROSECONDS.sleep(10);
+					}
 				} catch (Exception e) {
 					testingEnd(false); 
 					MMT.logError("Testing error");
@@ -537,8 +548,8 @@ public class Function {
 				MMT.logError("Testing error");
 				return;
 			}
-			testingEnd(true); 
 		}//for end
+		testingEnd(true); 
 	}
 
 	public void liveView() {
@@ -563,7 +574,7 @@ public class Function {
 	public void cleanTestingData() {
 		for(int i = 0;i<roiList_.size();i++)
 		{
-			roiList_.get(i).chart_.getDataSeries().get("Chart-Debug").clear();
+			roiList_.get(i).chart_.getDataSeries().get("Chart-Testing").clear();
 		}
 	}
 	public void updateChart(final long frameNum) {

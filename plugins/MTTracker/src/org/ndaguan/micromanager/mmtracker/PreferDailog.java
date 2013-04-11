@@ -55,7 +55,7 @@ public class PreferDailog extends JFrame {
 
 	}
 
-	private void UpdateData(boolean flag) {
+	public void UpdateData(boolean flag) {
 		if(flag){//flush
 			double[] preferences = new double[preferencesLen];
 			for (int i = 0; i <preferencesLen; i++) {

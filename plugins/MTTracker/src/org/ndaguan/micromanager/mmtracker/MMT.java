@@ -10,7 +10,10 @@ public class MMT {
 	public static  boolean debug = true;
 	public static  String xyStage_ = null; 
 	public static  String zStage_ = null;
-
+	
+	public static boolean isAnalyzerBusy_ = false;
+	public static int frameIndex = 0;
+	
 	public static String[] VARNAME = new String[]{
 		"beanRadius",
 		"contourLen",
@@ -51,13 +54,14 @@ public class MMT {
 		"/uM","/uM","/uM","/uM","/pixel","/uM","",
 		"/pixel","nM","pN/nM","(Um/pixel)","(Um/pixel)","/uM","",""};
 	public static int[] PRECISION = new int[]{
-		3,3,3,3,2,0,0,0,0,1,3,3,3,3,3};
+		3,3,3,3,2,0,0,0,0,1,3,3,4,3,3};
 
 
 	public static String[] CHARTLIST = new String[]{
 		"Chart-Z","Chart-X","Chart-Y","Chart-FX","Chart-FY",
 		"Chart-STDXDY","Chart-SKREWNESS","Chart-Testing","Chart-Corr","Chart-PosProfile"
 	};
+
 
 	public static void logError(String string) 
 	{

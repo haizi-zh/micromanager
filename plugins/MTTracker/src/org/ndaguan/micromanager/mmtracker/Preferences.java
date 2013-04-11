@@ -31,6 +31,9 @@ public class Preferences {
 	
 	String userDataDir_ = "";
 
+	public int showDebugTime = 30;
+	public double testingPrecision_ = 0.02;
+
 	public static Preferences getInstance() {
 		if(instance_ == null)
 			instance_ = new Preferences();		

@@ -115,6 +115,8 @@ public  class RoiItem {
 		}
 		if(chart_ != null){
 			for (int i = 0; i < MMT.CHARTLIST.length - 1; i++) {
+				if(MMT.CHARTLIST[i].equals("Chart-Testing"))
+					continue;
 				chart_.getDataSeries().get(MMT.CHARTLIST[i]).clear();
 			}
 		}

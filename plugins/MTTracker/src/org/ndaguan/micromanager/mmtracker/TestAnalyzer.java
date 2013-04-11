@@ -44,6 +44,7 @@ public class TestAnalyzer extends TaggedImageAnalyzer {
 			testingIndex_ = 0;
 		}
 		testingIndex_ ++;
+		MMT.isAnalyzerBusy_ = false;
 		//Testing end
 	}
 }
