@@ -1,4 +1,4 @@
-﻿package org.ndaguan.micromanager.mmtracker;
+package org.ndaguan.micromanager.mmtracker;
 
 import java.awt.Color;
 import java.io.BufferedWriter;

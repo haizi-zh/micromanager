@@ -1,4 +1,4 @@
-﻿package org.ndaguan.micromanager.mmtracker;
+package org.ndaguan.micromanager.mmtracker;
 
 public class MMT {
 	public static final String menuName = "MultZIndexMeasure";

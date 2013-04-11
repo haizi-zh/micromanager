@@ -1,4 +1,4 @@
-﻿package org.ndaguan.micromanager.mmtracker;
+package org.ndaguan.micromanager.mmtracker;
 import java.io.IOException;
 import java.util.List;
 import mmcorej.TaggedImage;
@@ -52,7 +52,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			elapsed = 0;
 			return;
 		}
-		 
+
 		if (taggedImage.tags.has("ElapsedTime-ms"))
 		{
 			try {

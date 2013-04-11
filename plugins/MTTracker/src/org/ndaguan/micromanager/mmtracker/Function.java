@@ -8,6 +8,7 @@ import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.SwingUtilities;
@@ -54,7 +55,7 @@ public class Function {
 		roiList_ = roiList;
 		preferences_ = Preferences.getInstance();
 		kernel_ = Kernel.getInstance();
-		
+
 	}
 
 	public static Function getInstance(MMStudioMainFrame gui,List<RoiItem> roiList) {
@@ -401,47 +402,144 @@ public class Function {
 			}
 		}
 	}
-
+	public void CalProfileDataCleanup(){
+		kernel_.xPosProfiles = null;
+		kernel_.yPosProfiles = null;
+		kernel_.zPosProfiles = null;
+		for (int i = 0; i < kernel_.calProfiles.size(); i++) {
+			kernel_.calProfiles.remove(i);
+		}
+	}
 	public void snapImage(){
 		gui_.snapSingleImage();		
 	}
 
 	public void calibrate() {
-		if(roiList_ ==null ||roiList_.size() <= 0)return;
-		if(!isCalibrationRunning){
-			MMT.logMessage("Calibration Start......");
+		if(isCalibrationRunning || roiList_ ==null ||roiList_.size() <= 0)return;
+		MMT.logMessage("Calibration Start......");
+		if (gui_.getAcquisitionEngine().isAcquisitionRunning()) {
+			gui_.getAcquisitionEngine().stop(true);
+		}
 
-			if (gui_.getAcquisitionEngine().isAcquisitionRunning()) {
-				gui_.getAcquisitionEngine().stop(true);
+		if (gui_.isLiveModeOn()) {
+			gui_.enableLiveMode(false);
+		}
+
+		installAcqAnalyzer(false);
+		installTestingAnalyzer(false);
+		installCalibrateAnalyzer(true);
+		updateCalibrationProfile();
+
+		isCalibrationRunning = true;
+		MMTFrame.getInstance().setCalibrateIcon(false);
+
+		try {
+			setXYZCalPosition(0);
+		} catch (Exception e) {
+			calibrateEnd(false); 
+			MMT.logError("Set xyz postion error");
+			return;
+		}
+		//calibration start
+		for (int i = 0; i < kernel_.zPosProfiles.length; i++) {
+			if(isCalibrationRunning){
+				try {
+					Function.getInstance().setXYZCalPosition(i);
+					snapImage();
+				} catch (Exception e) {
+					calibrateEnd(false); 
+					MMT.logError("Calbration error");
+					return;
+				}
 			}
-
-			if (gui_.isLiveModeOn()) {
-				gui_.enableLiveMode(false);
-			}
-
-			installAcqAnalyzer(false);
-			installCalibrateAnalyzer(true);
-
-			updateCalibrationProfile();
-			MMTFrame.getInstance().setCalibrateIcon(false);
-			isCalibrationRunning = true;
-			try {
-				setXYZCalPosition(0);
-			} catch (Exception e) {
-				MMT.logError("Set xyz postion error");
+			else{
+				calibrateEnd(false); 
+				MMT.logError("Calbration error");
 				return;
 			}
-			gui_.snapSingleImage();
 
-		}
-		else{
-			isCalibrationRunning = false;
-			installAcqAnalyzer(true);
-			installCalibrateAnalyzer(false);
-			MMTFrame.getInstance().setCalibrateIcon(true);
-		}
+			calibrateEnd(true); 
+		}//for end
+
 	}
 
+	private void testingEnd(boolean flag){
+		isTestingRunning_ = false;
+		installTestingAnalyzer(false);
+		installAcqAnalyzer(true);
+		MMTFrame.getInstance().setCalibrateIcon(true);
+
+		if(flag){
+			kernel_.isCalibrated_ = true;
+			MMTFrame.getInstance().LiveViewCaptureEnable(true);
+			MMTFrame.getInstance().MultCaptureEnable(true);
+		}else{
+			kernel_.isCalibrated_ = false;
+			CalProfileDataCleanup();
+		}
+		
+		try {
+			Function.getInstance().StageGoHome();
+		} catch (Exception e1) {
+			MMT.logError("Stage cannot go back home");
+		}
+		liveView();
+	}
+	private void calibrateEnd(boolean flag) {
+
+		isCalibrationRunning = false;
+		installCalibrateAnalyzer(false);
+
+		if(flag){//OK
+			testing();
+		}else{//error
+			isTestingRunning_ = false;
+			CalProfileDataCleanup();
+			installAcqAnalyzer(true);
+			try {
+				Function.getInstance().StageGoHome();
+			} catch (Exception e1) {
+				MMT.logError("Stage cannot go back home");
+			}
+			liveView();
+		}
+
+	}
+
+	private void testing() {
+		isTestingRunning_ = true;
+		installTestingAnalyzer(true);	
+
+		try {
+			setXYZCalPosition(0);
+		} catch (Exception e) {
+			testingEnd(false); 
+			MMT.logError("Set xyz postion error");
+			return;
+		}
+		//calibration start
+		double testingStepSize = 0.01;//uM
+		Random rd = new Random();
+		for (double i = 0; i < kernel_.zPosProfiles[kernel_.zPosProfiles.length -1]; i += testingStepSize) {
+			double zPos =kernel_.zPosProfiles[0]+ i + rd.nextGaussian()*testingStepSize/2;
+			if(isTestingRunning_){
+				try {
+					this.setStageZPosition(zPos);
+					snapImage();
+				} catch (Exception e) {
+					testingEnd(false); 
+					MMT.logError("Testing error");
+					return;
+				}
+			}
+			else{
+				testingEnd(false); 
+				MMT.logError("Testing error");
+				return;
+			}
+			testingEnd(true); 
+		}//for end
+	}
 
 	public void liveView() {
 		if(gui_.isLiveModeOn()){
@@ -481,12 +579,12 @@ public class Function {
 					roiList_.get(i).chart_.getDataSeries().get("Chart-STDXDY").add(frameNum,roiList_.get(i).stdXdY_);
 					roiList_.get(i).chart_.getDataSeries().get("Chart-SKREWNESS").add(frameNum,roiList_.get(i).skrewness_);
 
-					
+
 					double pointNum = 0.01;
 					double meanx = ((int) (roiList_.get(i).stats_[0].getMean()/10))*pointNum ;//GUI unit uM
 					double meany = ((int) (roiList_.get(i).stats_[1].getMean()/10))*pointNum ;//GUI unit uM
 					double meanz = ((int) (roiList_.get(i).stats_[2].getMean()/pointNum))*pointNum ;//GUI unit uM
-				 
+
 
 					double stdx = roiList_.get(i).stats_[0].getStandardDeviation()/10e3;
 					double stdy = roiList_.get(i).stats_[1].getStandardDeviation()/10e3;

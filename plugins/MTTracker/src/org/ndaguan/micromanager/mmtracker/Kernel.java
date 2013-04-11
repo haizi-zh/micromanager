@@ -159,7 +159,6 @@ public class Kernel {
 	}
 
 
-
 	public  static void main(String[] args) {
 		List<RoiItem> rt = Collections.synchronizedList(new ArrayList<RoiItem>());
 		Preferences pr = new Preferences();
@@ -206,7 +205,7 @@ public class Kernel {
 			kl.updateCalibrationProfile();
 			for (int i = 0; i < pr.calRange_; i++) {
 				Object image = getImg(i+1,bitDepth);
-				kl.calibration(image,i,i+1);
+				kl.calibration(image,i,i+1,150,150);
 			}
 			kl.isCalibrated_ = true;
 			for (int jj = 0; jj < 1000; jj++) {
@@ -423,14 +422,6 @@ public class Kernel {
 		}
 	}
 
-	public  boolean calibration(Object image,int index,double currZPos) {
-		boolean ret = gosseCenter(image);
-		zPosProfiles [index] = currZPos;
-		for (int k = 0; k < roiList_.size(); k++) {
-			calProfiles.get(k)[index] = polarIntegral(image,roiList_.get(k).x_,roiList_.get(k).y_);
-		}
-		return ret;
-	}
 	public  boolean calibration(Object image,int index,double currXPos,double currYPos,double currZPos) {
 		boolean ret = gosseCenter(image);
 		if(index == 0){
@@ -445,7 +436,7 @@ public class Kernel {
 		}
 		return ret;
 	}
-
+	
 	private boolean getZLocation(int roiIndex, double[] currrProfiles) {
 		double max = 0;
 		int index = 0;
