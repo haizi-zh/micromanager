@@ -239,8 +239,10 @@ public class Function {
 	public void deleteRoi() {
 		int index = getFocusRoiIndex();
 		if( index != -1){
-			if(Kernel.getInstance().isCalibrated_){
-				Kernel.getInstance().calProfiles.remove(index);
+			if(kernel_.isCalibrated_){
+				kernel_.calProfiles.remove(index);
+				if(roiList_.size() == 0)
+					kernel_.isCalibrated_ = false;
 			}
 			roiList_.remove(index);
 			SwingUtilities.invokeLater(new Runnable(){

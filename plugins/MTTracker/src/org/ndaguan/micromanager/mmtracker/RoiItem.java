@@ -54,7 +54,7 @@ public  class RoiItem {
 		preferences_ = preferences;
 		isSelected_ = false;
 		setItemColor(Color.GREEN);
-		chart_ = new ChartManager(MMT.CHARTLIST,1000,titleName);
+		chart_ = new ChartManager(MMT.CHARTLIST,1000,String.format("%s-----%d",titleName,index_));
 
 		x_ = itemData[0];
 		y_ = itemData[1];

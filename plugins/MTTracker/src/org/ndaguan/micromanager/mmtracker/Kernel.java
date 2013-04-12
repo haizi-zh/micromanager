@@ -87,6 +87,18 @@ public class Kernel {
 			MMT.frameIndex++;
 			double[] currProfiles = new double[(int) (preferences_.beanRadiuPixel_/preferences_.rInterStep_)];
 			for (int k = 0; k < roiList_.size(); k++) {
+				int roiX = (int) (roiList_.get(k).x_ - preferences_.beanRadiuPixel_);
+				int roiY = (int) (roiList_.get(k).y_ - preferences_.beanRadiuPixel_);
+				if(RoiOutOfImage(roiX,roiY)){
+					roiList_.remove(k);
+					if(isCalibrated_){
+						calProfiles.remove(k);
+						if(roiList_.size() == 0){
+							isCalibrated_ = false;
+						}
+					}
+					return false;
+				}
 				currProfiles = polarIntegral(image,roiList_.get(k).x_,roiList_.get(k).y_);
 				final  double[] posProfile = currProfiles;
 				if(MMT.debug && MMT.frameIndex%preferences_.showDebugTime == 0){
@@ -503,6 +515,12 @@ public class Kernel {
 			int roiY = (int) (roiList_.get(i).y_ - preferences_.beanRadiuPixel_);
 			if(RoiOutOfImage(roiX,roiY)){
 				roiList_.remove(i);
+				if(isCalibrated_){
+					calProfiles.remove(i);
+					if(roiList_.size() == 0){
+						isCalibrated_ = false;
+					}
+				}
 				return false;
 			}
 			double[][] sumXY = getXYSum(image, roiX,roiY);

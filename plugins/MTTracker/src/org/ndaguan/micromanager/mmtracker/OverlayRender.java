@@ -103,17 +103,8 @@ public class OverlayRender {
 			RoiItem item = it.next();
 			int x = (int)item.x_;
 			int y = (int)item.y_;
-			ShapeRoi sr = new ShapeRoi(new float[] { PathIterator.SEG_MOVETO,
-					x - sizeCrossHair_, y, PathIterator.SEG_LINETO,
-					x + sizeCrossHair_, y, PathIterator.SEG_MOVETO, x,
-					y - sizeCrossHair_, PathIterator.SEG_LINETO, x,
-					y + sizeCrossHair_, PathIterator.SEG_CLOSE });
-
-			sr.setStrokeColor(item.getItemColor());
-			sr.setName("");
-			overlay.add(sr);
-			Roi dummyRoi = new Roi(x + 2 * sizeCrossHair_, y - 2
-					* sizeCrossHair_, 0, 0);
+		
+			Roi dummyRoi = new Roi(x + 2 * sizeCrossHair_, y - beanRadius - sizeCrossHair_, 0, 0);
 			dummyRoi.setStrokeColor(new Color(0,0,0,0));
 			dummyRoi.setName(item.getMsg());
 			overlay.add(dummyRoi);
@@ -124,6 +115,15 @@ public class OverlayRender {
 			roi.setName("");
 			roi.setStrokeColor(item.getItemColor());
 			overlay.add(roi);
+			ShapeRoi sr = new ShapeRoi(new float[] { PathIterator.SEG_MOVETO,
+					x - sizeCrossHair_, y, PathIterator.SEG_LINETO,
+					x + sizeCrossHair_, y, PathIterator.SEG_MOVETO, x,
+					y - sizeCrossHair_, PathIterator.SEG_LINETO, x,
+					y + sizeCrossHair_, PathIterator.SEG_CLOSE });
+
+			sr.setStrokeColor(item.getItemColor());
+			sr.setName(String.format("%d      %d",item.index_,item.index_));
+			overlay.add(sr);
 
 		}
 		overlay.setLabelColor(labelColor_);
