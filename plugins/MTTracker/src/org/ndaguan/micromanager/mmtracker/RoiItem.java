@@ -11,7 +11,11 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
+import javax.swing.SwingUtilities;
+
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.jfree.data.xy.XYDataItem;
+import org.jfree.data.xy.XYSeries;
 
 /**
  * @author Administrator
@@ -20,59 +24,89 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 public  class RoiItem {
 	private static int counter = 0;
 	private Color itemColor_;
-	int index_ = 0;
-	
-	public boolean isSelected_  = false;
-	public boolean isFocus_ = true;
+	private int index_ = 0;
 
-	double x_ = 0 ;
-	double xPhy_ = 0 ;
-	double y_ = 0 ;
-	double yPhy_ = 0 ;
-	double z_ = 0 ;
-	double fx_ = 0 ;
-	double fy_ = 0 ;
-	double skrewness_ = 0;
-	double stdXdY_= 0;
+	private  boolean isSelected_  = false;
+	private  boolean isFocus_ = true;
 
-	Writer dataFileWriter_;
+	private double x_ = 0 ;
+	private double xPhy_ = 0 ;
+	private double y_ = 0 ;
+	private double yPhy_ = 0 ;
+	private double zPhy_ = 0 ;
+	private double fx_ = 0 ;
+	private double fy_ = 0 ;
+	private double skrewness_ = 0;
+	private double stdXdY_= 0;
 
-	ChartManager chart_ = null;
-	DescriptiveStatistics statCross_;
-	DescriptiveStatistics[] stats_;
+	private Writer dataFileWriter_;
+	private double[][] calProfile_ = null;
+	private ChartManager chart_ = null;
+	private DescriptiveStatistics statCross_;
 
-	private int windowSize_ = 2000;
-	private Preferences preferences_;
+	private DescriptiveStatistics[] XYZStatis_;
+	private DescriptiveStatistics[] miniXYZStatis_;
+	private int chartWindowLen;
 
-	public static RoiItem createInstance(Preferences preferences,double[] itemData,String titleName) {
-		return new RoiItem(preferences,itemData,titleName);
+	public static RoiItem createInstance(double[] itemData,String titleName) {
+		return new RoiItem(itemData,titleName);
 	}
-	private RoiItem(Preferences preferences, double[] itemData,String titleName) {
+	public boolean isFocus(){
+		return isFocus_;
+	}
+	public void setFocus(boolean flag){
+		isFocus_ = flag;
+	}
+	private RoiItem( double[] itemData,String titleName) {
 		index_ = counter;
 		counter ++;
-
-		preferences_ = preferences;
 		isSelected_ = false;
 		setItemColor(Color.GREEN);
-		chart_ = new ChartManager(MMT.CHARTLIST,1000,titleName);
+		chart_ = new ChartManager(MMT.CHARTLIST,(int) MMT.VariablesNUPD.chartWindowSize.value(),String.format("%s-----%d",titleName,index_));
 
 		x_ = itemData[0];
 		y_ = itemData[1];
 
+		int windowSize_ = (int) MMT.VariablesNUPD.frameToCalcForce.value();
+		int miniWindowSize_ = (int) MMT.VariablesNUPD.chartStatisWindow.value();
 
-
-		stats_ = new DescriptiveStatistics[3];
-		for (int i = 0; i < stats_.length; i++) {
-			stats_[i] = new DescriptiveStatistics(windowSize_);
+		XYZStatis_ = new DescriptiveStatistics[2];
+		miniXYZStatis_ = new DescriptiveStatistics[3];
+		for (int i = 0; i < XYZStatis_.length; i++) {
+			XYZStatis_[i] = new DescriptiveStatistics(windowSize_);
+		}
+		for (int i = 0; i < miniXYZStatis_.length; i++) {
+			miniXYZStatis_[i] = new DescriptiveStatistics(miniWindowSize_);
 		}
 		statCross_ = new DescriptiveStatistics(windowSize_);
 
 
 
 	}
+	public void setWidowSize(int size){
+		for(DescriptiveStatistics stat: XYZStatis_)
+			stat.setWindowSize(size);
+	}
+	 
+	public void setWidowSize(double size){
+		for(DescriptiveStatistics stat: XYZStatis_)
+			stat.setWindowSize((int)size);
+	}
+	public void setChartDrawingWidowSize(int size){
+		chart_.setChartDrawingWindowSize(size);
+	}
+	
+	public void setChartWidowSize(int size){
+		for(DescriptiveStatistics stat: miniXYZStatis_)
+			stat.setWindowSize(size);
+	}
+	public void setChartWidowSize(double size){
+		for(DescriptiveStatistics stat: miniXYZStatis_)
+			stat.setWindowSize((int)size);
+	}
 
 	public String getMsg(){
-		return String.format("(%.2f, %.2f,%.2f)(%.2f,%.2f)",xPhy_,yPhy_,z_,fx_,fy_);
+		return String.format("\\(%.2f, %.2f,%.2f)/",xPhy_,yPhy_,zPhy_);
 	}
 	public void setSelect(boolean isSelected){
 		isSelected_ = isSelected;
@@ -92,45 +126,44 @@ public  class RoiItem {
 		itemColor_ = clr;
 	}
 
-	public void setItemData(double[] itemData){
-		x_ = itemData[0];
-		xPhy_ = itemData[1];
-		y_ = itemData[2];
-		yPhy_ = itemData[3];
-		z_ = itemData[4];
-		fx_ = itemData[5];
-		fy_ = itemData[6];
-		stdXdY_ = itemData[7];
-		skrewness_ = itemData[8];
-	}
-	public double[] getItemData(){
-		return new double[]{x_,xPhy_,y_,yPhy_,z_,fx_,fy_};
-	}
-	public void dataClean() throws IOException{
+	public void dataClean(boolean flag){
 
 		if (dataFileWriter_ != null) {
-			dataFileWriter_.flush();
-			dataFileWriter_.close();
+			try {
+				dataFileWriter_.close();
+			} catch (IOException e) {
+				MMT.logError("DataWriter close false!"+e.toString());
+			}
 			dataFileWriter_ = null;
 		}
 		if(chart_ != null){
 			for (int i = 0; i < MMT.CHARTLIST.length - 1; i++) {
+				if(!flag && MMT.CHARTLIST[i].equals("Chart-Testing"))
+					continue;
 				chart_.getDataSeries().get(MMT.CHARTLIST[i]).clear();
 			}
 		}
 
-		for (DescriptiveStatistics stat : stats_)
+		for (DescriptiveStatistics stat : XYZStatis_)
+			stat.clear();
+		for (DescriptiveStatistics stat : miniXYZStatis_)
 			stat.clear();
 
 		statCross_.clear();
 	}
-
+	public void clearStaticData() {
+		for (DescriptiveStatistics stat : XYZStatis_)
+			stat.clear();
+		for (DescriptiveStatistics stat : miniXYZStatis_)
+			stat.clear();
+		statCross_.clear();
+	}
 
 	public boolean writeData(String acqName,long frameNum_,double elapsed) throws IOException{
 		if (dataFileWriter_ == null) {
 			Calendar cal = new GregorianCalendar();
 			DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
-			File dir = new File(new File(preferences_.userDataDir_, "MTTracker"),
+			File dir = new File(new File(MMTFrame.getInstance().preferDailog.userDataDir_, "MTTracker"),
 					dateFormat.format(cal.getTime()));
 
 			dir.mkdirs();
@@ -146,10 +179,160 @@ public  class RoiItem {
 		}
 		else{
 			dataFileWriter_
-			.write(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n",frameNum_,elapsed,x_,xPhy_,y_,yPhy_,z_,fx_,fy_,stdXdY_,skrewness_));
-			dataFileWriter_.flush();
+			.write(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n",frameNum_,elapsed,x_,xPhy_,y_,yPhy_,zPhy_,fx_,fy_,stdXdY_,skrewness_));
 		}
 		return true;
 
 	}
+
+
+	public double[] getMean() {
+		double pointNum = 0.01;
+		return new double[]{((int)(miniXYZStatis_[0].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[1].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[2].getMean()/pointNum))*pointNum};
+	}
+	private double[] getStandardDeviation() {
+		return new double[]{miniXYZStatis_[0].getStandardDeviation()/10e3,miniXYZStatis_[1].getStandardDeviation()/10e3,miniXYZStatis_[2].getStandardDeviation()};
+	}
+	public double[] getDrawScale() {
+		double min = 0.05;
+		double[] std = getStandardDeviation();
+		for(int i = 0;i<std.length;i++)
+			std[i] = std[i]*4;
+		return new double[]{std[0]<min?min:std[0],std[1]<min?min:std[1],std[2]<min?min:std[2]};
+	}
+
+	public void updateDataSeries(final long frameNum) {
+		if(!chart_.isVisible())return;
+		boolean flag = false;
+		if(frameNum%MMT.VariablesNUPD.frameToRefreshChart.value() == 0)
+			flag = true;
+		else
+			flag = false;
+
+		final boolean update = flag;
+		final int selectedIndex = chart_.getSelectedTap();
+		SwingUtilities.invokeLater(new Runnable(){
+			@Override
+			public void run() {
+				double data[] = getItemData();
+				for(int i = 0;i<data.length;i++){
+					chart_.getDataSeries().get(MMT.CHARTLIST[i]).add(frameNum,data[i],update&&(i == selectedIndex));
+				}
+
+				if(update){
+					double[] mean = getMean();
+					double[] drawScale = getDrawScale();
+					chart_.getChartSeries().get("Chart-X").getXYPlot().getRangeAxis().setRange(mean[0] - drawScale[0],mean[0] + drawScale[0]);
+					chart_.getChartSeries().get("Chart-Y").getXYPlot().getRangeAxis().setRange(mean[1] - drawScale[1],mean[1] + drawScale[1]);
+					chart_.getChartSeries().get("Chart-Z").getXYPlot().getRangeAxis().setRange(mean[2] - drawScale[2],mean[2] + drawScale[2]);
+				}
+			}
+
+		});
+
+	}
+	private double[] getItemData(){
+		return new double[]{zPhy_,xPhy_,yPhy_,fx_,fy_,stdXdY_,skrewness_};
+	}
+	public double[] getXY() {
+		return new double[]{x_,y_};
+	}
+	public double getZ() {
+		return zPhy_;
+	}
+	public void setXY(double xPos, double yPos) {//moving ROI
+		x_ = xPos;
+		y_ = yPos;
+	}
+	public void setXY(double[] pos){
+		//pixel
+		x_ = pos[0];
+		y_ = pos[1];
+		//uM
+		xPhy_ = MMT.VariablesNUPD.pixelToPhysX.value() * x_;
+		yPhy_ = MMT.VariablesNUPD.pixelToPhysY.value() * y_;
+		//nM:calculate Force with a bigger windowSize
+		XYZStatis_[0].addValue(xPhy_*1000);
+		XYZStatis_[1].addValue(yPhy_*1000);
+		statCross_.addValue(xPhy_ * yPhy_ * 1e6);
+		//uM:get mean&standardDeviation  to update chart with a smaller windowSize;
+		miniXYZStatis_[0].addValue(xPhy_);
+		miniXYZStatis_[1].addValue(yPhy_);
+
+	}
+	public void setZ(double zpos) {
+		zPhy_ = zpos;
+		miniXYZStatis_[2].addValue(zPhy_);
+	}
+	public boolean isSelected() {
+		return isSelected_;
+	}
+	public void setSelected(boolean flag){
+		isSelected_ = flag;
+	}
+	public void setChartVisible(boolean flag) {
+		chart_.setVisible(flag);
+	}
+	public void addChartData(String string, double x, double y) {
+		XYSeries dataSeries = chart_.getDataSeries().get(string);
+		if(dataSeries != null)
+			dataSeries.add(x,y);		
+	}
+	public void clearChart(String string) {
+		final XYSeries dataSeries = chart_.getDataSeries().get(string);
+		if(dataSeries != null){
+			SwingUtilities.invokeLater(new Runnable(){
+				@Override
+				public void run() {
+					dataSeries.clear();	
+				}});
+		}
+
+	}
+	public DescriptiveStatistics[] getStats() {
+		return XYZStatis_;
+	}
+	public DescriptiveStatistics getStatCross() {
+		return statCross_;
+	}
+	public void setForce(double[] force) {
+		fx_ = force[0];
+		fy_ = force[1];
+	}
+	public void setSkrewness(double[] skrewneww) {
+		stdXdY_ = skrewneww[0];
+		skrewness_ = skrewneww[1];
+	}
+	public double[] getXYZPhy() {
+		return new double[]{xPhy_,yPhy_,zPhy_};
+	}
+ 
+	public String getName() {
+		return String.format("%d      %d",index_,index_);
+	}
+	public void updateCalProfile(int index, double[] posProfile) {
+		calProfile_[index] = posProfile;
+	}
+	public void InitializeCalProflie(double[][] cal) {
+		calProfile_ = cal;
+	}
+	public void clearCalProfile() {
+		calProfile_ = null;		
+	}
+	public double[][] getCalProfile() {
+		return calProfile_;
+	}
+	public void setSelectTap(String string) {
+		int i=0;
+		for(String s:MMT.CHARTLIST){
+			if(s.equals(string)){
+				chart_.setSelectTap(i);
+				break;
+			}
+			else{
+				i++;
+			}
+		}
+	}
+
 }

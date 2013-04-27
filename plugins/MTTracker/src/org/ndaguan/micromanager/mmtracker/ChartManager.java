@@ -24,14 +24,16 @@ public class ChartManager extends JFrame  {
 	private HashMap<String, XYSeries> dataSeries_;
 	private HashMap<String, JFreeChart> chartSeries_;
 	private XYSeriesCollection dataset_;
-	private int ChartMaxItemCount = 2000;
-	private final int DEFAULT_WIDTH = 660;
-	int tapSize = 600;
+	private int ChartMaxItemCount = 4000;
+	private final int DEFAULT_WIDTH = 920;
+	private int tapSize = 870;
 	private final int DEFAULT_HEIGHT =(int)( DEFAULT_WIDTH*0.618);
+	private JTabbedPane tabbedPane;
 
 	public HashMap<String, XYSeries> getDataSeries(){
 		return dataSeries_;
 	}
+	 
 	public HashMap<String, JFreeChart> getChartSeries(){
 		return chartSeries_;
 	}
@@ -61,14 +63,16 @@ public class ChartManager extends JFrame  {
 	}
 	void initialize(){
 		//tabbedPane
-		final JTabbedPane tabbedPane = new JTabbedPane();
+	tabbedPane = new JTabbedPane();
 		tabbedPane.setBounds(0,0, tapSize, (int)(tapSize*0.618));
 		getContentPane().add(tabbedPane);
 		for (int i = 0; i <  dataSet.length; i++) {
 			tabbedPane.addTab( dataSet[i], null, createChartPanel(dataSet[i]), null);
 		}
 	}
-
+	public int getSelectedTap(){
+		return tabbedPane.getSelectedIndex();
+	}
 	private JPanel createChartPanel(String tableName) {
 		if(dataSeries_.containsKey(tableName))
 			return null;
@@ -107,5 +111,16 @@ public class ChartManager extends JFrame  {
 		panel.add(hslider);		
 
 		return panel;
+	}
+
+	public void setSelectTap(int i) {
+		tabbedPane.setSelectedIndex(i);
+	}
+
+	public void setChartDrawingWindowSize(int size) {
+		for(int i =0;i<dataSeries_.size();i++){
+			dataSeries_.get(MMT.CHARTLIST[i]).setMaximumItemCount(size);
+			
+		}
 	}
 }

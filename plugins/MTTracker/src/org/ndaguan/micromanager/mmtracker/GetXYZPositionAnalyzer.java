@@ -9,9 +9,9 @@ import org.micromanager.api.TaggedImageAnalyzer;
 import org.micromanager.utils.MDUtils;
 import org.micromanager.utils.MMScriptException;
 
-public class AcqAnalyzer extends TaggedImageAnalyzer {
+public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 
-	private static AcqAnalyzer instance_;
+	private static GetXYZPositionAnalyzer instance_;
 	private long frameNum_;
 
 	private Listener listener_;
@@ -21,30 +21,29 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 	public double imgheight_;
 	public  String acqName_;
 	private Kernel kernel_;
-	private Preferences preferences_;
 	private long timeStart;	
 
 
-	public static AcqAnalyzer getInstance() {	
+	public static GetXYZPositionAnalyzer getInstance() {	
 		return instance_;
 	}
-	public static AcqAnalyzer getInstance(Kernel kernel, Listener listener,
-			List<RoiItem> roiList_, OverlayRender render, Preferences preferences) {
+	public static GetXYZPositionAnalyzer getInstance(Kernel kernel, Listener listener,
+			List<RoiItem> roiList_, OverlayRender render) {
 		if(instance_ == null)
-			instance_ = new AcqAnalyzer(kernel,listener,roiList_,render,preferences);
+			instance_ = new GetXYZPositionAnalyzer(kernel,listener,roiList_,render);
 		return instance_;
 	}
 
-	public AcqAnalyzer(Kernel kernel, Listener listener,List<RoiItem> roiList,OverlayRender render, Preferences preferences) {
+	public GetXYZPositionAnalyzer(Kernel kernel, Listener listener,List<RoiItem> roiList,OverlayRender render) {
 		listener_ = listener;
 		kernel_ = kernel;
-		preferences_ = preferences;
 		frameNum_ = 0;
 	}
 
 	@Override
 	protected void analyze(TaggedImage taggedImage) {
 		timeStart = System.nanoTime();
+
 		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON)
 		{
 			Function.getInstance().dataReset();
@@ -52,7 +51,7 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			elapsed = 0;
 			return;
 		}
-		 
+
 		if (taggedImage.tags.has("ElapsedTime-ms"))
 		{
 			try {
@@ -75,13 +74,24 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 				listener_.start(acqName);
 				acqName_ = acqName;
 				frameNum_ = 0;
-				if(acqName.equals(MMStudioMainFrame.SIMPLE_ACQ)){
-					kernel_.imageHeight =Integer.parseInt(taggedImage.tags.get("Height").toString());
-					kernel_.imageWidth = Integer.parseInt(taggedImage.tags.get("Width").toString());
-				}
-				else{
-					kernel_.imageHeight=Integer.parseInt((String)taggedImage.tags.get("Height"));
-					kernel_.imageWidth =Integer.parseInt((String)taggedImage.tags.get("Width"));
+				if (acqName.equals(MMStudioMainFrame.SIMPLE_ACQ)) {
+					kernel_.imageHeight = Integer.parseInt(taggedImage.tags
+							.get("Height").toString());
+					kernel_.imageWidth = Integer.parseInt(taggedImage.tags.get(
+							"Width").toString());
+				} else {
+					Object height = taggedImage.tags.get("Height");
+					Object width = taggedImage.tags.get("Width");
+					if (height instanceof Number)
+						kernel_.imageHeight = ((Number) height).intValue();
+					else
+						kernel_.imageHeight = Integer.parseInt(height
+								.toString());
+					if (width instanceof Number)
+						kernel_.imageWidth = ((Number) width).intValue();
+					else
+						kernel_.imageHeight = Integer
+						.parseInt(width.toString());
 				}
 			}
 			if(!update){
@@ -90,27 +100,34 @@ public class AcqAnalyzer extends TaggedImageAnalyzer {
 			else{
 				frameNum_ ++;
 			}
+			synchronized(MMT.Acqlock){
+				if(kernel_.roiList_.size()<=0){
+					Function.getInstance().reDraw(acqName, frameNum_, update);
+					return;
+				}
+				if(!kernel_.getXYZPosition(taggedImage.pix))return;
+			}//lock
 			String nameComp;
 			if (acqName.equals(MMStudioMainFrame.SIMPLE_ACQ))
 				nameComp = "Live";
 			else
 				nameComp = acqName;
-
-			if(!kernel_.getPosition(taggedImage.pix))return;
-			try {
-				kernel_.saveRoiData(nameComp,frameNum_,elapsed);
-			} catch (IOException e) {
-				MMT.logError("Save data error");
-			}
+			if(MMT.VariablesNUPD.saveFile.value() == 1 && kernel_.isCalibrated_)
+				try {
+					kernel_.saveRoiData(nameComp,frameNum_,elapsed);
+				} catch (IOException e) {
+					MMT.logError("Save data error");
+				}
 			Function.getInstance().updateChart(frameNum_);
 			Function.getInstance().reDraw(acqName, frameNum_, update);
-			if(MMTFrame.getInstance().isMagnetAuto() && (frameNum_ % (int)(preferences_.frameToCalcForce_) == 0)){
+			if(MMTFrame.getInstance().isMagnetAuto() && (frameNum_ % (int)(MMT.VariablesNUPD.frameToCalcForce.value()) == 0)){
 				Function.getInstance().PullMagnet();
 			}
 
 		} catch (JSONException e) {
 		} catch (MMScriptException e) {
 		}
-		System.out.print(String.format("\r\n%d:\tcostTime:\t%f", frameNum_,(System.nanoTime()-timeStart)/10e6));
+		System.out.print(String.format("\r\n%d:\tcostTime:\t%f\t\n", frameNum_,(System.nanoTime()-timeStart)/10e6));
+
 	}
 }

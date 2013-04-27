@@ -139,7 +139,7 @@ public class StageControlFrame extends javax.swing.JFrame {
 		jLabel9 = new javax.swing.JLabel();
 		jLabel10 = new javax.swing.JLabel();
 		Toolkit kit = Toolkit.getDefaultToolkit();
-		setTitle("Stage Control");
+		setTitle("MP285 !!! Stage Control");
 		setLocationByPlatform(true);
 		setResizable(false);
 		addWindowListener(new java.awt.event.WindowAdapter() {
@@ -587,7 +587,10 @@ public class StageControlFrame extends javax.swing.JFrame {
 		try {
 			String zStage = MMT.magnetZStage_;
 			double zpos = core_.getPosition(zStage);
-			core_.setPosition(zStage,zpos - z);
+			double target = zpos - z;
+			if(target >0)
+				target = 0;
+			core_.setPosition(zStage,target);
 		} catch (Exception e) {
 			gui_.logError(e);
 		}

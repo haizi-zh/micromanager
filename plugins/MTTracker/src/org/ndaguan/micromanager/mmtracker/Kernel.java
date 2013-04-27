@@ -32,22 +32,22 @@ public class Kernel {
 	private FastFourierTransformer FFT_;
 	private SplineInterpolator interpolator;
 	private PearsonsCorrelation pearCorrelation_;
-	
-	public  List< double[][]> calProfiles;
+
 	private SimpleRegression regrX;
 	private SimpleRegression regrY;
+
 	public List<RoiItem> roiList_;
-	
+
 	public  double[] zPosProfiles;
 	public  double[] xPosProfiles;
 	public  double[] yPosProfiles;
+
 	public int imageWidth = 512;
 	public int imageHeight = 512;
-	private Preferences preferences_;
 	public boolean isCalibrated_ = false;
-	private double[] pixelToPhys;
-	public Kernel(Preferences preferences, List<RoiItem> roiList){
-		preferences_ = preferences;
+
+	public double[] zTestingPosProfiles;
+	public Kernel( List<RoiItem> roiList){
 		roiList_ = roiList;
 		FFT_ = new FastFourierTransformer(DftNormalization.STANDARD);//gosseCenter
 		interpolator = new SplineInterpolator(); // gosseCenter and getZlocation
@@ -55,51 +55,80 @@ public class Kernel {
 		sumX_ = new DescriptiveStatistics();	//gosseCenter
 		sumY_ = new DescriptiveStatistics();	//gosseCenter
 		pearCorrelation_ = new PearsonsCorrelation();// getZlocation
-		calProfiles = Collections.synchronizedList(new ArrayList< double[][]>());
 		regrX = new SimpleRegression(); //XY calibration
 		regrY = new SimpleRegression(); //XY calibration
 
 	}
-	public static  Kernel getInstance(Preferences preferences, List<RoiItem> roiList) 
+	public static  Kernel getInstance(List<RoiItem> roiList) 
 	{
 		if(kernel_ == null)
-			kernel_ = new Kernel(preferences,roiList);
+			kernel_ = new Kernel(roiList);
 		return kernel_;
 	}
 	public static Kernel getInstance() {
 		return kernel_;
 	}
 
-	public boolean getPosition(Object image){	
+	public boolean getXYPosition(Object image){	
 
 		double[] force = new double[]{0,0};
 		double[] skrewneww = new double[]{0,0};
-		boolean ret;
 		if(roiList_.size() <= 0)return false;
+		double[][] ret = gosseCenter(image);
+		if(ret == null)return false;
 
-		ret = gosseCenter(image);
-
-		if (isCalibrated_ ) {
-			double[] currProfiles = new double[(int) (preferences_.beanRadiuPixel_/preferences_.rInterStep_)];
-			for (int k = 0; k < roiList_.size(); k++) {
-				currProfiles = polarIntegral(image,roiList_.get(k).x_,roiList_.get(k).y_);
-				ret = getZLocation(k,currProfiles);
-			}	
+		for (int i = 0; i < roiList_.size(); i++) {
+			//set value
+			roiList_.get(i).setXY(ret[i]);
+			roiList_.get(i).setZ(ret[i][2]);
+			force = calcForces(roiList_.get(i).getStats());
+			skrewneww = calcSkrewness(roiList_.get(i).getStats(),roiList_.get(i).getStatCross());
+			roiList_.get(i).setForce(force);
+			roiList_.get(i).setSkrewness(skrewneww);
 		}
+		return true;
+	}
+	public boolean getXYZPosition(Object image){	
 
-		for (int i = 0; i < roiList_.size(); i++) {//force 
-			if (roiList_.get(0).stats_[0].getN() >= preferences_.frameToCalcForce_)
-			{
-				force = calcForces(roiList_.get(i).stats_);
-				skrewneww = calcSkrewness(roiList_.get(i).stats_,roiList_.get(i).statCross_);
-				roiList_.get(i).fx_ = force[0];
-				roiList_.get(i).fy_ = force[1];
-				roiList_.get(i).stdXdY_ =  skrewneww[0];
-				roiList_.get(i).skrewness_ =  skrewneww[1];
+		double[] force = new double[]{0,0};
+		double[] skrewneww = new double[]{0,0};
+		if(roiList_.size() <= 0)return false;
+		double[][] ret = gosseCenter(image);
+		if(ret == null)return false;
+		MMT.currentframeIndex_++;
+		for (int i = 0; i < roiList_.size(); i++) {
+			//set value
+			roiList_.get(i).setXY(ret[i]);
+			force = calcForces(roiList_.get(i).getStats());
+			skrewneww = calcSkrewness(roiList_.get(i).getStats(),roiList_.get(i).getStatCross());
+			roiList_.get(i).setForce(force);
+			roiList_.get(i).setSkrewness(skrewneww);
+
+		}
+		double beanRadiuPixel = MMT.VariablesNUPD.beanRadiuPixel.value();
+		//get z
+		MMT.currentframeIndex_++;
+		double[] currProfiles = new double[(int) (beanRadiuPixel/MMT.VariablesNUPD.rInterStep.value())];
+		for (int k = 0; k < roiList_.size(); k++) {
+			double[] xy = roiList_.get(k).getXY();
+			int roiX = (int) (xy[0] - beanRadiuPixel);
+			int roiY = (int) (xy[1] - beanRadiuPixel);
+			if(isRoiOutOfImage(roiX,roiY)){
+				roiList_.remove(k);
+				if(isCalibrated_){
+					if(roiList_.size() == 0){
+						isCalibrated_ = false;
+						MMTFrame.getInstance().setCalibrateIcon(false);
+					}
+				}
+				return false;
 			}
-
+			currProfiles = polarIntegral(image,xy[0],xy[1]);
+			double zpos = getZLocation(k,currProfiles);
+			roiList_.get(k).setZ(zpos);
+			Function.getInstance().updatePosProfileChart(k,currProfiles);
 		}
-		return ret;
+		return true;
 	}
 	private double[] calcSkrewness(DescriptiveStatistics[] stats,DescriptiveStatistics statCross) {
 		double[] skrewness = new double[2];
@@ -120,10 +149,10 @@ public class Kernel {
 
 		LaguerreSolver solver = new LaguerreSolver();
 		double[] forces = new double[2];
-		double persistance = preferences_.persistance_;
-		double contourLength = preferences_.contourLen_;
-		double beanRadius = preferences_.beanRadius_;
-		double kT = preferences_.kT_;
+		double persistance = MMT.VariablesNUPD.persistance.value()*1000;
+		double contourLength = MMT.VariablesNUPD.contourLen.value()*1000;
+		double beanRadius = MMT.VariablesNUPD.beanRadius.value()*1000;
+		double kT = MMT.VariablesNUPD.kT.value();
 
 		for (int i = 0; i < forces.length; i++) {
 			double variance = stats[i].getVariance();
@@ -144,68 +173,70 @@ public class Kernel {
 	}
 
 
-
 	public  static void main(String[] args) {
 		List<RoiItem> rt = Collections.synchronizedList(new ArrayList<RoiItem>());
-		Preferences pr = new Preferences();
-		Kernel kl = new Kernel(pr,rt);
+		rt.add(RoiItem.createInstance(new double[]{130,130},"bean2"));
+
+		Function fc = new Function( rt);
+		Kernel kl = new Kernel(rt);
 
 		kl.imageWidth = 300;
 		kl.imageHeight = 300;
-
-		pr.beanRadiuPixel_ = 100;
-		pr.calRange_ = 9;
-		pr.calStepSize_ = 1;
-		pr.pixelToPhysX_ = 1;
-		pr.userDataDir_ = "Z:\\";
-		pr.frameToCalcForce_ = 50;
-		//		rt.add(RoiItem.createInstance(pr,new double[]{160,160},"bean1"));
-		rt.add(RoiItem.createInstance(pr,new double[]{130,130},"bean2"));
-
+		MMT.VariablesNUPD.calRange.value(10);
+		MMT.VariablesNUPD.calStepSize.value(1);
+		MMT.VariablesNUPD.precision.value(0.0001);
 		int bitDepth = 32;
 		boolean flag = false;
+		int calRange = (int) MMT.VariablesNUPD.calRange.value();
 		if(flag)
-			for (int i = 0; i < pr.calRange_; i++) {
+			for (int i = 0; i < calRange ; i++) {
 				Object image = getImg(i+1,bitDepth);
 				long timeStart = System.nanoTime();
-				boolean ret = kl.getPosition(image);
+				boolean ret = kl.getXYPosition(image);
 				if(!ret)continue;
 				System.out.print(String.format("\r\ntotal:%f",(System.nanoTime() - timeStart)/10e6));
 				for (int k = 0; k < rt.size(); k++) {
-					double xpos = rt.get(k).x_;
-					double ypos = rt.get(k).y_;
-					double xphy = rt.get(k).xPhy_;
-					double yphy = rt.get(k).yPhy_;
+					double[] xy = rt.get(k).getXY();
+					double xpos = xy[0];
+					double ypos = xy[1];
+					double[] xyPhy = rt.get(k).getXYZPhy();
+					double xphy = xyPhy[0];
+					double yphy = xyPhy[1];
 					System.out.print(String.format("\r\nx:\t%f\ty:%f\r\nxphy:\t%f\typhy:\t%f", xpos,ypos,xphy,yphy));
 
 				}
 			}
 
 		if(!flag){
+			for (int i = 0; i < rt.size(); i++) {
+				rt.get(i).setChartVisible(true);
+			}
 			kl.updateCalibrationProfile();
-			for (int i = 0; i < pr.calRange_; i++) {
+			for (int i = 0; i < calRange; i++) {
 				Object image = getImg(i+1,bitDepth);
-				kl.calibration(image,i,i+1);
+				kl.calibration(image,i,150,150,i+1);
 			}
 			kl.isCalibrated_ = true;
-			for (int jj = 0; jj < 50; jj++) {
+			for (int jj = 0; jj < 1000; jj++) {
 
-				for (int i = 0; i < pr.calRange_; i++) {
-					double img = i + 1.2;				
+				for (int i = 0; i < calRange; i++) {
+					double img = 2 + 1.2;				
 					Object image = getImg(img,bitDepth);
 					double timeConsume = System.nanoTime();
-					kl.getPosition(image);
-					try {
-						kl.saveRoiData("Acq",i,(System.nanoTime() -timeConsume)/10e6 );
-					} catch (IOException e) {
-						MMT.logError("Save data err");
-					}
+					kl.getXYZPosition(image);
+					fc.updateChart(jj);
+					//					try {
+					//						kl.saveRoiData("Acq",i,(System.nanoTime() -timeConsume)/10e6 );
+					//					} catch (IOException e) {
+					//						MMT.logError("Save data err");
+					//					}
 					timeConsume = (System.nanoTime() -timeConsume)/10e6 ;
 
 					for (int k = 0; k < rt.size(); k++) {
-						double xphy = rt.get(k).xPhy_;
-						double yphy = rt.get(k).yPhy_;
-						double zphy = rt.get(k).z_;
+						double[] xyPhy = rt.get(k).getXYZPhy();
+						double xphy = xyPhy[0];
+						double yphy = xyPhy[1];
+						double zphy = rt.get(k).getZ();
 						System.out.print(String.format("\r\n\r\nxphy:\t%.3f\typhy:\t%.3f\tzphy:\t%.3f\tzset:\t%.3f\tdelta:\t%f\ttime consume:\t%f",xphy,yphy,zphy,img,zphy-img,timeConsume));
 					}
 
@@ -225,7 +256,7 @@ public class Kernel {
 
 	private boolean dataCleanUp() throws IOException {
 		for (int i = 0; i < roiList_.size(); i++) {
-			roiList_.get(i).dataClean();
+			roiList_.get(i).dataClean(false);
 		}
 		return true;
 	}
@@ -248,22 +279,26 @@ public class Kernel {
 	} 
 	private double[] polarIntegral(Object image,double xpos,double ypos){
 		double S00 = 0, S01 =0, S10 = 0, S11 =0;				 
-		double[] profile = new double[(int) (preferences_.beanRadiuPixel_/preferences_.rInterStep_)];
+		double beanRadiuPixel = MMT.VariablesNUPD.beanRadiuPixel.value();
+		double rInterStep = MMT.VariablesNUPD.rInterStep.value();
+		double xFactor = MMT.VariablesNUPD.xFactor.value();
+		double yFactor = MMT.VariablesNUPD.yFactor.value();
+		double[] profile = new double[(int) (beanRadiuPixel/rInterStep)];
 		statis_.clear();
 		switch(image.getClass().getName()){
 		case "[D":
 			profile[0] = ((double[]) image)[(int)xpos + ((int)ypos)* imageWidth];
-			for(int i = 1;i< preferences_.beanRadiuPixel_/preferences_.rInterStep_ ;i++)
+			for(int i = 1;i< beanRadiuPixel/rInterStep ;i++)
 			{
 				double sumr = 0;
-				double r =i*preferences_.rInterStep_;
+				double r =i* rInterStep;
 				double dTheta = 1/r;
 				int nTheta =(int) (2*3.141592653579/dTheta);
 				for(int j = 0;j<nTheta;j++)
 				{
 
-					double x = (xpos+r*Math.cos(dTheta*j));
-					double y = (ypos+r*Math.sin(dTheta*j));
+					double x = (xpos+ xFactor*r*Math.cos(dTheta*j));
+					double y = (ypos+ yFactor*r*Math.sin(dTheta*j));
 					int x0 = (int)x;
 					int y0 = (int)y;
 					int x1 = x0 +1;
@@ -284,17 +319,17 @@ public class Kernel {
 			break;
 		case "[F":
 			profile[0] = ((float[]) image)[(int)xpos + ((int)ypos)* imageWidth];
-			for(int i = 1;i< preferences_.beanRadiuPixel_/preferences_.rInterStep_ ;i++)
+			for(int i = 1;i< beanRadiuPixel/rInterStep ;i++)
 			{
 				double sumr = 0;
-				double r =i*preferences_.rInterStep_;
+				double r =i*rInterStep;
 				double dTheta = 1/r;
 				int nTheta =(int) (2*3.141592653579/dTheta);
 				for(int j = 0;j<nTheta;j++)
 				{
 
-					double x = (xpos+r*Math.cos(dTheta*j));
-					double y = (ypos+r*Math.sin(dTheta*j));
+					double x = (xpos+xFactor*r*Math.cos(dTheta*j));
+					double y = (ypos+yFactor*r*Math.sin(dTheta*j));
 					int x0 = (int)x;
 					int y0 = (int)y;
 					int x1 = x0 +1;
@@ -315,17 +350,17 @@ public class Kernel {
 			break;
 		case "[S":
 			profile[0] = ((short[]) image)[(int)xpos + ((int)ypos)* imageWidth];
-			for(int i = 1;i< preferences_.beanRadiuPixel_/preferences_.rInterStep_ ;i++)
+			for(int i = 1;i< beanRadiuPixel/rInterStep ;i++)
 			{
 				double sumr = 0;
-				double r =i*preferences_.rInterStep_;
+				double r =i*rInterStep;
 				double dTheta = 1/r;
 				int nTheta =(int) (2*3.141592653579/dTheta);
 				for(int j = 0;j<nTheta;j++)
 				{
 
-					double x = (xpos+r*Math.cos(dTheta*j));
-					double y = (ypos+r*Math.sin(dTheta*j));
+					double x = (xpos+xFactor*r*Math.cos(dTheta*j));
+					double y = (ypos+yFactor*r*Math.sin(dTheta*j));
 					int x0 = (int)x;
 					int y0 = (int)y;
 					int x1 = x0 +1;
@@ -346,17 +381,17 @@ public class Kernel {
 			break;
 		case "[B":
 			profile[0] = ((byte[]) image)[(int)xpos + ((int)ypos)* imageWidth];
-			for(int i = 1;i< preferences_.beanRadiuPixel_/preferences_.rInterStep_ ;i++)
+			for(int i = 1;i< beanRadiuPixel/rInterStep ;i++)
 			{
 				double sumr = 0;
-				double r =i*preferences_.rInterStep_;
+				double r =i*rInterStep;
 				double dTheta = 1/r;
 				int nTheta =(int) (2*3.141592653579/dTheta);
 				for(int j = 0;j<nTheta;j++)
 				{
 
-					double x = (xpos+r*Math.cos(dTheta*j));
-					double y = (ypos+r*Math.sin(dTheta*j));
+					double x = (xpos+xFactor*r*Math.cos(dTheta*j));
+					double y = (ypos+yFactor*r*Math.sin(dTheta*j));
 					int x0 = (int)x;
 					int y0 = (int)y;
 					int x1 = x0 +1;
@@ -375,62 +410,50 @@ public class Kernel {
 				statis_.addValue(profile[i]);
 			}
 			break;
-		default:
-			return null;
 		}
 
-
-
-		double mean = statis_.getMean();
-		double std = statis_.getStandardDeviation();
-		double std2 = std*std;
-		for (int i = 0; i < profile.length; i++) {
-			profile[i] = (profile[i] - mean)/std2;
-		}
+		normalization(profile,statis_);
 		return profile;
 	}
 	public void updateCalibrationProfile(){
-		double[][] cal = new double[ (int) (preferences_.calRange_/preferences_.calStepSize_)][(int) (preferences_.beanRadiuPixel_/preferences_.rInterStep_)];
+		double calRange = MMT.VariablesNUPD.calRange.value();
+		double calStepSize = MMT.VariablesNUPD.calStepSize.value();
+		double[][] cal = new double[ (int) (calRange/calStepSize)][(int) (MMT.VariablesNUPD.beanRadiuPixel.value()/MMT.VariablesNUPD.rInterStep.value())];
 
-		zPosProfiles = new double[ (int) (preferences_.calRange_/preferences_.calStepSize_)];
-		xPosProfiles = new double[ (int) (preferences_.calRange_/preferences_.calStepSize_)];
-		yPosProfiles = new double[ (int) (preferences_.calRange_/preferences_.calStepSize_)];
-
-		for (int i = 0; i < roiList_.size(); i++) {
-			calProfiles.add(cal);
-		}
+		zPosProfiles = new double[ (int) (calRange/calStepSize)];
+		xPosProfiles = new double[ (int) (calRange/calStepSize)];
+		yPosProfiles = new double[ (int) (calRange/calStepSize)];
+		for (RoiItem it:roiList_)
+			it.InitializeCalProflie(cal);
 	}
 
-	public  boolean calibration(Object image,int index,double currZPos) {
-		boolean ret = gosseCenter(image);
-		zPosProfiles [index] = currZPos;
-		for (int k = 0; k < roiList_.size(); k++) {
-			calProfiles.get(k)[index] = polarIntegral(image,roiList_.get(k).x_,roiList_.get(k).y_);
-		}
-		return ret;
-	}
 	public  boolean calibration(Object image,int index,double currXPos,double currYPos,double currZPos) {
-		boolean ret = gosseCenter(image);
+		double[][] ret = gosseCenter(image);
+		if(ret == null)
+			return false;
 		if(index == 0){
 			regrX.clear();
 			regrX.clear();
 		}
-		regrX.addData(currXPos,roiList_.get(0).x_);
-		regrY.addData(currYPos,roiList_.get(0).y_);
+		double[] xy = ret[0];
+		regrX.addData(xy[0],currXPos);
+		regrY.addData(xy[1],currYPos);
 		zPosProfiles [index] = currZPos;
 		for (int k = 0; k < roiList_.size(); k++) {
-			calProfiles.get(k)[index] = polarIntegral(image,roiList_.get(k).x_,roiList_.get(k).y_);
+			roiList_.get(k).setXY(ret[k][0],ret[k][1]);
+			roiList_.get(k).updateCalProfile(index,polarIntegral(image,xy[0],xy[1]));
 		}
-		return ret;
+		return true;
 	}
 
-	private boolean getZLocation(int roiIndex, double[] currrProfiles) {
+	private double getZLocation(int roiIndex, double[] currrProfiles) {
 		double max = 0;
 		int index = 0;
 		double pos = 0;
-		double[] yArray = new double[calProfiles.get(0).length];
+		double[][] calProfile = roiList_.get(roiIndex).getCalProfile();
+		double[] yArray = new double[calProfile.length];
 		for (int j = 0; j < yArray.length; j++) {//range
-			double value = pearCorrelation_.correlation(currrProfiles, calProfiles.get(roiIndex)[j]);
+			double value = pearCorrelation_.correlation(currrProfiles, calProfile[j]);
 			yArray[j] = value;
 			if(value>max){
 				max = value;
@@ -447,92 +470,72 @@ public class Kernel {
 
 		if(end>=zPosProfiles.length)
 			end = zPosProfiles.length-1;
-		for (double j = zPosProfiles[start]; j <  zPosProfiles[end]; j+= preferences_.precision_) {
+
+		for (double j = zPosProfiles[start]; j <  zPosProfiles[end]; j+= MMT.VariablesNUPD.precision.value()) {
 			double value  = function.value(j);
 			if(value >max){
 				max = value;
 				pos = j;
 			}
 		}
-		roiList_.get(roiIndex).stats_[2].addValue(pos);//zPos
-		roiList_.get(roiIndex).z_ = pos;
-		return true;
+		Function.getInstance().updateCorrChart(roiIndex, yArray);
+		return pos;
 	}
-	private double[] getPixelToPhys() {
-		if(pixelToPhys == null){
-			if(MMT.xyStage_ != null && isCalibrated_){
-				preferences_.pixelToPhysX_ = regrX.getSlope();
-				preferences_.pixelToPhysY_ = regrY.getSlope();
-				preferences_.saveUserData();
-				pixelToPhys = new double[]{regrX.getIntercept(),regrX.getSlope(),regrY.getIntercept(),regrY.getSlope()};
-			}else{
-				pixelToPhys = new double[]{0,preferences_.pixelToPhysX_,0,preferences_.pixelToPhysY_};
-			}
+	public  void setPixelToPhys() {
+		if(MMT.xyStage_ != null){
+			MMT.VariablesNUPD.pixelToPhysX.value(regrX.getSlope());
+			MMT.VariablesNUPD.pixelToPhysY.value(regrY.getSlope());
+			MMTFrame.getInstance().preferDailog.saveUserData();
 		}
-		return pixelToPhys;
 	}
-	public boolean gosseCenter(Object image){
+	public double[][] gosseCenter(Object image){
 		int roiNum = roiList_.size();
-		double[] pixelToPhys = getPixelToPhys();
-		double xPhys = 0;
-		double yPhys = 0;
+		double beanRadiuPixel = MMT.VariablesNUPD.beanRadiuPixel.value();
+		double[][] position = new double[roiNum][3];
 		for (int i = 0; i < roiNum; i++) {
 
-			int roiX = (int) (roiList_.get(i).x_ - preferences_.beanRadiuPixel_);
-			int roiY = (int) (roiList_.get(i).y_ - preferences_.beanRadiuPixel_);
-			if(RoiOutOfImage(roiX,roiY)){
+			double[] xy = roiList_.get(i).getXY();
+			int roiX = (int) (xy[0] -beanRadiuPixel);
+			int roiY = (int) (xy[1] -beanRadiuPixel);
+			if(isRoiOutOfImage(roiX,roiY)){
 				roiList_.remove(i);
-				return false;
+				MMT.lastError_ = "Roi out of image,removed!";
+				if(MMT.isCalibrationRunning_ || MMT.isTestingRunning_)return null;
+				if(isCalibrated_ && (roiList_.size() == 0))
+				{
+					isCalibrated_ = false;
+					MMTFrame.getInstance().setCalibrateIcon(false);
+					MMT.lastError_ = "Roi out of image,removed,there is no roi in the image,new calibrateion is needed!";
+					return null;
+				}
+				i--;
+				roiNum --;
+				continue;
 			}
 			double[][] sumXY = getXYSum(image, roiX,roiY);
-			if(sumXY == null)
-				return false;
-
 			double xPos = getCurveCenter(sumXY[0])+ roiX;
 			double yPos= getCurveCenter(sumXY[1])+ roiY;
-
-			roiList_.get(i).x_ = xPos;
-			roiList_.get(i).y_ = yPos;
-
-			xPhys = pixelToPhys[0] + pixelToPhys[1] * xPos;
-			yPhys = pixelToPhys[2] + pixelToPhys[3] * yPos;
-
-			roiList_.get(i).xPhy_ = xPhys;
-			roiList_.get(i).yPhy_ = yPhys;
-
-			roiList_.get(i).stats_[0].addValue(xPhys*1000);//xPos nM
-			roiList_.get(i).stats_[1].addValue(yPhys*1000);//yPos uM
-			if(!isCalibrated_)
-			{
-				roiList_.get(i).stats_[2].addValue(sumXY[2][0]);//intense
-				roiList_.get(i).z_ = sumXY[2][0];
-			}
-			roiList_.get(i).statCross_.addValue(xPhys * yPhys * 10e6);//crossStd
-
-
-
-
+			double counter = sumXY[2][0];
+			position[i][0] = xPos;
+			position[i][1] = yPos;
+			position[i][2] = counter;
 		}
-		return true;
+		return position;
 	}
 
-	private boolean RoiOutOfImage(int roiX, int roiY) {
+	private boolean isRoiOutOfImage(int roiX, int roiY) {
+		double beanRadiuPixel = MMT.VariablesNUPD.beanRadiuPixel.value();
 		if(roiX<0)
 			return true;
 		if(roiY<0)
 			return true;
-		if(roiX+2*preferences_.beanRadiuPixel_ >imageWidth)
+		if(roiX+2*beanRadiuPixel >imageWidth)
 			return true;
-		if(roiY+2*preferences_.beanRadiuPixel_ >imageHeight)
+		if(roiY+2*beanRadiuPixel >imageHeight)
 			return true;
 		return false;
 	}
-	void start(){
-		timeStart = System.nanoTime();
-	}
-	void end(){
-		System.out.print(String.format("\r\ntimeConsume:%f",(System.nanoTime() - timeStart)/10e6));
-	}
+
 	private double getCurveCenter(double[] curve) {
 		double[] signal = zeroPadding(curve);
 		Complex[] fRespns = FFT_.transform(signal, TransformType.FORWARD);
@@ -568,7 +571,7 @@ public class Kernel {
 		if(end>=xArray.length)
 			end = xArray.length-1;
 
-		for (double i = xArray[start]; i < xArray[end]; i+= preferences_.precision_) {
+		for (double i = xArray[start]; i < xArray[end]; i+= MMT.VariablesNUPD.precision.value()) {
 			double value  = function.value(i);
 			if(value >max){
 				max = value;
@@ -578,9 +581,10 @@ public class Kernel {
 
 		return (pos+1)/2;
 	}
+
 	private double[][] getXYSum(Object image,int roiX,int roiY){
 
-		int roiBorder = 2*preferences_.beanRadiuPixel_;
+		int roiBorder = (int) (2*MMT.VariablesNUPD.beanRadiuPixel.value());
 		int sRoi = roiBorder*roiBorder;
 		double[][] sumXY = new double[3][roiBorder];
 		sumX_.clear();
@@ -630,24 +634,25 @@ public class Kernel {
 				sumX_.addValue(sumXY[0][x]);
 			}
 			break;
-		default:
-			return null;
 		}
 		for (int i = 0; i < sumXY[0].length; i++) {
 			sumY_.addValue(sumXY[1][i]);
 		}
-		double meanx = sumX_.getMean();
-		double meany = sumY_.getMean();
-		double stdx = sumX_.getStandardDeviation();
-		double stdx2 = stdx*stdx;
-		double stdy = sumY_.getStandardDeviation();
-		double stdy2 = stdy*stdy;
-		for (int i = 0; i < sumXY[0].length; i++) {
-			sumXY[0][i] = (sumXY[0][i] - meanx)/stdx2;
-			sumXY[1][i] = (sumXY[1][i] - meany)/stdy2;
-		}
+
+		normalization(sumXY[0],sumX_);
+		normalization(sumXY[1],sumY_);
 		return sumXY;
 	}
+
+	private void normalization(double[] data,DescriptiveStatistics statis){
+		double mean = statis.getMean();
+		double std = statis.getStandardDeviation();
+		std = std*std;
+		for (int i = 0; i < data.length; i++) {
+			data[i] = (data[i] - mean)/std;
+		}
+	} 
+
 	private static Object getImg(Object nameext,int bitDepth)  {
 		String[] img_ = getimgString(nameext);
 		switch(bitDepth){
@@ -681,7 +686,7 @@ public class Kernel {
 	}
 
 	private static String[] getimgString(Object nameext)  {
-		File imgFile = new File("F:/Developement/CalImages/img"+nameext+".txt");
+		File imgFile = new File("F:/Development/CalImages/img"+nameext+".txt");
 		if(!imgFile.exists())
 			return null;		
 		try {
@@ -707,8 +712,5 @@ public class Kernel {
 		} 
 
 	}
-
-
-
 
 }

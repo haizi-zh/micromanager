@@ -29,19 +29,16 @@ public class OverlayRender {
 	private Color labelColor_;
 	private Font labelFont_;
 	private int sizeCrossHair_;
-	private Preferences preferences_;
 	private static OverlayRender instance_;
 
-	private OverlayRender(MMStudioMainFrame gui, Preferences preferences) {
+	private OverlayRender(MMStudioMainFrame gui) {
 		gui_ = gui;
-		preferences_ = preferences;
 		labelColor_ = Color.GREEN;
 		labelFont_ = new Font("SansSerif", Font.PLAIN, 14);
 		sizeCrossHair_ = 8;
 		overlayMap_ = new HashMap<ImagePlus, HashMap<Long, Overlay>>();
 		instance_ = this;
 
-		// 閺囧瓨鏌妎verlay閻ㄥ嫬娲栫拫鍐ㄥ毐閺�
 		ImagePlus.addImageListener(new ImageListener() {
 			@Override
 			public void imageClosed(ImagePlus arg0) {
@@ -54,7 +51,6 @@ public class OverlayRender {
 
 			@Override
 			public void imageUpdated(ImagePlus arg0) {
-				// 婵″倹鐏夊锝呮躬闁插洭娉﹂敍灞藉繁鐞涘瘈pdate娴兼碍澧︽稊杈ㄦ▔缁�亽?
 				if (gui_.isAcquisitionRunning())
 					return;
 
@@ -62,7 +58,6 @@ public class OverlayRender {
 				if (map == null)
 					return;
 				int slice = arg0.getCurrentSlice();
-				// zero-based
 				Overlay overlay = map.get(Long.valueOf(slice - 1));
 				arg0.setOverlay(overlay);
 			}
@@ -72,9 +67,9 @@ public class OverlayRender {
 	public static OverlayRender getInstance() {
 		return instance_;
 	}
-	public static OverlayRender getInstance(MMStudioMainFrame gui, Preferences preferences) {
+	public static OverlayRender getInstance(MMStudioMainFrame gui) {
 		if (instance_ == null)
-			instance_ = new OverlayRender(gui,preferences);
+			instance_ = new OverlayRender(gui);
 		return instance_;
 	}
 
@@ -91,32 +86,28 @@ public class OverlayRender {
 		render(gui_.getAcquisition(acqName).getAcquisitionWindow()
 				.getHyperImage(), itemList, frameNumber, update);
 	}
- 
+
 	public void render(final ImagePlus image, Collection<RoiItem> itemList,
 			long frameNumber, boolean update) {
 		if (image == null || itemList == null)
 			return;
-		// 閺傛澘缂揙verlay
+		if (itemList.size() == 0){
+			Overlay overlay = new Overlay();
+			overlay.drawNames(true);
+			image.setOverlay(overlay);
+			image.updateAndDraw();
+			return;
+		}
 		Overlay overlay = new Overlay();
-
-		// 濞撳懐鈹栭崢鐔告箒閻ㄥ嚧OI閿涘本鏌婂鎭�
 		Iterator<RoiItem> it = itemList.iterator();
-		int beanRadius = preferences_.beanRadiuPixel_;
+		int beanRadius = (int) MMT.VariablesNUPD.beanRadiuPixel.value();
 		while (it.hasNext()) {
 			RoiItem item = it.next();
-			int x = (int)item.x_;
-			int y = (int)item.y_;
-			ShapeRoi sr = new ShapeRoi(new float[] { PathIterator.SEG_MOVETO,
-					x - sizeCrossHair_, y, PathIterator.SEG_LINETO,
-					x + sizeCrossHair_, y, PathIterator.SEG_MOVETO, x,
-					y - sizeCrossHair_, PathIterator.SEG_LINETO, x,
-					y + sizeCrossHair_, PathIterator.SEG_CLOSE });
+			double[] xy = item.getXY();
+			int x = (int)xy[0];
+			int y = (int)xy[1];
 
-			sr.setStrokeColor(item.getItemColor());
-			sr.setName("");
-			overlay.add(sr);
-			Roi dummyRoi = new Roi(x + 2 * sizeCrossHair_, y - 2
-					* sizeCrossHair_, 0, 0);
+			Roi dummyRoi = new Roi(x- 5, y - beanRadius - sizeCrossHair_, 0, 0);
 			dummyRoi.setStrokeColor(new Color(0,0,0,0));
 			dummyRoi.setName(item.getMsg());
 			overlay.add(dummyRoi);
@@ -127,14 +118,21 @@ public class OverlayRender {
 			roi.setName("");
 			roi.setStrokeColor(item.getItemColor());
 			overlay.add(roi);
+			ShapeRoi sr = new ShapeRoi(new float[] { PathIterator.SEG_MOVETO,
+					x - sizeCrossHair_, y, PathIterator.SEG_LINETO,
+					x + sizeCrossHair_, y, PathIterator.SEG_MOVETO, x,
+					y - sizeCrossHair_, PathIterator.SEG_LINETO, x,
+					y + sizeCrossHair_, PathIterator.SEG_CLOSE });
+
+			sr.setStrokeColor(item.getItemColor());
+			sr.setName(item.getName());
+			overlay.add(sr);
 
 		}
 		overlay.setLabelColor(labelColor_);
 		overlay.setLabelFont(labelFont_);
 		overlay.drawNames(true);
 		image.setOverlay(overlay);
-
-		// }
 		if (update)
 			image.updateAndDraw();
 		else{
@@ -148,8 +146,6 @@ public class OverlayRender {
 	}
 
 	private HashMap<ImagePlus, HashMap<Long, Overlay>> overlayMap_;
-
-
 
 	public Color getLabelColor() {
 		return labelColor_;

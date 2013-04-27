@@ -176,9 +176,6 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		case "Preferences":
 			showPreferencesDialog();
 			break;
-		case "Install callback":
-			installCallback();
-			break;
 		case "Auto Contrast":
 			setAutoContrast();
 			break;
@@ -195,6 +192,10 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 			if (Toolbar.getInstance() == null)
 				return;
 			Toolbar.getInstance().setTool(Toolbar.HAND);
+			break;
+
+		case "lock":
+			lockEveryThingButThis();
 			break;
 
 		}
@@ -223,7 +224,7 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 
 	private void liveView() {
 		(new Thread(new Runnable() { @Override public void run() {
-			Function.getInstance().liveView();
+			Function.getInstance().liveCapture();
 		}
 		})).start();
 	}
@@ -241,15 +242,6 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		}
 		})).start();
 	}
-
-	private void installCallback() {
-		(new Thread(new Runnable() { @Override public void run() {
-			Function.getInstance().installAcqAnalyzer(true);
-		}
-		})).start();
-	}
-
-
 
 	private void showPreferencesDialog() {
 		(new Thread(new Runnable() { @Override public void run() {
@@ -292,6 +284,9 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 			Function.getInstance().showGui();
 		}
 		})).start();			
+	}
+	private void  lockEveryThingButThis(){
+		Function.getInstance().lockEveryThingButThis();
 	}
 
 }
