@@ -45,7 +45,7 @@ public class MMT {
 	
 	public static void logMessage(String string) 
 	{
-		MMTFrame.getInstance().infomation_.setForeground(new Color(0,255,0));
+		MMTFrame.getInstance().infomation_.setForeground(new Color(0,0,0));
 		MMTFrame.getInstance().infomation_.setText("Msg:\t"+string);
 		System.out.print(String.format("Msg>>\t%s\r\n",string));
 	}

@@ -39,7 +39,7 @@ public class Function {
 	private long sleeptime_ = 30;
 	private List<RoiItem> roiList_;
 	private Kernel kernel_;
-	private boolean buttonIsLocked_ = false;
+	private boolean buttonIsLocked_ = true;
 
 	public void clearROI(){
 		Kernel.getInstance().roiList_.clear();

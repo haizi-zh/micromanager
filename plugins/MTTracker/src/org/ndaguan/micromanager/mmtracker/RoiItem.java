@@ -191,13 +191,13 @@ public  class RoiItem {
 		return new double[]{((int)(miniXYZStatis_[0].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[1].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[2].getMean()/pointNum))*pointNum};
 	}
 	private double[] getStandardDeviation() {
-		return new double[]{miniXYZStatis_[0].getStandardDeviation()/10e3,miniXYZStatis_[1].getStandardDeviation()/10e3,miniXYZStatis_[2].getStandardDeviation()};
+		return new double[]{miniXYZStatis_[0].getStandardDeviation(),miniXYZStatis_[1].getStandardDeviation(),miniXYZStatis_[2].getStandardDeviation()};
 	}
 	public double[] getDrawScale() {
 		double min = 0.05;
 		double[] std = getStandardDeviation();
 		for(int i = 0;i<std.length;i++)
-			std[i] = std[i]*4;
+			std[i] = std[i]*6;
 		return new double[]{std[0]<min?min:std[0],std[1]<min?min:std[1],std[2]<min?min:std[2]};
 	}
 
