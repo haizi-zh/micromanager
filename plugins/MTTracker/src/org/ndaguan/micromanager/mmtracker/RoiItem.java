@@ -14,7 +14,6 @@ import java.util.GregorianCalendar;
 import javax.swing.SwingUtilities;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.jfree.data.xy.XYDataItem;
 import org.jfree.data.xy.XYSeries;
 
 /**
@@ -46,7 +45,10 @@ public  class RoiItem {
 
 	private DescriptiveStatistics[] XYZStatis_;
 	private DescriptiveStatistics[] miniXYZStatis_;
-	private int chartWindowLen;
+	private double y0_;
+	private double x0_;
+	private double z0_;
+	private double l_;
 
 	public static RoiItem createInstance(double[] itemData,String titleName) {
 		return new RoiItem(itemData,titleName);
@@ -71,7 +73,7 @@ public  class RoiItem {
 		int miniWindowSize_ = (int) MMT.VariablesNUPD.chartStatisWindow.value();
 
 		XYZStatis_ = new DescriptiveStatistics[2];
-		miniXYZStatis_ = new DescriptiveStatistics[3];
+		miniXYZStatis_ = new DescriptiveStatistics[4];
 		for (int i = 0; i < XYZStatis_.length; i++) {
 			XYZStatis_[i] = new DescriptiveStatistics(windowSize_);
 		}
@@ -174,12 +176,12 @@ public  class RoiItem {
 			dataFileWriter_ = new BufferedWriter(new FileWriter(file));
 
 			dataFileWriter_
-			.write("Frame, Timestamp, XPos/pixel,XPos/um, YPos/pixel, YPos/um, ZPos/um,ForceX/pN,ForceY/pN,Std(x/y),skrewnessy\r\n");
+			.write("Frame, Timestamp, XPos/pixel,XPos/um, YPos/pixel, YPos/um, ZPos/um,L/um,ForceX/pN,ForceY/pN,Std(x/y),skrewnessy\r\n");
 			dataFileWriter_.flush();
 		}
 		else{
 			dataFileWriter_
-			.write(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n",frameNum_,elapsed,x_,xPhy_,y_,yPhy_,zPhy_,fx_,fy_,stdXdY_,skrewness_));
+			.write(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n",frameNum_,elapsed,x_,xPhy_,y_,yPhy_,zPhy_,l_,fx_,fy_,stdXdY_,skrewness_));
 		}
 		return true;
 
@@ -188,17 +190,20 @@ public  class RoiItem {
 
 	public double[] getMean() {
 		double pointNum = 0.01;
-		return new double[]{((int)(miniXYZStatis_[0].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[1].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[2].getMean()/pointNum))*pointNum};
+		return new double[]{((int)(miniXYZStatis_[0].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[1].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[2].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[3].getMean()/pointNum))*pointNum};
+	}
+	public double[] getXYMean() {
+		return new double[]{miniXYZStatis_[0].getMean(),miniXYZStatis_[1].getMean()};
 	}
 	private double[] getStandardDeviation() {
-		return new double[]{miniXYZStatis_[0].getStandardDeviation(),miniXYZStatis_[1].getStandardDeviation(),miniXYZStatis_[2].getStandardDeviation()};
+		return new double[]{miniXYZStatis_[0].getStandardDeviation(),miniXYZStatis_[1].getStandardDeviation(),miniXYZStatis_[2].getStandardDeviation(),miniXYZStatis_[3].getStandardDeviation()};
 	}
 	public double[] getDrawScale() {
 		double min = 0.05;
 		double[] std = getStandardDeviation();
 		for(int i = 0;i<std.length;i++)
 			std[i] = std[i]*6;
-		return new double[]{std[0]<min?min:std[0],std[1]<min?min:std[1],std[2]<min?min:std[2]};
+		return new double[]{std[0]<min?min:std[0],std[1]<min?min:std[1],std[2]<min?min:std[2],std[3]<min?min:std[3]};
 	}
 
 	public void updateDataSeries(final long frameNum) {
@@ -222,9 +227,9 @@ public  class RoiItem {
 				if(update){
 					double[] mean = getMean();
 					double[] drawScale = getDrawScale();
-					chart_.getChartSeries().get("Chart-X").getXYPlot().getRangeAxis().setRange(mean[0] - drawScale[0],mean[0] + drawScale[0]);
-					chart_.getChartSeries().get("Chart-Y").getXYPlot().getRangeAxis().setRange(mean[1] - drawScale[1],mean[1] + drawScale[1]);
-					chart_.getChartSeries().get("Chart-Z").getXYPlot().getRangeAxis().setRange(mean[2] - drawScale[2],mean[2] + drawScale[2]);
+					for(int i=0;i<4;i++){
+						chart_.getChartSeries().get(MMT.CHARTLIST[i]).getXYPlot().getRangeAxis().setRange(mean[i] - drawScale[i],mean[i] + drawScale[i]);
+					}
 				}
 			}
 
@@ -232,7 +237,7 @@ public  class RoiItem {
 
 	}
 	private double[] getItemData(){
-		return new double[]{zPhy_,xPhy_,yPhy_,fx_,fy_,stdXdY_,skrewness_};
+		return new double[]{zPhy_,xPhy_,yPhy_,l_,fx_,fy_,stdXdY_,skrewness_};
 	}
 	public double[] getXY() {
 		return new double[]{x_,y_};
@@ -263,6 +268,13 @@ public  class RoiItem {
 	public void setZ(double zpos) {
 		zPhy_ = zpos;
 		miniXYZStatis_[2].addValue(zPhy_);
+	}
+	public void setL() {
+		double deltax = ( x_ -x0_) * MMT.VariablesNUPD.pixelToPhysX.value() ;
+		double deltay = ( y_ -y0_) * MMT.VariablesNUPD.pixelToPhysY.value() ;
+		double deltaz = ( zPhy_ -z0_);
+		l_ = Math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz);
+		miniXYZStatis_[3].addValue(l_);
 	}
 	public boolean isSelected() {
 		return isSelected_;
@@ -333,6 +345,14 @@ public  class RoiItem {
 				i++;
 			}
 		}
+	}
+	public void setXYOrign() {
+		double[] xymean = getXYMean();
+		x0_ = xymean[0];
+		y0_ = xymean[0];
+	}
+	public void setZOrign(double z) {
+		z0_ = z;
 	}
 
 }

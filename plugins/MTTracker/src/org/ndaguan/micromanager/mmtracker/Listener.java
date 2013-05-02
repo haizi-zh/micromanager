@@ -170,6 +170,9 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		case "Show Detail in Chart":
 			showChartManager();
 			break;
+		case "Set XY Orign":
+			SetXYOrign();
+			break;
 		case "Capture under Multi-DACQ(full)":
 			multiAcq();
 			break;
@@ -201,9 +204,13 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		}
 
 	}
+	 
 	//action
 	private synchronized void setFocusdRoi(Point point) {
 		Function.getInstance().setFocusdRoi(point);
+	}
+	private synchronized void SetXYOrign() {
+		Function.getInstance().SetXYOrign();
 	}
 
 	private synchronized void moveFocusdRoi(int dx, int dy) {

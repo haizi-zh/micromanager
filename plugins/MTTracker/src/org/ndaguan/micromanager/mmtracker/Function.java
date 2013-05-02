@@ -5,7 +5,6 @@ import ij.WindowManager;
 
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -36,7 +35,6 @@ public class Function {
 	private boolean isCalibrateAnalyzerInstall_ = false;
 	private boolean isTestingAnalyzerInstall_ = false;
 
-	private long sleeptime_ = 30;
 	private List<RoiItem> roiList_;
 	private Kernel kernel_;
 	private boolean buttonIsLocked_ = true;
@@ -556,6 +554,9 @@ public class Function {
 			MMT.logError("Calbration error1:Set Pi Stage error!\r\n"+e.toString());
 			return;
 		}
+		
+		for(RoiItem it:roiList_)
+			it.setZOrign(currzpos_ - MMT.VariablesNUPD.beanRadius.value());
 		//calibration start
 		for (int i = 0; i < kernel_.zPosProfiles.length; i++) {
 			if(MMT.isCalibrationRunning_){
@@ -681,7 +682,7 @@ public class Function {
 	public void setStageXPosition(double xpos) throws Exception {
 		if(MMT.xyStage_ != null){
 			core_.setXYPosition(MMT.xyStage_, xpos, core_.getYPosition(MMT.xyStage_));
-			TimeUnit.MILLISECONDS.sleep(sleeptime_);
+			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
 		}
 	}
 	public double getStageXPosition() throws Exception{
@@ -693,7 +694,7 @@ public class Function {
 	public void setStageYPosition(double ypos) throws Exception {
 		if(MMT.xyStage_ != null){
 			core_.setXYPosition(MMT.xyStage_, core_.getXPosition(MMT.xyStage_), ypos);
-			TimeUnit.MILLISECONDS.sleep(sleeptime_);
+			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
 		}
 	}
 	public double getStageYPosition() throws Exception{
@@ -705,7 +706,7 @@ public class Function {
 	public void setStageXYPosition(double xpos,double ypos) throws Exception {
 		if(MMT.xyStage_ != null){
 			core_.setXYPosition(MMT.xyStage_,xpos, ypos);
-			TimeUnit.MILLISECONDS.sleep(sleeptime_);
+			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
 		}
 	}
 	public double[] getStageXYPosition() throws Exception {
@@ -781,5 +782,10 @@ public class Function {
 				}
 			});		
 		}
+	}
+	public void SetXYOrign() {
+		for(RoiItem it:roiList_)
+			it.setXYOrign();
+		
 	}
 }

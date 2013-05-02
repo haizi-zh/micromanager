@@ -57,8 +57,6 @@ public class MMTFrame extends JFrame {
 	private Image imgL;
 	private Image imgEnableC;
 	private Image imgEnableL;
-	private Image imgDisableC;
-	private Image imgDisableL;
 
 
 	public JProgressBar bar;
@@ -131,6 +129,11 @@ public class MMTFrame extends JFrame {
 		ShowChart.setToolTipText("Show Detail in Chart");
 		ShowChart.addActionListener(listener_);
 		ROI.add(ShowChart);
+		
+		final JMenuItem XYOrignal = new JMenuItem("SetX0Y0");
+		XYOrignal.setToolTipText("Set XY Orign");
+		XYOrignal.addActionListener(listener_);
+		ROI.add(XYOrignal);
 
 		Capture = new JMenu("Capture");//Capture	
 		LiveView = new JMenuItem("Live View");	
@@ -194,8 +197,6 @@ public class MMTFrame extends JFrame {
 		imgL = kit.getImage("icons/L.gif");
 		imgEnableC = kit.getImage("icons/EC.gif");
 		imgEnableL = kit.getImage("icons/EL.gif");
-		imgDisableC = kit.getImage("icons/DC.gif");
-		imgDisableL = kit.getImage("icons/DL.gif");
 
 		final	Image imgS = kit.getImage("icons/S.gif");
 		final	Image imgH = kit.getImage("icons/H.gif");

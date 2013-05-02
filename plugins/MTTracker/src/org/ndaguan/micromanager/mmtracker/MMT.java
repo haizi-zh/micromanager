@@ -28,7 +28,7 @@ public class MMT {
 	
 	
 	public static String[] CHARTLIST = new String[]{
-		"Chart-Z","Chart-X","Chart-Y","Chart-FX","Chart-FY",
+		"Chart-Z","Chart-X","Chart-Y","Chart-L","Chart-FX","Chart-FY",
 		"Chart-STDXDY","Chart-SKREWNESS","Chart-Testing","Chart-Corr","Chart-PosProfile"
 	};
 
@@ -80,6 +80,7 @@ public class MMT {
 		frameToRefreshChart("",50,0,0),
 		frameToRefreshImage("",50,0,0),
 		responceXY("",0,0,0),
+		stageMoveSleepTime("/ms",30,0,0),
 		chartStatisWindow("",200,0,0);
 	 
 		private String unit;

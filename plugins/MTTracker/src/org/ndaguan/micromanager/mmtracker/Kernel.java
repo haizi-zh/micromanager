@@ -23,7 +23,6 @@ import org.apache.commons.math3.transform.FastFourierTransformer;
 import org.apache.commons.math3.transform.TransformType;
 
 public class Kernel {
-	private long timeStart;
 
 	private static Kernel kernel_;
 	private DescriptiveStatistics statis_;
@@ -126,6 +125,7 @@ public class Kernel {
 			currProfiles = polarIntegral(image,xy[0],xy[1]);
 			double zpos = getZLocation(k,currProfiles);
 			roiList_.get(k).setZ(zpos);
+			roiList_.get(k).setL();
 			Function.getInstance().updatePosProfileChart(k,currProfiles);
 		}
 		return true;

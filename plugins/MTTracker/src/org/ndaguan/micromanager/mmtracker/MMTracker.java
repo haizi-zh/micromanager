@@ -96,6 +96,9 @@ public class MMTracker implements MMPlugin{
 	public GetXYPositionAnalyzer getAcqAnalyzer(){
 		return xyAnalyzer_;
 	}
+	public GetXYZPositionAnalyzer getXYZAnalyzer(){
+		return xyzAnalyzer_;
+	}
 	public void configurationChanged() {}
 	public String getDescription() {return null;}
 	public String getInfo() {return null;}
