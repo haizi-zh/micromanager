@@ -45,9 +45,9 @@ public  class RoiItem {
 
 	private DescriptiveStatistics[] XYZStatis_;
 	private DescriptiveStatistics[] miniXYZStatis_;
-	private double y0_;
-	private double x0_;
-	private double z0_;
+	private double yPhy0_;
+	private double xPhy0_;
+	private double zPhy0_;
 	private double l_;
 
 	public static RoiItem createInstance(double[] itemData,String titleName) {
@@ -188,15 +188,15 @@ public  class RoiItem {
 	}
 
 
-	public double[] getMean() {
+	public double[] getMean() {//z,x,y,l 2013
 		double pointNum = 0.01;
-		return new double[]{((int)(miniXYZStatis_[0].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[1].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[2].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[3].getMean()/pointNum))*pointNum};
+		return new double[]{((int)(miniXYZStatis_[2].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[0].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[1].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[3].getMean()/pointNum))*pointNum};
 	}
 	public double[] getXYMean() {
 		return new double[]{miniXYZStatis_[0].getMean(),miniXYZStatis_[1].getMean()};
 	}
-	private double[] getStandardDeviation() {
-		return new double[]{miniXYZStatis_[0].getStandardDeviation(),miniXYZStatis_[1].getStandardDeviation(),miniXYZStatis_[2].getStandardDeviation(),miniXYZStatis_[3].getStandardDeviation()};
+	private double[] getStandardDeviation() {//z,x,y,l 2013
+		return new double[]{miniXYZStatis_[2].getStandardDeviation(),miniXYZStatis_[0].getStandardDeviation(),miniXYZStatis_[1].getStandardDeviation(),miniXYZStatis_[3].getStandardDeviation()};
 	}
 	public double[] getDrawScale() {
 		double min = 0.05;
@@ -270,9 +270,9 @@ public  class RoiItem {
 		miniXYZStatis_[2].addValue(zPhy_);
 	}
 	public void setL() {
-		double deltax = ( x_ -x0_) * MMT.VariablesNUPD.pixelToPhysX.value() ;
-		double deltay = ( y_ -y0_) * MMT.VariablesNUPD.pixelToPhysY.value() ;
-		double deltaz = ( zPhy_ -z0_);
+		double deltax = ( xPhy_ -xPhy0_);
+		double deltay = ( yPhy_ -yPhy0_);
+		double deltaz = ( zPhy_ -zPhy0_);
 		l_ = Math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz);
 		miniXYZStatis_[3].addValue(l_);
 	}
@@ -348,11 +348,11 @@ public  class RoiItem {
 	}
 	public void setXYOrign() {
 		double[] xymean = getXYMean();
-		x0_ = xymean[0];
-		y0_ = xymean[0];
+		xPhy0_ = xymean[0];
+		yPhy0_ = xymean[0];
 	}
 	public void setZOrign(double z) {
-		z0_ = z;
+		zPhy0_ = z;
 	}
 
 }
