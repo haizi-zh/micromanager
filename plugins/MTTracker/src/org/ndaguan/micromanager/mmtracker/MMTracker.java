@@ -64,8 +64,10 @@ public class MMTracker implements MMPlugin{
 			tcpServer_.start();	
 			function_ = Function.getInstance(app_,roiList_);
 			function_.installAnalyzer("XYACQ");
-			MMT.xyStage_ = core_.getXYStageDevice();
-			MMT.zStage_ = core_.getFocusDevice();
+			if(((int)MMT.VariablesNUPD.hasXYStage.value()) == 1)
+				MMT.xyStage_ = core_.getXYStageDevice();
+			if(((int)MMT.VariablesNUPD.hasZStage.value()) == 1)
+				MMT.zStage_ = core_.getFocusDevice();
 			frame_.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	
 			frame_.setVisible(true);
 		}
@@ -77,11 +79,7 @@ public class MMTracker implements MMPlugin{
 				&& (!app_.isLiveModeOn())) {
 			app_.enableLiveMode(true);
 		}
-		try {
-			function_.setInitStagePosition(50,50,5);
-		} catch (Exception e) {
-			MMT.logError("Stage init error");
-		}		
+		 	
 	}
 
 	public static MMTracker getInstance(){

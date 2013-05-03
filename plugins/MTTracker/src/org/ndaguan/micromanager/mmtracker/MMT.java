@@ -10,6 +10,7 @@ public class MMT {
 	public static  String magnetXYstage_ = "MP285 XY Stage";
 	public static  String magnetZStage_ = "MP285 Z Stage";
 	public static  boolean debug = true;
+	
 	public static  String xyStage_ = null; 
 	public static  String zStage_ = null;
 	
@@ -36,11 +37,11 @@ public class MMT {
 	{
 		MMTFrame.getInstance().infomation_.setForeground(new Color(255,0,0));
 		MMTFrame.getInstance().infomation_.setText("Error!\t"+string);
-		System.out.print(String.format("Err!!!\t%s\r\n",string));
+		System.out.print(String.format("Error!!!\t%s\r\n",string));
 	}
 	public static void debugError(String string) 
 	{
-		System.out.print(String.format("Err!!!\t%s\r\n",string));
+		System.out.print(String.format("Error!!!\t%s\r\n",string));
 	}
 	
 	public static void logMessage(String string) 
@@ -54,44 +55,53 @@ public class MMT {
 		System.out.print(String.format("Msg>>%s\t\r\n",string));
 	}
 	
-	public static int[] unEditAfterCalbration = new int[]{3,5,6,17};
+	public static int[] unEditAfterCalbration = new int[]{0,4,5,8};
 	public static enum VariablesNUPD {
 		//general
-		beanRadiuPixel("/pixel ",55,0,1),
-		frameToCalcForce("/f ",1000,0,1),
-		magnetStepSize("/uM ",100,0,1),
-		beanRadius("/uM ",1.4,0.001,1),
-		contourLen("/uM ",1,0.001,1),
-		calRange("/uM ",3,0.01,1),
-		calStepSize("/uM ",0.1,0.01,1),
-		chartWindowSize("",1000,0,1),
+		beanRadiuPixel("/pixel ",55,0,1,"选中的框大小，此范围外的图像数据无效，太小则精度不好，太大了可能会导致定位不准和计算耗时"),
+		frameToCalcForce("/f ",1000,0,1,"多少帧移动一次磁铁，快速拉伸时推荐使用100+，要计算相对准确的力，推荐使用1000+"),
+		magnetStepSize("/uM ",100,0,1,"移动一次磁铁走过的距离，太大时会导致MP285相应太慢"),
+		chartWindowSize("",2000,0,1,"数据图的长度，推荐2000+"),
+		
+		calRange("/uM ",3,0.01,1,"标定的范围，太大会增加标定耗时，至少选择2倍DNA长度以上"),
+		calStepSize("/uM ",0.1,0.01,1,"标定的精度，每隔多少uM记录一个标定值，太大精度不好，太小耗时增加，推荐0.01~0.1"),
+		beanRadius("/uM ",1.4,0.001,1,"磁球的物理半径，用来计算磁力"),
+		contourLen("/uM ",1,0.001,1,"DNA长度，用来计算磁力"),
 		//advance
-		persistance("/uM ",0.05,0.001,0),
-		kT("pN/nM ",4.2,0.001,0),
-		pixelToPhysX("(Um/pixel) ",0.075,0.0001,0),
-		pixelToPhysY("(Um/pixel) ",0.075,0.0001,0),
-		precision("/uM",0.0001,0.0001,0),
-		showDebugTime("",10000,0,0),
-		testingPrecision("",0.05,0.01,0),
-		xFactor(" ",1,0.0001,0),
-		yFactor(" ",1,0.0001,0),
-		rInterStep("/pixel ",0.2,0.1,0),
-		saveFile(" ",1,0,0),
-		frameToRefreshChart("",50,0,0),
-		frameToRefreshImage("",50,0,0),
-		responceXY("",0,0,0),
-		stageMoveSleepTime("/ms",30,0,0),
-		chartStatisWindow("",200,0,0);
+		rInterStep("/pixel ",0.2,0.1,0,"极坐标积分时的内插值大小，用来记录衍射环形状，太大时精度不好，太小时计算耗时，使用0.1时会有已知Bug，推荐使用默认值"),
+		persistance("/uM ",0.05,0.001,0,"DNA刚度，用来计算磁力，推荐使用默认值"),
+		kT("pN*nM ",4.2,0.001,0,"Kb*T,用来计算磁力，推荐使用默认值"),
+		precision("/uM",0.0001,0.0001,0,"插值算法中的精度，即整个测量系统最终需要的最小精度，太大时精度不好，太小时计算耗时，推荐使用默认值"),
+		
+		pixelToPhysX("(Um/pixel) ",0.075,0.0001,0,"一个像素对应的物理大小，位移太可控制XY方向移动时无需设置，否则需要根据放大倍数和CCD参数确定"),
+		pixelToPhysY("(Um/pixel) ",0.075,0.0001,0,"一个像素对应的物理大小，位移太可控制XY方向移动时无需设置，否则需要根据放大倍数和CCD参数确定"),
+		xFactor(" ",1,0.0001,0,"衍射环在X方向的修正系数，在CCD像素点非正方形时使用，需要参考CCD型号，推荐使用默认值"),
+		yFactor(" ",1,0.0001,0,"衍射环在Y方向的修正系数，在CCD像素点非正方形时使用，需要参考CCD型号，推荐使用默认值"),
+		
+		testingPrecision("",0.05,0.01,0,"计算标定误差时的精度，每隔多少uM做一个检验，太小计算耗时，太大了精度不够，推荐使用默认值"),
+		responceXY("",0,0,0,"测试专用：是否在标定之前记录，显示更新磁球数据，1：是，0：否"),
+		saveFile(" ",1,0,0,"测试专用：是否保存数据,1：是，0：否"),
+		showDebugTime("",10000,0,0,"测试专用：更新correlation 及 posProfile 图像的帧距"),
+		
+		chartStatisWindow("",500,0,0,"数据图像显示：响应变化的帧数，太小时图像容易抖动，太大时图像不容易自动缩放，推荐使用200~1000"),
+		frameToRefreshChart("",50,0,0,"数据图像显示：更新图像的帧数，太小了计算耗时，太大了更新慢,推荐使用20~100"),
+		frameToRefreshImage("",50,0,0,"图像显示即响应鼠标操作时间，太小了计算耗时，太大了响应慢，容易出现选框跟不上球的移动，推荐使用50~100"),
+		stageMoveSleepTime("/ms",30,0,0,"位移台移动等待时间，太小了会导致位移台移动不到需要位置，太大了耗时，推荐参考位移台信息，或使用默认值"),
+		
+		hasZStage("",0,0,0,"位移台是否可以控制样品在Z方向移动，1：是，0：否"),
+		hasXYStage("",0,0,0,"位移台是否可以控制样品在XY方向移动，1：是，0：否");
 	 
 		private String unit;
 		private double value;
 		private double presicion;
 		private  int important;
-		VariablesNUPD(String u,double v,double p,int i) {
+		private String toolTip;
+		VariablesNUPD(String u,double v,double p,int i,String t) {
 			unit = u;
 			value = v;
 			presicion = p;
 			important = i;
+			toolTip = t;
 			
 		}
 	 
@@ -106,6 +116,9 @@ public class MMT {
 		}
 		public double getPresicion() {
 			return presicion;
+		}
+		public String getToolTip(){
+			return toolTip;
 		}
 		public int getImp() {
 			return important;

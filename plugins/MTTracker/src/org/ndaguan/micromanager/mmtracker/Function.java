@@ -85,7 +85,7 @@ public class Function {
 						MMTFrame.getInstance().MagnetManual.setSelected(true);
 					}
 					core_.setPosition(MMT.magnetZStage_,target);
-					MMT.logMessage(String.format("Set MP285 ZStage\t%f\t->\t%f",
+					MMT.logMessage(String.format("\tSet MP285 ZStage\t\t%f\t->\t%f",
 							currMP285zpos , core_.getPosition(MMT.magnetZStage_)));
 				} catch (Exception e) {
 					MMT.logError("Set MP285 ZStage ERR" + e.toString());
@@ -315,8 +315,7 @@ public class Function {
 	public void setXYZCalPosition(int z) throws Exception 
 	{
 		setStageZPosition(kernel_.zPosProfiles[z]);
-		if(MMT.xyStage_ != null)
-			setStageXYPosition(kernel_.xPosProfiles[z],kernel_.yPosProfiles[z]);
+		setStageXYPosition(kernel_.xPosProfiles[z],kernel_.yPosProfiles[z]);
 
 	}
 	public void setZCalPosition(int z) throws Exception {
@@ -353,18 +352,16 @@ public class Function {
 			kernel_.zTestingPosProfiles[i] = kernel_.zPosProfiles[0] +  (i+ Math.floor(Math.random()*100)/100) * testingPrecision;
 		}
 		midPoint = (int) (calSize / 2);
-		if(MMT.xyStage_ != null){
-			kernel_.xPosProfiles = new double[ (int) (calRange/calStepSize)];
-			kernel_.yPosProfiles = new double[ (int) (calRange/calStepSize)];
+		kernel_.xPosProfiles = new double[ (int) (calRange/calStepSize)];
+		kernel_.yPosProfiles = new double[ (int) (calRange/calStepSize)];
 
-			for (int j = 0; j < midPoint; j++){
-				kernel_.xPosProfiles[j] =  currxpos_ + calStepSize * j;
-				kernel_.yPosProfiles[j] =  currypos_ + calStepSize * j;
-			}
-			for (int j = midPoint; j < calSize; j++){
-				kernel_.xPosProfiles[j] = kernel_.xPosProfiles[midPoint - 1] - calStepSize * (j - midPoint);
-				kernel_.yPosProfiles[j] = kernel_.yPosProfiles[midPoint - 1] - calStepSize * (j - midPoint);
-			}
+		for (int j = 0; j < midPoint; j++){
+			kernel_.xPosProfiles[j] =  currxpos_ + calStepSize * j;
+			kernel_.yPosProfiles[j] =  currypos_ + calStepSize * j;
+		}
+		for (int j = midPoint; j < calSize; j++){
+			kernel_.xPosProfiles[j] = kernel_.xPosProfiles[midPoint - 1] - calStepSize * (j - midPoint);
+			kernel_.yPosProfiles[j] = kernel_.yPosProfiles[midPoint - 1] - calStepSize * (j - midPoint);
 		}
 	}
 	public void CalProfileDataCleanup(){
@@ -554,7 +551,7 @@ public class Function {
 			MMT.logError("Calbration error1:Set Pi Stage error!\r\n"+e.toString());
 			return;
 		}
-		
+
 		for(RoiItem it:roiList_)
 			it.setZOrign(currzpos_ - MMT.VariablesNUPD.beanRadius.value());
 		//calibration start
@@ -674,11 +671,6 @@ public class Function {
 		setStageZPosition(currzpos_);
 	}
 
-	public void setInitStagePosition(int i, int j, int k) throws Exception {
-		setStageXYPosition(i, j);
-		setStageZPosition(k);
-	}
-
 	public void setStageXPosition(double xpos) throws Exception {
 		if(MMT.xyStage_ != null){
 			core_.setXYPosition(MMT.xyStage_, xpos, core_.getYPosition(MMT.xyStage_));
@@ -717,15 +709,20 @@ public class Function {
 			return new double[]{xpos[0],ypos[0]};
 		}
 		else
-			return null;
+			return new double[]{0,0};
 	}
 
 	public double getStageZPosition() throws  Exception {
-		return  core_.getPosition(MMT.zStage_);
+		if(MMT.zStage_ != null)
+			return  core_.getPosition(MMT.zStage_);
+		else 
+			return 0;
 	}
 	public void setStageZPosition(double zPos) throws Exception {
-		core_.setPosition(MMT.zStage_, zPos);
-		TimeUnit.MICROSECONDS.sleep(2000);
+		if(MMT.zStage_ != null){
+			core_.setPosition(MMT.zStage_, zPos);
+			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+		}
 	}
 	public void liveCapture() {
 		if(isXYAcqAnalyzerInstall_ && kernel_.isCalibrated_){
@@ -786,6 +783,6 @@ public class Function {
 	public void SetXYOrign() {
 		for(RoiItem it:roiList_)
 			it.setXYOrign();
-		
+
 	}
 }

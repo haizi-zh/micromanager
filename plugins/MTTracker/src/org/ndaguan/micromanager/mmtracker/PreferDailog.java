@@ -191,6 +191,7 @@ public class PreferDailog extends JFrame {
 				y += ITEMHEIGHT;
 				jTextField[i] = new JTextField();
 				jTextField[i].setBounds(x, y, ITEMWIDTH,ITEMHEIGHT);
+				jTextField[i].setToolTipText(MMT.VariablesNUPD.values()[i].getToolTip());
 				if(MMT.VariablesNUPD.values()[i].getImp()==1)
 				jTextField[i].setForeground(new Color(255,0,0));
 				panel.add(jTextField[i]);
