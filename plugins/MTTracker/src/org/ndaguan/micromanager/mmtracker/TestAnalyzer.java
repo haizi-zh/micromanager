@@ -31,16 +31,19 @@ public class TestAnalyzer extends TaggedImageAnalyzer {
 		try {
 			double[] pos = Function.getInstance().getStagePosition();
 			boolean ret = kernel_.getXYZPosition(taggedImage.pix);
+			Function.getInstance().reDraw(MMStudioMainFrame.SIMPLE_ACQ,MMT.testingIndex_, true);
 			if(!ret){
 				MMT.logError("Testting Error");
+				MMT.isTestingRunning_ = false;
+				MMT.isAnalyzerBusy_ = false;
 				return;
 			}
-			Function.getInstance().reDraw(MMStudioMainFrame.SIMPLE_ACQ,MMT.testingIndex_, true);
 			Function.getInstance().updateTestingChart(pos[2]);
 			MMT.logMessage(String.format("Testing:\t\t%d/%d",MMT.testingIndex_,kernel_.zTestingPosProfiles.length));
 			MMT.debugMessage((String.format("Testing:\tZ\t%d/%d\tXP\t%f\tYP\t%f\tZP\t%f\n",MMT.testingIndex_,kernel_.zTestingPosProfiles.length,pos[0],pos[1],pos[2])));
 		} catch (Exception e) {
 			MMT.isTestingRunning_  = false;
+			MMT.lastError_ = e.toString();
 		}
 		MMT.isAnalyzerBusy_ = false;
 		//Testing end

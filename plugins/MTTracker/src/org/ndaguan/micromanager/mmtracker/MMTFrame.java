@@ -245,6 +245,7 @@ public class MMTFrame extends JFrame {
 		separator2.setBounds(offsetx+10,0,1, 10);
 
 
+		butLiveView.setEnabled(false);
 		butLiveView.addActionListener(listener_); 		 
 		butCalibration.addActionListener(listener_); 
 		butSelectROI.addActionListener(listener_); 			 
@@ -287,10 +288,15 @@ public class MMTFrame extends JFrame {
 
 		butCalibration.setEnabled(flag);
 	}
+	public void setEnableLiveIcon(boolean flag)
+	{
+		
+		butLiveView.setEnabled(flag);
+	}
 
 	public void setLiveViewIcon(boolean flag)
 	{
-		if(flag){
+		if(!flag){
 			butLiveView.setIcon(new javax.swing.ImageIcon(imgL)); // NOI18N
 		}
 		else{

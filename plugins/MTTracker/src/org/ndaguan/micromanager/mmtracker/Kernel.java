@@ -116,8 +116,7 @@ public class Kernel {
 				roiList_.remove(k);
 				if(isCalibrated_){
 					if(roiList_.size() == 0){
-						isCalibrated_ = false;
-						MMTFrame.getInstance().setCalibrateIcon(false);
+						setIsCalibrated(false);
 					}
 				}
 				return false;
@@ -439,7 +438,15 @@ public class Kernel {
 		regrX.addData(xy[0],currXPos);
 		regrY.addData(xy[1],currYPos);
 		zPosProfiles [index] = currZPos;
+		double beanRadiuPixel = MMT.VariablesNUPD.beanRadiuPixel.value();
 		for (int k = 0; k < roiList_.size(); k++) {
+			 xy = roiList_.get(k).getXY();
+			int roiX = (int) (xy[0] - beanRadiuPixel);
+			int roiY = (int) (xy[1] - beanRadiuPixel);
+			if(isRoiOutOfImage(roiX,roiY)){
+				roiList_.remove(k);
+				return false;
+			}
 			roiList_.get(k).setXY(ret[k][0],ret[k][1]);
 			roiList_.get(k).updateCalProfile(index,polarIntegral(image,xy[0],xy[1]));
 		}
@@ -503,8 +510,7 @@ public class Kernel {
 				if(MMT.isCalibrationRunning_ || MMT.isTestingRunning_)return null;
 				if(isCalibrated_ && (roiList_.size() == 0))
 				{
-					isCalibrated_ = false;
-					MMTFrame.getInstance().setCalibrateIcon(false);
+					setIsCalibrated(false);
 					MMT.lastError_ = "Roi out of image,removed,there is no roi in the image,new calibrateion is needed!";
 					return null;
 				}
@@ -523,15 +529,23 @@ public class Kernel {
 		return position;
 	}
 
+	public void setIsCalibrated(boolean flag) {
+		if(!flag){
+			isCalibrated_ = false;
+			Function.getInstance().installAnalyzer("XYACQ");
+			MMTFrame.getInstance().setCalibrateIcon(false);
+		}
+	}
 	private boolean isRoiOutOfImage(int roiX, int roiY) {
+		int boder = 5;
 		double beanRadiuPixel = MMT.VariablesNUPD.beanRadiuPixel.value();
-		if(roiX<0)
+		if(roiX< boder)
 			return true;
-		if(roiY<0)
+		if(roiY< boder)
 			return true;
-		if(roiX+2*beanRadiuPixel >imageWidth)
+		if(roiX+2*beanRadiuPixel >imageWidth - boder)
 			return true;
-		if(roiY+2*beanRadiuPixel >imageHeight)
+		if(roiY+2*beanRadiuPixel >imageHeight - boder)
 			return true;
 		return false;
 	}

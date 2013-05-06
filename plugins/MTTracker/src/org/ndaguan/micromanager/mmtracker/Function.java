@@ -201,8 +201,7 @@ public class Function {
 				roiList_.remove(index);
 			}
 			if(kernel_.isCalibrated_ && roiList_.size() == 0){
-				kernel_.isCalibrated_ = false;
-				MMTFrame.getInstance().setCalibrateIcon(false);
+				kernel_.setIsCalibrated(false);
 			}
 		}	
 	}
@@ -385,12 +384,12 @@ public class Function {
 			MMT.isTestingRunning_ = false;
 			MMT.isGetXYPositionRunning_ = false;
 			MMT.isGetXYZPositionRunning_ = false;
-			MMT.currentframeToRefreshImage_ = MMT.VariablesNUPD.frameToRefreshImage.value();
-			MMT.VariablesNUPD.frameToRefreshImage.value(1);
 			setProgressBarMaxValue(kernel_.zPosProfiles.length);
 			MMTFrame.getInstance().preferDailog.enableEdit(false);
 			MMTFrame.getInstance().setCalibrateIcon(false);
 			MMTFrame.getInstance().setEnableCalibrateIcon(false);
+			MMTFrame.getInstance().setEnableLiveIcon(false);
+			MMTFrame.getInstance().setLiveViewIcon(false);
 			setProgressBarVisible(true);
 			MMT.logMessage("Calibration Start......");
 			break;
@@ -412,14 +411,13 @@ public class Function {
 			break;
 		case "CalibrateFalse":
 			kernel_.isCalibrated_ = false;
-
+			installAnalyzer("XYACQ");
 			MMT.isCalibrationRunning_ = false;
 			MMT.isTestingRunning_ = false;
 			MMT.isGetXYPositionRunning_ = false;
 			MMT.isGetXYZPositionRunning_ = false;
-			MMT.VariablesNUPD.frameToRefreshImage.value(MMT.currentframeToRefreshImage_);
 			MMTFrame.getInstance().preferDailog.enableEdit(true);
-			MMTFrame.getInstance().setCalibrateIcon(true);
+			MMTFrame.getInstance().setCalibrateIcon(false);
 			MMTFrame.getInstance().setEnableCalibrateIcon(true);
 			setProgressBarVisible(false);
 			CalProfileDataCleanup();
@@ -429,6 +427,7 @@ public class Function {
 				MMT.logError("Stage cannot go back home");
 			}
 			MMT.logMessage("Calibration False......");
+			liveView();
 			break;
 		case "TestingStart":
 			kernel_.isCalibrated_ = true;
@@ -456,6 +455,7 @@ public class Function {
 			MMT.isGetXYPositionRunning_ = false;
 			MMT.isGetXYZPositionRunning_ = false;
 			MMT.VariablesNUPD.frameToRefreshImage.value(MMT.currentframeToRefreshImage_);
+			MMTFrame.getInstance().preferDailog.UpdateData(false);
 			MMTFrame.getInstance().preferDailog.enableEdit(true);
 			MMTFrame.getInstance().setCalibrateIcon(true);
 			MMTFrame.getInstance().setEnableCalibrateIcon(true);
@@ -467,19 +467,18 @@ public class Function {
 			}
 			MMTFrame.getInstance().LiveViewCaptureEnable(true);
 			MMTFrame.getInstance().MultCaptureEnable(true);
-
+			MMTFrame.getInstance().setEnableLiveIcon(true);
 			MMT.logMessage("Testing OK......");
 			break;
 		case "TestingFalse":
 			kernel_.isCalibrated_ = false;
-
+			installAnalyzer("XYACQ");
 			MMT.isCalibrationRunning_ = false;
 			MMT.isTestingRunning_ = false;
 			MMT.isGetXYPositionRunning_ = false;
 			MMT.isGetXYZPositionRunning_ = false;
-			MMT.VariablesNUPD.frameToRefreshImage.value(MMT.currentframeToRefreshImage_);
 			MMTFrame.getInstance().preferDailog.enableEdit(true);
-			MMTFrame.getInstance().setCalibrateIcon(true);
+			MMTFrame.getInstance().setCalibrateIcon(false);
 			MMTFrame.getInstance().setEnableCalibrateIcon(true);
 			setProgressBarVisible(false);
 			CalProfileDataCleanup();
@@ -489,6 +488,7 @@ public class Function {
 				MMT.logError("Stage cannot go back home");
 			}
 			MMT.logMessage("Testing False......");
+			liveView();
 			break;
 		}
 	}
@@ -538,7 +538,12 @@ public class Function {
 			MMT.logError("No roi in the image,Try ctrl+A");
 			return;
 		}
-
+		MMT.xyStage_ = (((int)MMT.VariablesNUPD.hasXYStage.value()) == 1)?core_.getXYStageDevice():null;
+		MMT.zStage_ = (((int)MMT.VariablesNUPD.hasZStage.value()) == 1)?core_.getFocusDevice():null;
+		if( MMT.zStage_ == null){
+			MMT.logError("there is no zstage avilable");
+			return;
+		}
 		stopLiveView();
 		updateCalibrationProfile();
 		installAnalyzer("CAL");
@@ -730,13 +735,13 @@ public class Function {
 			for(RoiItem it:roiList_)
 				it.setSelectTap("Chart-Z");
 			MMTFrame.getInstance().preferDailog.enableEdit(false);
-			MMTFrame.getInstance().setLiveViewIcon(false);
+			MMTFrame.getInstance().setLiveViewIcon(true);
 			for(RoiItem it:roiList_)
 				it.setChartVisible(true);
 		}else{
 			installAnalyzer("XYACQ");
 			MMTFrame.getInstance().preferDailog.enableEdit(true);
-			MMTFrame.getInstance().setLiveViewIcon(true);
+			MMTFrame.getInstance().setLiveViewIcon(false);
 			for(RoiItem it:roiList_)
 				it.setChartVisible(false);
 		}

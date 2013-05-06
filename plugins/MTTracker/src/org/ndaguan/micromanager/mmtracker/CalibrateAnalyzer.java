@@ -41,6 +41,7 @@ public class CalibrateAnalyzer extends TaggedImageAnalyzer {
 		}
 		
 		boolean ret = kernel_.calibration(taggedImage.pix, MMT.calibrateIndex_,pos[0],pos[1],pos[2]);
+		Function.getInstance().reDraw(MMStudioMainFrame.SIMPLE_ACQ,MMT.calibrateIndex_, true);
 		if(!ret) 
 		{
 			MMT.isCalibrationRunning_ = false;
@@ -48,8 +49,6 @@ public class CalibrateAnalyzer extends TaggedImageAnalyzer {
 			return;
 		}
 		
-		Function.getInstance().reDraw(MMStudioMainFrame.SIMPLE_ACQ,MMT.calibrateIndex_, true);
-
 		MMT.logMessage(String.format("calibrating:\t\t%d/%d",MMT.calibrateIndex_,kernel_.zPosProfiles.length));
 		MMT.debugMessage((String.format("Z\t%d/%d\tXP\t%f\tYP\t%f\tZP\t%f\n",MMT.calibrateIndex_,kernel_.zPosProfiles.length,pos[0],pos[1],pos[2])));
 

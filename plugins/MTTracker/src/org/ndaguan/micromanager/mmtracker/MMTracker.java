@@ -64,10 +64,8 @@ public class MMTracker implements MMPlugin{
 			tcpServer_.start();	
 			function_ = Function.getInstance(app_,roiList_);
 			function_.installAnalyzer("XYACQ");
-			if(((int)MMT.VariablesNUPD.hasXYStage.value()) == 1)
-				MMT.xyStage_ = core_.getXYStageDevice();
-			if(((int)MMT.VariablesNUPD.hasZStage.value()) == 1)
-				MMT.zStage_ = core_.getFocusDevice();
+			MMT.currentframeToRefreshImage_ = MMT.VariablesNUPD.frameToRefreshImage.value();
+			MMT.VariablesNUPD.frameToRefreshImage.value(1);
 			frame_.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	
 			frame_.setVisible(true);
 		}

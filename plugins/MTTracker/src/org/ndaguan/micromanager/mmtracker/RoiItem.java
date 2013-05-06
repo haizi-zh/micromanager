@@ -349,7 +349,7 @@ public  class RoiItem {
 	public void setXYOrign() {
 		double[] xymean = getXYMean();
 		xPhy0_ = xymean[0];
-		yPhy0_ = xymean[0];
+		yPhy0_ = xymean[1];
 	}
 	public void setZOrign(double z) {
 		zPhy0_ = z;
