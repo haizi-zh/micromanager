@@ -15,6 +15,15 @@ Release/
 bin_Win32/
 build/
 bin/
+.gitignore
+*.props
+*.ipch
+*.gif
+*.old
+*.xml
+*.css
+*.xslt
+*.opensdf
 
 # Java
 *.class
