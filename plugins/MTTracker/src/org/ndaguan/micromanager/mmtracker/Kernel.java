@@ -440,15 +440,14 @@ public class Kernel {
 		zPosProfiles [index] = currZPos;
 		double beanRadiuPixel = MMT.VariablesNUPD.beanRadiuPixel.value();
 		for (int k = 0; k < roiList_.size(); k++) {
-			 xy = roiList_.get(k).getXY();
-			int roiX = (int) (xy[0] - beanRadiuPixel);
-			int roiY = (int) (xy[1] - beanRadiuPixel);
+			int roiX = (int) (ret[k][0] - beanRadiuPixel);
+			int roiY = (int) (ret[k][1] - beanRadiuPixel);
 			if(isRoiOutOfImage(roiX,roiY)){
 				roiList_.remove(k);
 				return false;
 			}
 			roiList_.get(k).setXY(ret[k][0],ret[k][1]);
-			roiList_.get(k).updateCalProfile(index,polarIntegral(image,xy[0],xy[1]));
+			roiList_.get(k).updateCalProfile(index,polarIntegral(image,ret[k][0],ret[k][1]));
 		}
 		return true;
 	}

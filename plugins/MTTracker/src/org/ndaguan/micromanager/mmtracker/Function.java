@@ -348,8 +348,15 @@ public class Function {
 		for (int i = 0; i < calSize; i++) {
 			kernel_.zPosProfiles[i] = currzpos_ - midPoint + i * calStepSize;
 		}
+		double start = kernel_.zPosProfiles[0];
+		double end = kernel_.zPosProfiles[kernel_.zPosProfiles.length -1];
 		for (int i = 0; i < kernel_.zTestingPosProfiles.length; i++) {
-			kernel_.zTestingPosProfiles[i] = kernel_.zPosProfiles[0] +  (i+ Math.floor(Math.random()*100)/100) * testingPrecision;
+			double target = kernel_.zPosProfiles[0] +  (i+ Math.floor(Math.random()*100)/100) * testingPrecision;
+			if(target > end)
+				target = end;
+			if(target <start)
+				target = start;
+			kernel_.zTestingPosProfiles[i] = target;
 		}
 		midPoint = (int) (calSize / 2);
 		kernel_.xPosProfiles = new double[ (int) (calRange/calStepSize)];
