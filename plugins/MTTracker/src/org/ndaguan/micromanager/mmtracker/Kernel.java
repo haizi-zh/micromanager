@@ -492,7 +492,8 @@ public class Kernel {
 		if(MMT.xyStage_ != null){
 			MMT.VariablesNUPD.pixelToPhysX.value(regrX.getSlope());
 			MMT.VariablesNUPD.pixelToPhysY.value(regrY.getSlope());
-			MMTFrame.getInstance().preferDailog.saveUserData();
+			MMTFrame.getInstance().preferDailog.UpdateData(true);
+			MMTFrame.getInstance().preferDailog.UpdateData(false);
 		}
 	}
 	public double[][] gosseCenter(Object image){

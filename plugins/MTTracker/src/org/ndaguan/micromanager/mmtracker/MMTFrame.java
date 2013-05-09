@@ -54,6 +54,7 @@ public class MMTFrame extends JFrame {
 	private JButton butLiveView;
 	public JLabel infomation_;
 	private Image imgC;
+	private Image imgSet;
 	private Image imgL;
 	private Image imgEnableC;
 	private Image imgEnableL;
@@ -192,7 +193,8 @@ public class MMTFrame extends JFrame {
 		toolBar.setBounds(0,0, DEFAULT_WIDTH, toolbarheight);
 
 		Toolkit kit = Toolkit.getDefaultToolkit();
-
+		
+		imgSet = kit.getImage("icons/Set.gif");
 		imgC = kit.getImage("icons/C.gif");
 		imgL = kit.getImage("icons/L.gif");
 		imgEnableC = kit.getImage("icons/EC.gif");
@@ -207,6 +209,7 @@ public class MMTFrame extends JFrame {
 		JButton butSelectROI = new JButton();
 		JButton butHandTool = new JButton();
 		JButton butAuto = new JButton();
+		JButton butSet = new JButton();
 
 
 		int offsetx = 0;
@@ -240,6 +243,12 @@ public class MMTFrame extends JFrame {
 		butHandTool.setFocusable(false);
 		butHandTool.setBounds(offsetx,0, toolItemWidth, toolItemHeight);
 		offsetx += toolItemWidth;
+		
+		butSet.setIcon(new javax.swing.ImageIcon(imgSet)); // NOI18N
+		butSet.setToolTipText("Add ROI");
+		butSet.setFocusable(false);
+		butSet.setBounds(offsetx,0, toolItemWidth, toolItemHeight);
+		offsetx += toolItemWidth;
 
 		final JSeparator separator2 = new JSeparator(SwingConstants.VERTICAL);
 		separator2.setBounds(offsetx+10,0,1, 10);
@@ -251,7 +260,9 @@ public class MMTFrame extends JFrame {
 		butSelectROI.addActionListener(listener_); 			 
 		butHandTool.addActionListener(listener_);  
 		butAuto.addActionListener(listener_); 
-
+		butSet.addActionListener(listener_); 
+		
+		toolBar.add(butSet);
 		toolBar.add(butCalibration);
 		toolBar.add(butLiveView);
 		toolBar.add(butAuto);

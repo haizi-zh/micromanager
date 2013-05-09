@@ -137,6 +137,9 @@ public class PreferDailog extends JFrame {
 			MMT.logError("save user data err");
 		}
 	}
+	/**
+	 * @param flag true save to file,false: update gui
+	 */
 	public void UpdateData(boolean flag) {
 		if(flag){//flush
 			double[] preferences = new double[preferencesLen];
