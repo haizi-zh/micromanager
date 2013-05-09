@@ -533,7 +533,9 @@ public class Kernel {
 		if(!flag){
 			isCalibrated_ = false;
 			Function.getInstance().installAnalyzer("XYACQ");
+			Function.getInstance().liveView();
 			MMTFrame.getInstance().setCalibrateIcon(false);
+			MMTFrame.getInstance().setLiveViewIcon(false);
 		}
 	}
 	private boolean isRoiOutOfImage(int roiX, int roiY) {

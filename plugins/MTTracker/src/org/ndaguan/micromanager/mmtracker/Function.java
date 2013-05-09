@@ -649,30 +649,29 @@ public class Function {
 		MMTFrame.getInstance().myStageControlFrame_.setVisible(true);
 	}
 	private void whataday() throws Exception{
+		MMT.zStage_ = core_.getFocusDevice();
+		MMT.xyStage_ = core_.getXYStageDevice();
 		double range = MMT.VariablesNUPD.calRange.value();
 		double stepsize = MMT.VariablesNUPD.calStepSize.value();
 		int imageNum = (int) MMT.VariablesNUPD.frameToCalcForce.value();
 		int len = (int) (range/stepsize);
 		updatePositions();
-		double start = currzpos_ - range/2;
-		for(int i=0;i<len;i++){
-			double target = start+i*stepsize;
-			setStageZPosition(target);
-			for (int j = 0; j <imageNum; j++){ 
-				gui_.snapAndAddToImage5D();
-				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
-				MMT.logMessage(String.format("currZPos:\t%f(%d/%d)\timageNum:\t%d/%d", target,i,len,j,imageNum));
+		final double start = currzpos_ - range/2;
+		for(int k =0;k<(int)MMT.VariablesNUPD.showDebugTime.value();k++){//
+			for(int i=0;i<len;i++){
+				double target = start+i*stepsize;
+				setStageZPosition(target);
+				for (int j = 0; j <imageNum; j++){ 
+					gui_.snapAndAddToImage5D();
+					TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+					MMT.logMessage(String.format("currZPos:\t%f(%d/%d)\timageNum:\t%d/%d", target,i,len,j,imageNum));
+				}
 			}
 		}
-
+		setStageZPosition(currzpos_);
 	}
 	public void setAutoContrast() {
-		try {
-			whataday();
-		} catch (Exception e1) {
-			MMT.logError(e1.toString());
-		}
-		if(true)return;
+
 		try {
 			gui_.setContrastBasedOnFrame(GetXYPositionAnalyzer.getInstance().acqName_, 0, 0);
 		} catch (MMScriptException e) {
