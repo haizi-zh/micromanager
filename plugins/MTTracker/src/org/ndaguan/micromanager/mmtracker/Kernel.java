@@ -537,6 +537,7 @@ public class Kernel {
 			Function.getInstance().liveView();
 			MMTFrame.getInstance().setCalibrateIcon(false);
 			MMTFrame.getInstance().setLiveViewIcon(false);
+			MMTFrame.getInstance().preferDailog.enableEdit(true);
 		}
 	}
 	private boolean isRoiOutOfImage(int roiX, int roiY) {

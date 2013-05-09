@@ -203,6 +203,7 @@ public class Function {
 			if(kernel_.isCalibrated_ && roiList_.size() == 0){
 				kernel_.setIsCalibrated(false);
 			}
+			MMT.logMessage("ROI added :OK");
 		}	
 	}
 

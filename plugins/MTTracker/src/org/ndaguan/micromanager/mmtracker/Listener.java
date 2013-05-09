@@ -3,6 +3,7 @@ package org.ndaguan.micromanager.mmtracker;
 import ij.ImagePlus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
+import ij.gui.Roi;
 import ij.gui.Toolbar;
 
 import java.awt.Event;
@@ -16,6 +17,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 
+import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.utils.MMScriptException;
 
@@ -158,7 +160,13 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 			showGui();
 			break;
 		case "Add ROI":
-			Rectangle rectangle = canvas_.getImage().getRoi().getBounds();
+
+			Roi ROI = canvas_.getImage().getRoi();
+			if(ROI == null){
+				MMT.logError("Select a ROI first!");
+				return;
+			}
+			Rectangle rectangle = ROI.getBounds();
 			addRoi(rectangle);
 			break;
 		case "Delete ROI":
@@ -204,7 +212,7 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		}
 
 	}
-	 
+
 	//action
 	private synchronized void setFocusdRoi(Point point) {
 		Function.getInstance().setFocusdRoi(point);
