@@ -26,6 +26,7 @@ public:
 
 
 	int OnPort(MM::PropertyBase* pProp, MM::ActionType eAct);
+	int OnWorkMode(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnUmInDefaultUnit(MM::PropertyBase* pProp, MM::ActionType eAct);
 
 	bool CommandWithAnswer(const byte* cmd,int len, BYTE* answer, int nExpectedLines = -1);

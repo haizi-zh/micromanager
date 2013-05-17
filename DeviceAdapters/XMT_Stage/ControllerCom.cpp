@@ -6,7 +6,10 @@
 #include "ControllerCom.h"
 #include "XMT.h"
 #include "../../MMDevice/ModuleInterface.h"
-
+#include <string>
+#include <map>
+#include <algorithm>
+using namespace std;
 
 const char* ControllerComDevice::DeviceName_ = "XMTStageController";
 const char* ControllerComDevice::UmToDefaultUnitName_ = "um in default unit";
@@ -77,9 +80,39 @@ void ControllerComDevice::CreateProperties()
 	// axis limits (assumed symmetrical)
 	pAct = new CPropertyAction (this, &ControllerComDevice::OnPosition);
 	CreateProperty(MM::g_Keyword_Position, "0.0", MM::Float, false, pAct);
-	SetPropertyLimits(MM::g_Keyword_Position, 0/*-axisLimitUm_*/, axisLimitUm_);
+	pAct = new CPropertyAction (this, &ControllerComDevice::OnWorkMode);
+	CreateProperty("WorkMode", "High", MM::String, false, pAct);
+	vector<string> WorkModeValues;
+	WorkModeValues.push_back("High");
+	WorkModeValues.push_back("Low");
+	SetAllowedValues("WorkMode", WorkModeValues);
 }
+int ControllerComDevice::OnWorkMode(MM::PropertyBase* pProp, MM::ActionType eAct){
+	if (eAct == MM::BeforeGet)
+	{
+	}
+	else if (eAct == MM::AfterSet)
+	{
+		if (initialized_)
+		{
+			string Mode;
+			pProp->Get(Mode);
+		byte buf[9];
+		if (Mode.compare("High") == 0)
+		{
+			PackageCommand("TQH",NULL,buf);
+	SendCOMCommand(buf,9);
+		}
+		if (Mode.compare("Low") == 0)
+		{
+			PackageCommand("TQL",NULL,buf);
+	SendCOMCommand(buf,9);
+		}
+		}
+	}
 
+	return DEVICE_OK;
+}
 int ControllerComDevice::OnPort(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
 	if (eAct == MM::BeforeGet)
@@ -123,6 +156,10 @@ int ControllerComDevice::Initialize()
 	byte buf[9];
 	byte answer[8];
 	PackageCommand("ABC",NULL,buf);
+	SendCOMCommand(buf,9);
+	PackageCommand("WEA",NULL,buf);
+	SendCOMCommand(buf,9);
+	PackageCommand("TQH",NULL,buf);
 	SendCOMCommand(buf,9);
 	PackageCommand("RB1",NULL,buf);
 	if(!CommandWithAnswer(buf,9,answer,7)){
@@ -245,6 +282,7 @@ int ControllerComDevice::GetPositionUm(double& pos)
 	byte buf[9];
 	byte answer[8];
 	PackageCommand("RB1",NULL,buf);
+	return;
 	;
 	if(!CommandWithAnswer(buf,9,answer,7))
 		return DEVICE_ERR;
@@ -325,7 +363,7 @@ int ControllerComDevice::OnPosition(MM::PropertyBase* pProp, MM::ActionType eAct
 		int ret = SetPositionUm(pos);
 		if (ret != DEVICE_OK)
 			return ret;
-
+		pProp->Get(pos);
 	}
 
 	return DEVICE_OK;
