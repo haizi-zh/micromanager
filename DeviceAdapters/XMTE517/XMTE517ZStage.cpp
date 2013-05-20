@@ -164,7 +164,9 @@ int ZStage::Initialize()
 	}
 
 	if (ret != DEVICE_OK)  return ret;
+
 	SetMotionMode(0);
+
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK) return ret;
 
@@ -189,7 +191,7 @@ void ZStage::GetName(char* Name) const
 {
 	CDeviceUtils::CopyLimitedString(Name, XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_ZStageDevName).c_str());
 }
-
+ 
 //
 // Set Motion Mode (1: relatice, 0: absolute)
 //
@@ -199,6 +201,7 @@ int ZStage::SetMotionMode(long lMotionMode)
 	 
 	unsigned char sResponse[64];
 	int ret = DEVICE_OK;
+	return ret;
 	unsigned char buf[9];
 	
 	if (lMotionMode == 0)
@@ -662,7 +665,7 @@ int ZStage::GetPositionSteps(long& steps)
 //
 //	return DEVICE_OK;
 //}
-
+ 
 //
 // Set current position as origin
 //
@@ -866,7 +869,7 @@ int ZStage::WriteCommand(unsigned char* sCommand, int nLength)
 			char c = (const unsigned char)sCommand[n];
 			if (c == '\0')
 				c = 'Z';
-			osMessage << "<" << c << ">";
+			osMessage << "<" << sHex << "|"<< c << "|"<< (int)c <<">";
 		}
 		osMessage << ")";
 		this->LogMessage(osMessage.str().c_str());
@@ -909,7 +912,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage.str("");
-			osMessage << "<XMTE517Ctrl::ReadMessage> (ReadFromSerial = (" << nBytesRead << "," << lRead << "," << lByteRead << ")::<";
+			osMessage << "<ZStage::ReadMessage> (ReadFromSerial = (" << nBytesRead << "," << lRead << "," << lByteRead << ")::<";
 
 			for (unsigned long lIndx=0; lIndx < lByteRead; lIndx++)
 			{
@@ -947,7 +950,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage.str("");
-		osMessage << "<XMTE517Ctrl::ReadMessage> (ReadFromSerial = <";
+		osMessage << "<ZStage::ReadMessage> (ReadFromSerial = <";
 	}
 
 	for (unsigned long lIndx=0; lIndx < (unsigned long)nBytesRead; lIndx++)

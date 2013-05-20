@@ -282,12 +282,16 @@ int XMTE517Ctrl::CheckStatus(unsigned char* sResponse, unsigned int nLength)
 	ret = WriteCommand(buf, 9);
 	if (ret != DEVICE_OK) return ret;
 
+	XMTE517::Instance()->PackageCommand("TQL",NULL,buf);
+	ret = WriteCommand(buf, 9);
+	if (ret != DEVICE_OK) return ret;
+
 	XMTE517::Instance()->PackageCommand("RAA",NULL,buf);
 	ret = WriteCommand(buf, 9);
 	if (ret != DEVICE_OK) return ret;
 
-	//unsigned int nBufLen = 256;
-	//unsigned char sAnswer[256];
+
+
 	memset(sResponse, 0, nLength);
 	ret = ReadMessage(sResponse, 7);
 
@@ -404,15 +408,17 @@ int XMTE517Ctrl::OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType pAct)
 //
 int XMTE517Ctrl::SetMotionMode(long lMotionMode)//0 high else low
 {
+	 
 	std::ostringstream osMessage;
-	unsigned char sCommand[6] = { 0x00, XMTE517::XMTE517_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
+	 
 	unsigned char sResponse[64];
 	int ret = DEVICE_OK;
+	return ret;
 	char sCommStat[30];
 	bool yCommError = false;
 
 	unsigned char buf[9];
-	if (lMotionMode == 0)
+	if (lMotionMode == 1)
 		XMTE517::Instance()->PackageCommand("QHH",NULL,buf);
 	else
 		XMTE517::Instance()->PackageCommand("QHL",NULL,buf);
@@ -424,7 +430,7 @@ int XMTE517Ctrl::SetMotionMode(long lMotionMode)//0 high else low
 	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage.str("");
-		osMessage << "<XMTE517Ctrl::SetMotionMode> = [" << lMotionMode << "," << sCommand[0] << "], Returncode =" << ret;
+		osMessage << "<XMTE517Ctrl::SetMotionMode> = [" << lMotionMode << "," << lMotionMode << "], Returncode =" << ret;
 		this->LogMessage(osMessage.str().c_str());
 	}
 
