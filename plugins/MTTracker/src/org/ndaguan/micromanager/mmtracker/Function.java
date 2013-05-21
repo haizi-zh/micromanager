@@ -664,22 +664,24 @@ public class Function {
 		int imageNum = (int) MMT.VariablesNUPD.frameToCalcForce.value();
 		int len = (int) (range/stepsize);
 		updatePositions();
-		final double start = currzpos_ - range/2;
+		final double start = currxpos_ - range/2; // currzpos_ - range/2;
 		for(int k =0;k<(int)MMT.VariablesNUPD.showDebugTime.value();k++){//
 			for(int i=0;i<len;i++){
 				double target = start+i*stepsize;
-				setStageZPosition(target);
+				setStageXPosition(target);
+//				setStageZPosition(target);
 				for (int j = 0; j <imageNum; j++){ 
 					gui_.snapAndAddToImage5D();
 					TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
-					MMT.logMessage(String.format("currZPos:\t%f(%d/%d)\timageNum:\t%d/%d", target,i,len,j,imageNum));
+					MMT.logMessage(String.format("currXPos:\t%f(%d/%d)\timageNum:\t%d/%d", target,i,len,j,imageNum));
 				}
 			}
 		}
-		setStageZPosition(currzpos_);
+//		setStageZPosition(currzpos_);
+		setStageXPosition(currxpos_);
 	}
 	public void setAutoContrast() {
-
+		 
 		try {
 			gui_.setContrastBasedOnFrame(GetXYPositionAnalyzer.getInstance().acqName_, 0, 0);
 		} catch (MMScriptException e) {
