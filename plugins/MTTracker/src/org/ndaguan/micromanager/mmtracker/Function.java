@@ -1,5 +1,6 @@
 package org.ndaguan.micromanager.mmtracker;
 
+import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
 
@@ -215,6 +216,7 @@ public class Function {
 				roiList_.get(preReferenceIndex).setSelect(false);
 			}
 			roiList_.get(index).setSelect(true);
+			MMT.logMessage("ROI"+String.valueOf(index)+"is selected as Reference ");
 		}
 	}
 
@@ -664,24 +666,22 @@ public class Function {
 		int imageNum = (int) MMT.VariablesNUPD.frameToCalcForce.value();
 		int len = (int) (range/stepsize);
 		updatePositions();
-		final double start = currxpos_ - range/2; // currzpos_ - range/2;
+		final double start = currzpos_ - range/2;
 		for(int k =0;k<(int)MMT.VariablesNUPD.showDebugTime.value();k++){//
 			for(int i=0;i<len;i++){
 				double target = start+i*stepsize;
-				setStageXPosition(target);
-//				setStageZPosition(target);
+				setStageZPosition(target);
 				for (int j = 0; j <imageNum; j++){ 
 					gui_.snapAndAddToImage5D();
 					TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
-					MMT.logMessage(String.format("currXPos:\t%f(%d/%d)\timageNum:\t%d/%d", target,i,len,j,imageNum));
+					MMT.logMessage(String.format("currZPos:\t%f(%d/%d)\timageNum:\t%d/%d", target,i,len,j,imageNum));
 				}
 			}
 		}
-//		setStageZPosition(currzpos_);
-		setStageXPosition(currxpos_);
+		setStageZPosition(currzpos_);
 	}
 	public void setAutoContrast() {
-		 
+
 		try {
 			gui_.setContrastBasedOnFrame(GetXYPositionAnalyzer.getInstance().acqName_, 0, 0);
 		} catch (MMScriptException e) {
@@ -737,6 +737,17 @@ public class Function {
 			core_.setXYPosition(MMT.xyStage_,xpos, ypos);
 			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
 		}
+	}
+	public void setStageXYZPosition(double[] pos) throws Exception {
+		setStageXYPosition(pos[0],pos[1]);
+		setStageZPosition(pos[2]);
+	}
+	public void setStageRelativeXYZPosition(double[] pos) throws Exception {
+		double[] currPos = getStagePosition();
+		for(int i = 0;i<3;i++)
+			currPos[i] += pos[i];
+		setStageXYPosition(currPos[0],currPos[1]);
+		setStageZPosition(currPos[2]);
 	}
 	public double[] getStageXYPosition() throws Exception {
 		if(MMT.xyStage_ != null){
@@ -820,6 +831,35 @@ public class Function {
 	public void SetXYOrign() {
 		for(RoiItem it:roiList_)
 			it.setXYOrign();
+
+	}
+	public void doFeedback() throws Exception {
+		if(!MMT.isFeedbackRunning_){
+			int index = getReferenceRoiIndex();
+			if(index != -1){
+				roiList_.get(index).setFeedbackTarget();
+				MMT.isFeedbackRunning_ = true;
+			}else{
+				MMT.logError("No reference ROI is selected! try ctrl+s");
+			}
+		}else{
+			double Kp = MMT.VariablesNUPD.pTerm.value();
+			double Ki = MMT.VariablesNUPD.iTerm.value();
+			int index = getReferenceRoiIndex();
+			double[] target = roiList_.get(index).getFeedbackTarget();
+			double[] currPos = roiList_.get(index).getXYZPhy();
+			double [] delta = new double[3];
+			double [] integrate = roiList_.get(index).getFeedbackIntegrate();
+			for(int i=0;i<3;i++){
+				delta[i] = currPos[i] - target[i];
+			}
+			double[] stageTarget = new double[3];
+			stageTarget[0] = Kp*delta[1]+Ki*integrate[1];//xytransfer
+			stageTarget[1] = Kp*delta[0]+Ki*integrate[0];
+			stageTarget[2] = Kp*delta[2]+Ki*integrate[2];
+
+			setStageRelativeXYZPosition(stageTarget );
+		}
 
 	}
 }

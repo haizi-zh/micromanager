@@ -68,6 +68,8 @@ public class MMTracker implements MMPlugin{
 			MMT.VariablesNUPD.frameToRefreshImage.value(1);
 			frame_.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	
 			frame_.setVisible(true);
+			MMT.xyStage_ = core_.getXYStageDevice();
+			MMT.zStage_ = core_.getFocusDevice();
 		}
 		else{
 			frame_.setVisible(true);

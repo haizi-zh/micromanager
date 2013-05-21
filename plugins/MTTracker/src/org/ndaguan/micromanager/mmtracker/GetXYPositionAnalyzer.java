@@ -1,4 +1,6 @@
 package org.ndaguan.micromanager.mmtracker;
+import ij.IJ;
+
 import java.io.IOException;
 import java.util.List;
 import mmcorej.TaggedImage;
@@ -42,6 +44,7 @@ public class GetXYPositionAnalyzer extends TaggedImageAnalyzer {
 
 	@Override
 	protected void analyze(TaggedImage taggedImage) {
+		 
 		timeStart = System.nanoTime();
 
 		if (taggedImage == null || taggedImage == TaggedImageQueue.POISON)
@@ -106,6 +109,7 @@ public class GetXYPositionAnalyzer extends TaggedImageAnalyzer {
 					return;
 				}
 				if(!kernel_.getXYPosition(taggedImage.pix))return;
+				
 			}//lock
 			String nameComp;
 			if (acqName.equals(MMStudioMainFrame.SIMPLE_ACQ))

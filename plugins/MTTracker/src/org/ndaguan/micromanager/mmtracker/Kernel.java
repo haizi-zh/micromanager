@@ -69,9 +69,8 @@ public class Kernel {
 	}
 
 	public boolean getXYPosition(Object image){	
-
 		double[] force = new double[]{0,0};
-		double[] skrewneww = new double[]{0,0};
+		double[] skrewneww = new double[]{0,0}; 
 		if(roiList_.size() <= 0)return false;
 		double[][] ret = gosseCenter(image);
 		if(ret == null)return false;

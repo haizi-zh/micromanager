@@ -106,6 +106,16 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 					return;
 				}
 				if(!kernel_.getXYZPosition(taggedImage.pix))return;
+				if(MMT.VariablesNUPD.isFeedBack.value() == 0){
+					MMT.isFeedbackRunning_ = false;
+				} 
+				if(MMT.VariablesNUPD.isFeedBack.value() == 1 && frameNum_ % MMT.VariablesNUPD.frameToFeedBack.value() == 0){
+					try {
+						Function.getInstance().doFeedback();
+					} catch (Exception e) {
+						MMT.logError("Feedback error" + e.toString());
+					}
+				}
 			}//lock
 			String nameComp;
 			if (acqName.equals(MMStudioMainFrame.SIMPLE_ACQ))

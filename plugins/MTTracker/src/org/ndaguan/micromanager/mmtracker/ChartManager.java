@@ -117,7 +117,7 @@ public class ChartManager extends JFrame  {
 		tabbedPane.setSelectedIndex(i);
 	}
 
-	public void setChartDrawingWindowSize(int size) {
+	public void setChartWidth(int size) {
 		for(int i =0;i<dataSeries_.size();i++){
 			dataSeries_.get(MMT.CHARTLIST[i]).setMaximumItemCount(size);
 			

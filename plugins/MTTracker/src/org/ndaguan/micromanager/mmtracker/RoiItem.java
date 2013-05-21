@@ -41,10 +41,13 @@ public  class RoiItem {
 	private Writer dataFileWriter_;
 	private double[][] calProfile_ = null;
 	private ChartManager chart_ = null;
-	private DescriptiveStatistics statCross_;
 
-	private DescriptiveStatistics[] XYZStatis_;
-	private DescriptiveStatistics[] miniXYZStatis_;
+	private DescriptiveStatistics[] calcForceXYZStatis_;
+	private DescriptiveStatistics[] showChartXYZStatis_;
+	private DescriptiveStatistics[] feedbackXYZStatis_;
+
+	private double[] feedbackTarget_;//x y z position
+
 	private double yPhy0_;
 	private double xPhy0_;
 	private double zPhy0_;
@@ -64,47 +67,53 @@ public  class RoiItem {
 		counter ++;
 		isSelected_ = false;
 		setItemColor(Color.GREEN);
-		chart_ = new ChartManager(MMT.CHARTLIST,(int) MMT.VariablesNUPD.chartWindowSize.value(),String.format("%s-----%d",titleName,index_));
+		chart_ = new ChartManager(MMT.CHARTLIST,(int) MMT.VariablesNUPD.chartWidth.value(),String.format("%s-----%d",titleName,index_));
 
 		x_ = itemData[0];
 		y_ = itemData[1];
+		feedbackTarget_ = new double[3];
+		int calcForceWindowSize = (int) MMT.VariablesNUPD.frameToCalcForce.value();
+		int showChartWindowSize = (int) MMT.VariablesNUPD.chartStatisWindow.value();
+		int feedbackWindowSize = (int) MMT.VariablesNUPD.frameToFeedBack.value();
 
-		int windowSize_ = (int) MMT.VariablesNUPD.frameToCalcForce.value();
-		int miniWindowSize_ = (int) MMT.VariablesNUPD.chartStatisWindow.value();
+		calcForceXYZStatis_ = new DescriptiveStatistics[3];//x,y,cross
+		showChartXYZStatis_ = new DescriptiveStatistics[4];//z,x,y,l
+		feedbackXYZStatis_ = new DescriptiveStatistics[3];//x,y,z (physic)
 
-		XYZStatis_ = new DescriptiveStatistics[2];
-		miniXYZStatis_ = new DescriptiveStatistics[4];
-		for (int i = 0; i < XYZStatis_.length; i++) {
-			XYZStatis_[i] = new DescriptiveStatistics(windowSize_);
+		for (int i = 0; i < calcForceXYZStatis_.length; i++) {
+			calcForceXYZStatis_[i] = new DescriptiveStatistics(calcForceWindowSize);
 		}
-		for (int i = 0; i < miniXYZStatis_.length; i++) {
-			miniXYZStatis_[i] = new DescriptiveStatistics(miniWindowSize_);
+		for (int i = 0; i < showChartXYZStatis_.length; i++) {
+			showChartXYZStatis_[i] = new DescriptiveStatistics(showChartWindowSize);
 		}
-		statCross_ = new DescriptiveStatistics(windowSize_);
-
-
+		for (int i = 0; i < feedbackXYZStatis_.length; i++) {
+			feedbackXYZStatis_[i] = new DescriptiveStatistics(feedbackWindowSize);
+		}
 
 	}
-	public void setWidowSize(int size){
-		for(DescriptiveStatistics stat: XYZStatis_)
-			stat.setWindowSize(size);
-	}
-	 
-	public void setWidowSize(double size){
-		for(DescriptiveStatistics stat: XYZStatis_)
+
+	public void setCalcForceWidowSize(double size){
+		for(DescriptiveStatistics stat: calcForceXYZStatis_)
 			stat.setWindowSize((int)size);
 	}
-	public void setChartDrawingWidowSize(int size){
-		chart_.setChartDrawingWindowSize(size);
+	public void setChartWidth(double size){
+		chart_.setChartWidth((int)size);
 	}
-	
-	public void setChartWidowSize(int size){
-		for(DescriptiveStatistics stat: miniXYZStatis_)
-			stat.setWindowSize(size);
-	}
-	public void setChartWidowSize(double size){
-		for(DescriptiveStatistics stat: miniXYZStatis_)
+	public void setChartRangeWidowSize(double size){
+		for(DescriptiveStatistics stat: showChartXYZStatis_)
 			stat.setWindowSize((int)size);
+	}
+	public void setFeedbackWidowSize(double size){
+		for(DescriptiveStatistics stat: feedbackXYZStatis_)
+			stat.setWindowSize((int)size);
+	}
+	public void setFeedbackTarget(){
+		feedbackTarget_[0] = xPhy_;
+		feedbackTarget_[1] = yPhy_;
+		feedbackTarget_[2] = zPhy_;
+	}
+	public double[] getFeedbackTarget(){
+		return feedbackTarget_;
 	}
 
 	public String getMsg(){
@@ -146,19 +155,17 @@ public  class RoiItem {
 			}
 		}
 
-		for (DescriptiveStatistics stat : XYZStatis_)
-			stat.clear();
-		for (DescriptiveStatistics stat : miniXYZStatis_)
-			stat.clear();
+		clearStaticData();
 
-		statCross_.clear();
 	}
+
 	public void clearStaticData() {
-		for (DescriptiveStatistics stat : XYZStatis_)
+		for (DescriptiveStatistics stat : calcForceXYZStatis_)
 			stat.clear();
-		for (DescriptiveStatistics stat : miniXYZStatis_)
+		for (DescriptiveStatistics stat : showChartXYZStatis_)
 			stat.clear();
-		statCross_.clear();
+		for (DescriptiveStatistics stat : feedbackXYZStatis_)
+			stat.clear();
 	}
 
 	public boolean writeData(String acqName,long frameNum_,double elapsed) throws IOException{
@@ -188,17 +195,17 @@ public  class RoiItem {
 	}
 
 
-	public double[] getMean() {//z,x,y,l 2013
+	private double[] getMean() {//z,x,y,l
 		double pointNum = 0.01;
-		return new double[]{((int)(miniXYZStatis_[2].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[0].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[1].getMean()/pointNum))*pointNum,((int)(miniXYZStatis_[3].getMean()/pointNum))*pointNum};
+		return new double[]{((int)(showChartXYZStatis_[2].getMean()/pointNum))*pointNum,((int)(showChartXYZStatis_[0].getMean()/pointNum))*pointNum,((int)(showChartXYZStatis_[1].getMean()/pointNum))*pointNum,((int)(showChartXYZStatis_[3].getMean()/pointNum))*pointNum};
 	}
-	public double[] getXYMean() {
-		return new double[]{miniXYZStatis_[0].getMean(),miniXYZStatis_[1].getMean()};
+	private double[] getXYMean() {
+		return new double[]{showChartXYZStatis_[0].getMean(),showChartXYZStatis_[1].getMean()};
 	}
-	private double[] getStandardDeviation() {//z,x,y,l 2013
-		return new double[]{miniXYZStatis_[2].getStandardDeviation(),miniXYZStatis_[0].getStandardDeviation(),miniXYZStatis_[1].getStandardDeviation(),miniXYZStatis_[3].getStandardDeviation()};
+	private double[] getStandardDeviation() {//z,x,y,l
+		return new double[]{showChartXYZStatis_[2].getStandardDeviation(),showChartXYZStatis_[0].getStandardDeviation(),showChartXYZStatis_[1].getStandardDeviation(),showChartXYZStatis_[3].getStandardDeviation()};
 	}
-	public double[] getDrawScale() {
+	private double[] getDrawScale() {
 		double min = 0.05;
 		double[] std = getStandardDeviation();
 		for(int i = 0;i<std.length;i++)
@@ -257,24 +264,32 @@ public  class RoiItem {
 		xPhy_ = MMT.VariablesNUPD.pixelToPhysX.value() * x_;
 		yPhy_ = MMT.VariablesNUPD.pixelToPhysY.value() * y_;
 		//nM:calculate Force with a bigger windowSize
-		XYZStatis_[0].addValue(xPhy_*1000);
-		XYZStatis_[1].addValue(yPhy_*1000);
-		statCross_.addValue(xPhy_ * yPhy_ * 1e6);
+		calcForceXYZStatis_[0].addValue(xPhy_*1000);
+		calcForceXYZStatis_[1].addValue(yPhy_*1000);
+		calcForceXYZStatis_[2].addValue(xPhy_ * yPhy_ * 1e6);
 		//uM:get mean&standardDeviation  to update chart with a smaller windowSize;
-		miniXYZStatis_[0].addValue(xPhy_);
-		miniXYZStatis_[1].addValue(yPhy_);
-
+		showChartXYZStatis_[0].addValue(xPhy_);
+		showChartXYZStatis_[1].addValue(yPhy_);
+		//uM:get mean&sum of the history data
+		if(MMT.isFeedbackRunning_){
+			feedbackXYZStatis_[0].addValue(xPhy_ - feedbackTarget_[0]);
+			feedbackXYZStatis_[1].addValue(yPhy_ - feedbackTarget_[1]);
+		}
 	}
 	public void setZ(double zpos) {
 		zPhy_ = zpos;
-		miniXYZStatis_[2].addValue(zPhy_);
+		showChartXYZStatis_[2].addValue(zPhy_);
+		feedbackXYZStatis_[2].addValue(zPhy_);
+		if(MMT.isFeedbackRunning_){
+			feedbackXYZStatis_[2].addValue(zPhy_ - feedbackTarget_[2]);
+		}
 	}
 	public void setL() {
 		double deltax = ( xPhy_ -xPhy0_);
 		double deltay = ( yPhy_ -yPhy0_);
 		double deltaz = ( zPhy_ -zPhy0_);
 		l_ = Math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz);
-		miniXYZStatis_[3].addValue(l_);
+		showChartXYZStatis_[3].addValue(l_);
 	}
 	public boolean isSelected() {
 		return isSelected_;
@@ -302,10 +317,10 @@ public  class RoiItem {
 
 	}
 	public DescriptiveStatistics[] getStats() {
-		return XYZStatis_;
+		return calcForceXYZStatis_;
 	}
 	public DescriptiveStatistics getStatCross() {
-		return statCross_;
+		return calcForceXYZStatis_[2];
 	}
 	public void setForce(double[] force) {
 		fx_ = force[0];
@@ -318,7 +333,7 @@ public  class RoiItem {
 	public double[] getXYZPhy() {
 		return new double[]{xPhy_,yPhy_,zPhy_};
 	}
- 
+
 	public String getName() {
 		return String.format("%d      %d",index_,index_);
 	}
@@ -353,6 +368,12 @@ public  class RoiItem {
 	}
 	public void setZOrign(double z) {
 		zPhy0_ = z;
+	}
+	public double[] getFeedbackIntegrate() {
+		double[] integrate = new double[3];
+		for(int i= 0;i<3;i++)
+			integrate[i] = feedbackXYZStatis_[i].getSum();
+		return integrate;
 	}
 
 }

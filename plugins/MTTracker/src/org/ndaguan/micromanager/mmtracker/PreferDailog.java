@@ -73,9 +73,10 @@ public class PreferDailog extends JFrame {
 			if(mmt != null){
 				List<RoiItem> roilist = mmt.getRoiList();
 				for(RoiItem item: roilist){
-					item.setWidowSize(MMT.VariablesNUPD.frameToCalcForce.value());
-					item.setChartWidowSize(MMT.VariablesNUPD.chartStatisWindow.value());
-					item.setChartDrawingWidowSize((int)MMT.VariablesNUPD.chartWindowSize.value());
+					item.setCalcForceWidowSize(MMT.VariablesNUPD.frameToCalcForce.value());
+					item.setChartWidth(MMT.VariablesNUPD.chartWidth.value());
+					item.setChartRangeWidowSize(MMT.VariablesNUPD.chartStatisWindow.value());
+					item.setFeedbackWidowSize(MMT.VariablesNUPD.frameToFeedBack.value());
 				}
 			}
 		}
@@ -165,7 +166,6 @@ public class PreferDailog extends JFrame {
 	}
 
 	private void initialize(){
-
 		DialogListener = new ActionListener() {
 			public void actionPerformed(ActionEvent e) 
 			{PhraseActionEvent(e);}};

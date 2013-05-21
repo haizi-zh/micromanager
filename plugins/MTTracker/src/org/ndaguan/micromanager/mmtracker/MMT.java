@@ -56,12 +56,14 @@ public class MMT {
 	}
 	
 	public static int[] unEditAfterCalbration = new int[]{0,4,5,8};
+	public static double currXP = 40;
+	public static boolean isFeedbackRunning_ = false;
 	public static enum VariablesNUPD {
 		//general
 		beanRadiuPixel("/pixel ",55,0,1,"选中的框大小，此范围外的图像数据无效，太小则精度不好，太大了可能会导致定位不准和计算耗时"),
 		frameToCalcForce("/f ",1000,0,1,"多少帧移动一次磁铁，快速拉伸时推荐使用100+，要计算相对准确的力，推荐使用1000+"),
 		magnetStepSize("/uM ",100,0,1,"移动一次磁铁走过的距离，太大时会导致MP285相应太慢"),
-		chartWindowSize("",2000,0,1,"数据图的长度，推荐2000+"),
+		chartWidth("",2000,0,1,"数据图的长度，推荐2000+"),
 		
 		calRange("/uM ",3,0.01,1,"标定的范围，太大会增加标定耗时，至少选择2倍DNA长度以上"),
 		calStepSize("/uM ",0.1,0.01,1,"标定的精度，每隔多少uM记录一个标定值，太大精度不好，太小耗时增加，推荐0.01~0.1"),
@@ -89,8 +91,11 @@ public class MMT {
 		stageMoveSleepTime("/ms",30,0,0,"位移台移动等待时间，太小了会导致位移台移动不到需要位置，太大了耗时，推荐参考位移台信息，或使用默认值"),
 		
 		hasZStage("",0,0,0,"位移台是否可以控制样品在Z方向移动，1：是，0：否"),
-		hasXYStage("",0,0,0,"位移台是否可以控制样品在XY方向移动，1：是，0：否");
-	 
+		hasXYStage("",0,0,0,"位移台是否可以控制样品在XY方向移动，1：是，0：否"),
+		isFeedBack("",0,0,0,"是否添加反馈，1：是，0：否"),
+		frameToFeedBack("",50,0,0,"多少帧反馈一次"),
+		pTerm("",1,0.0001,0,"比例系数"),
+		iTerm("",1,0.0001,0,"积分系数");
 		private String unit;
 		private double value;
 		private double presicion;
