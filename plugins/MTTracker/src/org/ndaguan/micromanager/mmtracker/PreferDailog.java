@@ -76,7 +76,7 @@ public class PreferDailog extends JFrame {
 					item.setCalcForceWidowSize(MMT.VariablesNUPD.frameToCalcForce.value());
 					item.setChartWidth(MMT.VariablesNUPD.chartWidth.value());
 					item.setChartRangeWidowSize(MMT.VariablesNUPD.chartStatisWindow.value());
-					item.setFeedbackWidowSize(MMT.VariablesNUPD.frameToFeedBack.value());
+					item.setFeedbackWidowSize(MMT.VariablesNUPD.feedBackWindowSize.value());
 				}
 			}
 		}

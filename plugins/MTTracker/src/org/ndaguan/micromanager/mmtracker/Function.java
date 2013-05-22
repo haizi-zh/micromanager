@@ -853,11 +853,15 @@ public class Function {
 			for(int i=0;i<3;i++){
 				delta[i] = currPos[i] - target[i];
 			}
+			
 			double[] stageTarget = new double[3];
-			stageTarget[0] = Kp*delta[1]+Ki*integrate[1];//xytransfer
+			stageTarget[0] = Kp*delta[1]+Ki*integrate[1] ; //xytransfer
 			stageTarget[1] = Kp*delta[0]+Ki*integrate[0];
 			stageTarget[2] = Kp*delta[2]+Ki*integrate[2];
-
+			
+			double maxStepSize = MMT.VariablesNUPD.feedBackMaxStepSize.value();
+			for(int i=0;i<3;i++)
+				stageTarget[i] = stageTarget[i] >maxStepSize?maxStepSize:stageTarget[i];
 			setStageRelativeXYZPosition(stageTarget );
 		}
 

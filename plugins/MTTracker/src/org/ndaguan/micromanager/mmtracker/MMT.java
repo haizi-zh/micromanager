@@ -94,6 +94,8 @@ public class MMT {
 		hasXYStage("",0,0,0,"位移台是否可以控制样品在XY方向移动，1：是，0：否"),
 		isFeedBack("",0,0,0,"是否添加反馈，1：是，0：否"),
 		frameToFeedBack("",50,0,0,"多少帧反馈一次"),
+		feedBackMaxStepSize("uM",0.50,0.001,0,""),
+		feedBackWindowSize("",50,0,0,"反馈滑动窗口大小"),
 		pTerm("",1,0.0001,0,"比例系数"),
 		iTerm("",1,0.0001,0,"积分系数");
 		private String unit;
