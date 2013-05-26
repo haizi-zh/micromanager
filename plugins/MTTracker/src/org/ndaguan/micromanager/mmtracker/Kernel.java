@@ -56,8 +56,8 @@ public class Kernel {
 		pearCorrelation_ = new PearsonsCorrelation();// getZlocation
 		regrX = new SimpleRegression(); //XY calibration
 		regrY = new SimpleRegression(); //XY calibration
-
 	}
+	
 	public static  Kernel getInstance(List<RoiItem> roiList) 
 	{
 		if(kernel_ == null)
@@ -534,6 +534,7 @@ public class Kernel {
 			Function.getInstance().installAnalyzer("XYACQ");
 			Function.getInstance().liveView();
 			MMTFrame.getInstance().setCalibrateIcon(false);
+			MMTFrame.getInstance().setFeedbackIcon(false);
 			MMTFrame.getInstance().setLiveViewIcon(false);
 			MMTFrame.getInstance().preferDailog.enableEdit(true);
 		}

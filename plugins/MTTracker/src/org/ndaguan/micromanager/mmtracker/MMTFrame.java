@@ -36,6 +36,7 @@ public class MMTFrame extends JFrame {
 	private final int DEFAULT_CLOSE_OPERATION =JFrame.HIDE_ON_CLOSE;
 
 	private ButtonGroup buttonGroup_0 = new ButtonGroup();
+	private ButtonGroup buttonGroup_1 = new ButtonGroup();
 	ActionListener menuListener = null;
 
 	public JRadioButtonMenuItem MagnetAuto;
@@ -70,6 +71,15 @@ public class MMTFrame extends JFrame {
 
 
 	private JMenu Option;
+
+
+	private Image imgEnableF;
+
+
+	private Image imgF;
+
+
+	private JButton butFeedback;
 
 
 
@@ -160,6 +170,16 @@ public class MMTFrame extends JFrame {
 		Magnet.add(MagnetAuto);
 		Magnet.addSeparator();
 		Magnet.add(MagnetManual);	
+		
+		final JMenu TCPIP = new JMenu("TCPIP");
+		JRadioButtonMenuItem TCPIPClient = new JRadioButtonMenuItem("Client");		
+		JRadioButtonMenuItem TCPIPServer = new JRadioButtonMenuItem("Server");
+		buttonGroup_1.add(TCPIPClient);
+		buttonGroup_1.add(TCPIPServer);
+
+		TCPIP.add(TCPIPClient);
+		TCPIP.addSeparator();
+		TCPIP.add(TCPIPServer);	
 
 		final JMenu Other = new JMenu("Other");//Option		
 		final JMenuItem guiHide = new JMenuItem("guiHide/show");		
@@ -173,11 +193,17 @@ public class MMTFrame extends JFrame {
 
 		Preferences.addActionListener(listener_);
 		MagnetManual.addActionListener(listener_);
+		TCPIPClient.addActionListener(listener_);
+		TCPIPServer.addActionListener(listener_);
 		Preferences.setToolTipText("Preferences");
 		MagnetManual.setToolTipText("MagnetManual");
+		TCPIPServer.setToolTipText("TCPIPServer");
+		TCPIPClient.setToolTipText("TCPIPClient");
 		Option.add(Preferences);
 		Option.addSeparator();			
 		Option.add(Magnet);
+		Option.addSeparator();	
+		Option.add(TCPIP);
 
 		final JMenuBar menuBar = new JMenuBar();
 		setJMenuBar(menuBar);
@@ -199,6 +225,8 @@ public class MMTFrame extends JFrame {
 		imgL = kit.getImage("icons/L.gif");
 		imgEnableC = kit.getImage("icons/EC.gif");
 		imgEnableL = kit.getImage("icons/EL.gif");
+		imgF = kit.getImage("icons/F.gif");
+		imgEnableF = kit.getImage("icons/EF.gif");
 
 		final	Image imgS = kit.getImage("icons/S.gif");
 		final	Image imgH = kit.getImage("icons/H.gif");
@@ -210,6 +238,7 @@ public class MMTFrame extends JFrame {
 		JButton butHandTool = new JButton();
 		JButton butAuto = new JButton();
 		JButton butSet = new JButton();
+		butFeedback = new JButton();
 
 
 		int offsetx = 0;
@@ -250,6 +279,13 @@ public class MMTFrame extends JFrame {
 		butSet.setBounds(offsetx,0, toolItemWidth, toolItemHeight);
 		offsetx += toolItemWidth;
 
+		butFeedback.setIcon(new javax.swing.ImageIcon(imgF)); // NOI18N
+		butFeedback.setToolTipText("Feedback");
+		butFeedback.setFocusable(false);
+		butFeedback.setBounds(offsetx,0, toolItemWidth, toolItemHeight);
+		offsetx += toolItemWidth;
+
+		
 		final JSeparator separator2 = new JSeparator(SwingConstants.VERTICAL);
 		separator2.setBounds(offsetx+10,0,1, 10);
 
@@ -261,6 +297,7 @@ public class MMTFrame extends JFrame {
 		butHandTool.addActionListener(listener_);  
 		butAuto.addActionListener(listener_); 
 		butSet.addActionListener(listener_); 
+		butFeedback.addActionListener(listener_); 
 		
 		toolBar.add(butSet);
 		toolBar.add(butCalibration);
@@ -268,6 +305,7 @@ public class MMTFrame extends JFrame {
 		toolBar.add(butAuto);
 		toolBar.add(butSelectROI);
 		toolBar.add(butHandTool);
+		toolBar.add(butFeedback);
 		toolBar.add(separator2);
 
 		getContentPane().add(toolBar);
@@ -319,6 +357,21 @@ public class MMTFrame extends JFrame {
 	{
 
 		LiveView.setEnabled(flag);
+	}
+	public void setFeedbackIcon(boolean flag)
+	{
+		if(!flag){
+			butFeedback.setIcon(new javax.swing.ImageIcon(imgF)); // NOI18N
+		}
+		else{
+			butFeedback.setIcon(new javax.swing.ImageIcon(imgEnableF)); // NOI18N
+		}
+	}
+	
+	public void FeedbackEnable(boolean flag)
+	{
+		
+		butFeedback.setEnabled(flag);
 	}
 	public void MultCaptureEnable(boolean flag)
 	{

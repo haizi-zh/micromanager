@@ -26,8 +26,8 @@ public class MMTracker implements MMPlugin{
 	private CalibrateAnalyzer calAnalyzer_;
 	private TestAnalyzer testAnalyzer_;
 	private TCPServer tcpServer_;
-	private Function function_;
 	private TCPClient tcpClient_;
+	private Function function_;
 	private static MMTracker instance_;
 
 	/**
@@ -61,9 +61,6 @@ public class MMTracker implements MMPlugin{
 			xyzAnalyzer_ = GetXYZPositionAnalyzer.getInstance(kernel,listener_,roiList_,render_);
 			calAnalyzer_ = CalibrateAnalyzer.getInstance(kernel);
 			testAnalyzer_ = TestAnalyzer.getInstance(kernel);
-			tcpServer_ = TCPServer.getInstance(app_.getMMCore(), 50501);
-			tcpClient_ = TCPClient.getInstance("127.0.0.1", 50501);
-			tcpServer_.start();	
 			function_ = Function.getInstance(app_,roiList_);
 			function_.installAnalyzer("XYACQ");
 			MMT.currentframeToRefreshImage_ = MMT.VariablesNUPD.frameToRefreshImage.value();
@@ -107,5 +104,17 @@ public class MMTracker implements MMPlugin{
 
 	public List<RoiItem> getRoiList() {
 		return roiList_;		
+	}
+	public TCPClient getTcpClient() {
+		return tcpClient_;
+	}
+	public void setTcpClient(TCPClient tcpClient_) {
+		this.tcpClient_ = tcpClient_;
+	}
+	public TCPServer getTcpServer() {
+		return tcpServer_;
+	}
+	public void setTcpServer(TCPServer tcpServer_) {
+		this.tcpServer_ = tcpServer_;
 	}
 }

@@ -3,22 +3,10 @@ package org.ndaguan.micromanager.mmtracker;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-
-import org.ndaguan.micromanager.mmtracker.TCPServer.ECMDLIST;
-
-import mmcorej.CMMCore;
-
 /**
  * @author Administrator
  *TCPServer.java
@@ -33,8 +21,6 @@ class TCPClient {
 	private final int BUFFER_SIZE = 1024;
 	private PackageAnalyzer packAnalyzer;
 
-	private String LastErr = null;
-
 	private String address_;
 
 	private Socket socket;
@@ -48,34 +34,31 @@ class TCPClient {
 
 		double[] aa = tcp.getPosition();
 		MMT.debugMessage("getPosition\t"+String.valueOf(aa[0])+"\t"+String.valueOf(aa[1])+"\t"+String.valueOf(aa[2]));
-//		tcp.setRelativePosition("zStage", 100,200);
-//		tcp.setRelativePosition("zStage", 300);
-//		
-//		tcp.setPosition("zStage", 100,200);
-//		tcp.setPosition("zStage", 300);
+		//		tcp.setRelativePosition("zStage", 100,200);
+		//		tcp.setRelativePosition("zStage", 300);
+		//		
+		//		tcp.setPosition("zStage", 100,200);
+		//		tcp.setPosition("zStage", 300);
 
 	}
 
-	public static TCPClient getInstance(String address, int port) {
+	public static TCPClient getInstance(String address, int port) throws UnknownHostException, IOException {
 		if(instance_ == null)
-			try {
-				instance_ = new TCPClient(address, port);
-			} catch (IOException e) {
-				MMT.logError("TCPClient error"+e.toString());
-			}
+			instance_ = new TCPClient(address, port);
 		return instance_;
 	}
 	public static TCPClient getInstance() {
-		
+
 		return instance_;
 	}
 	public TCPClient(String address, int port) throws UnknownHostException, IOException {
 		address_ = address;
 		port_ = port;
 		socket= new Socket(address_, port_);
+		isRunning_ = true;
 		packAnalyzer = new PackageAnalyzer();
 	}
-   
+
 	private void SendCommand(Object[] data) throws IOException {
 		byte[] rawData = new byte[BUFFER_SIZE];
 		int len = packAnalyzer.packData(data, rawData);
@@ -83,21 +66,21 @@ class TCPClient {
 		outPutSteam.write(rawData, 0, len);
 		outPutSteam.flush();
 	}
- 
+
 
 	public void setPosition(String xyStage_, double xpos, double ypos) throws IOException {//set x  y
 		byte CMD = (byte) ECMDLIST.MOV.ordinal();
 		int paraNum = 4;
 		short paralen = 8;
 		SendCommand(new Object[] { CMD, paraNum ,  paralen,0, paralen,	xpos, paralen,1, paralen,	ypos});
-		
+
 	}
 	public void setRelativePosition(String xyStage_, double xpos, double ypos) throws IOException {//set x  y
 		byte CMD = (byte) ECMDLIST.MVR.ordinal();
 		int paraNum = 4;
 		short paralen = 8;
 		SendCommand(new Object[] { CMD, paraNum ,  paralen,0, paralen,	xpos, paralen,1, paralen,	ypos});
-		
+
 	}
 
 	public void setPosition(String zStage_, double zpos) throws IOException {//set z
@@ -163,6 +146,24 @@ class TCPClient {
 			return null;
 		} catch (IOException e) {
 			return null ;
+		}
+	}
+
+	public boolean isRunning() {
+		// TODO Auto-generated method stub
+		return isRunning_;
+	}
+	public void stop() throws IOException{
+		if(!isRunning_)
+			return;
+		else
+		{
+			socket.shutdownInput();
+			socket.shutdownOutput();
+			socket.close();
+			isRunning_ = false;
+			instance_ = null;
+			packAnalyzer = null;
 		}
 	}
 }

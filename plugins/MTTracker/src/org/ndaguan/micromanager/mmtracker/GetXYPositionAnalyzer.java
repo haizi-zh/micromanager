@@ -1,9 +1,9 @@
 package org.ndaguan.micromanager.mmtracker;
-import ij.IJ;
-
 import java.io.IOException;
 import java.util.List;
+
 import mmcorej.TaggedImage;
+
 import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.acquisition.TaggedImageQueue;
@@ -109,7 +109,9 @@ public class GetXYPositionAnalyzer extends TaggedImageAnalyzer {
 					return;
 				}
 				if(!kernel_.getXYPosition(taggedImage.pix))return;
-				
+				if(MMT.isFeedbackRunning_ && frameNum_ % MMT.VariablesNUPD.frameToFeedBack.value() == 0){
+					Function.getInstance().doFeedback();
+				}
 			}//lock
 			String nameComp;
 			if (acqName.equals(MMStudioMainFrame.SIMPLE_ACQ))

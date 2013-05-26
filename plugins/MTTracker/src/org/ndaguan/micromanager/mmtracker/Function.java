@@ -1,11 +1,12 @@
 package org.ndaguan.micromanager.mmtracker;
 
-import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
 
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -216,7 +217,7 @@ public class Function {
 				roiList_.get(preReferenceIndex).setSelect(false);
 			}
 			roiList_.get(index).setSelect(true);
-			MMT.logMessage("ROI"+String.valueOf(index)+"is selected as Reference ");
+			MMT.logMessage("ROI"+String.valueOf(index)+" is selected as Reference ");
 		}
 	}
 
@@ -673,6 +674,7 @@ public class Function {
 		MMTFrame.getInstance().MagnetAuto.setSelected(false);
 		MMTFrame.getInstance().myStageControlFrame_.setVisible(true);
 	}
+	@SuppressWarnings("unused")
 	private void whataday() throws Exception{
 		MMT.zStage_ = core_.getFocusDevice();
 		MMT.xyStage_ = core_.getXYStageDevice();
@@ -819,16 +821,8 @@ public class Function {
 			it.setXYOrign();
 
 	}
-	public void doFeedback() throws Exception {
-		if(!MMT.isFeedbackRunning_){
-			int index = getReferenceRoiIndex();
-			if(index != -1){
-				roiList_.get(index).setFeedbackTarget();
-				MMT.isFeedbackRunning_ = true;
-			}else{
-				MMT.logError("No reference ROI is selected! try ctrl+s");
-			}
-		}else{
+	public void doFeedback() {
+		try {
 			double Kp = MMT.VariablesNUPD.pTerm.value();
 			double Ki = MMT.VariablesNUPD.iTerm.value();
 			int index = getReferenceRoiIndex();
@@ -843,9 +837,58 @@ public class Function {
 			stageTarget[0] = Kp*delta[1]+Ki*integrate[1];//xytransfer
 			stageTarget[1] = Kp*delta[0]+Ki*integrate[0];
 			stageTarget[2] = Kp*delta[2]+Ki*integrate[2];
-
 			setStageRelativeXYZPosition(stageTarget );
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 
+	}
+	public void EnableFeedback() {
+		if(!MMT.isFeedbackRunning_){
+			int index = getReferenceRoiIndex();
+			if(index != -1){
+				roiList_.get(index).setFeedbackTarget();
+				MMTFrame.getInstance().setFeedbackIcon(true);
+				MMT.isFeedbackRunning_ = true;
+			}else{
+				MMT.logError("No reference ROI is selected! try ctrl+s");
+			}
+		}else{
+			int index = getReferenceRoiIndex();
+			roiList_.get(index).clearFeedbackData();
+			MMTFrame.getInstance().setFeedbackIcon(false);
+			MMT.isFeedbackRunning_ = false;
+		} 
+
+	}
+	public void TCPIPClient() {
+		TCPServer tcpServer = MMTracker.getInstance().getTcpServer();
+		if(tcpServer != null && tcpServer.isRunning())
+		try {
+			MMTracker.getInstance().getTcpServer().stop();
+		} catch (InterruptedException e) {
+			MMT.logError("TCPIPServer stop error!" + e.toString());
+		}
+		try {
+			MMTracker.getInstance().setTcpClient(TCPClient.getInstance("127.0.0.1", MMT.TCPIPPort));
+			MMT.logMessage("TCPClient start ok");
+		} catch (UnknownHostException e) {
+			MMT.logError("TCPIPClient start error!" + e.toString());
+		} catch (IOException e) {
+			MMT.logError("TCPIPClient start error!" + e.toString());
+		}
+
+	}
+	public void TCPIPServer() {
+		TCPClient tcpClient = MMTracker.getInstance().getTcpClient();
+		if(tcpClient != null && tcpClient.isRunning())
+		try {
+			MMTracker.getInstance().getTcpClient().stop();
+		} catch ( IOException e) {
+			MMT.logError("TCPIPClient stop error!" + e.toString());
+		}
+		MMTracker.getInstance().setTcpServer(TCPServer.getInstance(core_,MMT.TCPIPPort));
+		MMTracker.getInstance().getTcpServer().start();	
+		MMT.logMessage("TCPIPServer start ok");
 	}
 }

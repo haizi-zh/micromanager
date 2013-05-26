@@ -17,7 +17,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 
-import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.utils.MMScriptException;
 
@@ -156,6 +155,12 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		case "Calibrate":
 			calibrate();
 			break;
+		case "TCPIPServer":
+			TCPIPServer();
+			break;
+		case "TCPIPClient":
+			TCPIPClient();
+			break;
 		case "hide/show gui":
 			showGui();
 			break;
@@ -193,6 +198,9 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		case "MagnetManual":
 			ShowMagnetManualDialBox();
 			break;
+		case "Feedback":
+			Feedback();
+			break;
 		case "Rectangle tool for select a ROI":
 			if (Toolbar.getInstance() == null)
 				return;
@@ -213,9 +221,18 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 
 	}
 
+	private void TCPIPServer() {
+		Function.getInstance().TCPIPServer();
+	}
+	private void TCPIPClient() {
+		Function.getInstance().TCPIPClient();
+	}
 	//action
 	private synchronized void setFocusdRoi(Point point) {
 		Function.getInstance().setFocusdRoi(point);
+	}
+	private synchronized void Feedback() {
+		Function.getInstance().EnableFeedback();
 	}
 	private synchronized void SetXYOrign() {
 		Function.getInstance().SetXYOrign();

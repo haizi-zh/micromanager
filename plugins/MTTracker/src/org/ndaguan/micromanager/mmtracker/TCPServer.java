@@ -94,7 +94,6 @@ class TCPServer {
 			return;
 		exec_.shutdownNow();
 		exec_.awaitTermination(1, TimeUnit.SECONDS);
-
 		isRunning_ = false;
 	}
 

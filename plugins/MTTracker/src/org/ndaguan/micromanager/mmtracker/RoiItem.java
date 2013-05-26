@@ -375,5 +375,9 @@ public  class RoiItem {
 			integrate[i] = feedbackXYZStatis_[i].getSum();
 		return integrate;
 	}
+	public void clearFeedbackData() {
+		for(int i= 0;i<3;i++)
+			feedbackXYZStatis_[i].clear();		
+	}
 
 }

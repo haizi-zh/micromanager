@@ -5,6 +5,7 @@ import java.awt.Color;
 public class MMT {
 	public static final String menuName = "MultZIndexMeasure";
 	public static final String tooltipDescription = "MultZIndexMeasure";
+	public static final int TCPIPPort = 50501;
 	public static String DEFAULT_TITLE = "Magnetic Tweezers Images Analyzer(SM4.IOP.CAS.CN)";
 
 	public static  String magnetXYstage_ = "MP285 XY Stage";
