@@ -42,16 +42,9 @@ class TCPServer {
 
 	public static void main(String[] argv) throws Exception {
 		CMMCore core = new CMMCore();
-		core.loadSystemConfiguration("Total.cfg");
-		new TCPServer(core, 50501);
-
-		TimeUnit.SECONDS.sleep(2);
-
-		String zlabel = core.getFocusDevice();
-
-		core.setPosition(zlabel, 5);
-		TimeUnit.MILLISECONDS.sleep(100);
-		System.out.print(String.valueOf(core.getPosition(zlabel)) + "\n");
+		TCPServer tcp = new TCPServer(core, 50501);
+		tcp.start();
+		TimeUnit.MILLISECONDS.sleep(1000000);
 
 	}
 

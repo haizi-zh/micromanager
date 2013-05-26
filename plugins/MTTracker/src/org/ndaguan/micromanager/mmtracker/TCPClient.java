@@ -14,6 +14,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
+import org.ndaguan.micromanager.mmtracker.TCPServer.ECMDLIST;
+
 import mmcorej.CMMCore;
 
 /**
@@ -43,7 +45,7 @@ class TCPClient {
 	public static void main(String[] argv) throws Exception {
 		TCPClient tcp = new TCPClient("localhost", 50501);
 
-		tcp.setXYPosition("",3,4);
+		tcp.setPosition("",3,4);
 		TimeUnit.MILLISECONDS.sleep(100);
 
 	}
@@ -75,47 +77,66 @@ class TCPClient {
 		outPutSteam.write(rawData, 0, len);
 		outPutSteam.flush();
 	}
+ 
 
-	public void setXYPosition(String xyStage_, double xpos, double yPosition) throws IOException {
-		SendCommand(new Object[]{2,1,3,4});
-	}
-	
-	public double[] getXYPosition(String xyStage_) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	public void setXYZPosition(String xyStage_, double xpos, double yPos, double zPos) {
-		// TODO Auto-generated method stub
-	}
-	
-	public double[] getXYZPosition(String xyStage_) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public double getYPosition(String xyStage_) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	public void setYPosition(String xyStage_, double ypos) {
+	public void setPosition(String xyStage_, double xpos, double ypos) {//set x  y
 		// TODO Auto-generated method stub
 		
 	}
-	
-	public double getXPosition(String xyStage_) {
+
+	public void setPosition(String zStage_, double zPos) {//set z
 		// TODO Auto-generated method stub
-		return 0;
-	}
-	public void setXPosition(String xyStage_,double xpos) {
-		// TODO Auto-generated method stub
+		
 	}
 
-	public double getZPosition(String xyStage_) {
-		// TODO Auto-generated method stub
-		return 0;
+	public double[] getPosition() throws IOException {//return x y z
+		byte CMD = (byte) ECMDLIST.QPOS.ordinal();
+		SendCommand(new Object[]{CMD,0});
+		
+		return null;
 	}
-	public void setZPosition(String xyStage_,double xpos) {
-		// TODO Auto-generated method stub
+	protected void ReadMessage(Socket socket) {
+		// COMMUNICATION HERE!!!!
+		try {
+			InputStream inStream = socket.getInputStream();
+			byte[] rawData = new byte[BUFFER_SIZE];
+			ByteBuffer buffer = ByteBuffer.wrap(rawData);
+			while (true) {
+				if (socket.isClosed()) {
+					MMT.logMessage("Socket closed");
+					break;
+				}
+
+				int[] offset = new int[1];
+				offset[0] = 0;
+				Arrays.fill(rawData, (byte) 0);
+				if (inStream.read(rawData, offset[0], 2) == -1)
+					break;
+
+				if (!packAnalyzer.checkStart(rawData, offset)) {
+					offset[0] += 2;
+					continue;
+				}
+				offset[0] += 2;
+				// Frame length
+				inStream.read(rawData, offset[0], 2);
+
+				short length = buffer.getShort(offset[0]);
+				offset[0] += 2;
+				// checksum
+				inStream.read(rawData, offset[0], length - offset[0]);
+				if (!packAnalyzer.checksum(rawData, length))
+					continue;
+				// OPERATION
+				phaseData(socket, rawData, length, offset);
+				offset[0] += 16;// Skip Checksum
+			}
+
+			socket.shutdownInput();
+			socket.shutdownOutput();
+		} catch (IOException e) {
+			return;
+		}
 	}
+
 }

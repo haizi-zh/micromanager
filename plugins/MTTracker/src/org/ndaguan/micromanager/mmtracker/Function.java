@@ -325,9 +325,22 @@ public class Function {
 	}
 	public double[] getStagePosition() throws Exception
 	{
-		double temp = getStageZPosition();
-		double[] XY = getStageXYPosition();
-		return new double[]{XY[0],XY[1],temp};
+		double pos[] = new double[3];
+
+		if(MMT.VariablesNUPD.needStageServer.value() == 1){
+			pos = TCPClient.getInstance().getPosition();
+		}
+		else{
+			double[] xpos = new  double[1];
+			double[] ypos = new  double[1];
+			if(MMT.VariablesNUPD.hasXYStage.value() != 0){
+				core_.getXYPosition(MMT.xyStage_, xpos, ypos);
+				pos[0] = xpos[0];
+				pos[1] = ypos[0];
+			}
+			pos[2] = core_.getPosition(MMT.zStage_);
+		}
+		return pos;
 	}
 
 	public void updateCalibrationProfile(){
@@ -700,9 +713,10 @@ public class Function {
 	}
 
 	public void updatePositions() throws Exception  {
-		currxpos_ = getStageXPosition();
-		currypos_ = getStageYPosition();
-		currzpos_ = getStageZPosition();
+		double[] pos = getStagePosition();
+		currxpos_ = pos[0];
+		currypos_ = pos[1];
+		currzpos_ = pos[2];
 	}
 
 	public void StageGoHome() throws Exception  {
@@ -710,54 +724,10 @@ public class Function {
 		setStageZPosition(currzpos_);
 	}
 
-	public void setStageXPosition(double xpos) throws Exception {
-		if(MMT.xyStage_ != null){
-			if(MMT.VariablesNUPD.needStageServer.value() == 1){
-				TCPClient.getInstance().setXPosition(MMT.xyStage_, xpos);
-				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
-			}else{
-				core_.setXYPosition(MMT.xyStage_, xpos, core_.getYPosition(MMT.xyStage_));
-				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
-			}
-		}
-	}
-	public double getStageXPosition() throws Exception{
-		if(MMT.xyStage_ != null){
-			if(MMT.VariablesNUPD.needStageServer.value() == 1){
-				return TCPClient.getInstance().getXPosition(MMT.xyStage_);
-			}
-			else
-				return core_.getXPosition(MMT.xyStage_);
-		}
-		else 
-			return 0;
-	}
-	public void setStageYPosition(double ypos) throws Exception {
-		if(MMT.xyStage_ != null){
-			if(MMT.VariablesNUPD.needStageServer.value() == 1){
-				TCPClient.getInstance().setYPosition(MMT.xyStage_,ypos);
-				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
-			}
-			else{
-				core_.setXYPosition(MMT.xyStage_, core_.getXPosition(MMT.xyStage_), ypos);
-				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
-			}
-		}
-	}
-	public double getStageYPosition() throws Exception{
-		if(MMT.xyStage_ != null)
-			if(MMT.VariablesNUPD.needStageServer.value() == 1){
-				return TCPClient.getInstance().getYPosition(MMT.xyStage_);
-			}else{
-				return core_.getYPosition(MMT.xyStage_);
-			}
-		else
-			return 0;
-	}
 	public void setStageXYPosition(double xpos,double ypos) throws Exception {
 		if(MMT.xyStage_ != null){
 			if(MMT.VariablesNUPD.needStageServer.value() == 1){
-				TCPClient.getInstance().setXYPosition(MMT.xyStage_,xpos, ypos);
+				TCPClient.getInstance().setPosition(MMT.xyStage_,xpos, ypos);
 			}
 			else{
 				core_.setXYPosition(MMT.xyStage_,xpos, ypos);
@@ -776,35 +746,15 @@ public class Function {
 		setStageXYPosition(currPos[0],currPos[1]);
 		setStageZPosition(currPos[2]);
 	}
-	public double[] getStageXYPosition() throws Exception {
-		if(MMT.xyStage_ != null){
-			if(MMT.VariablesNUPD.needStageServer.value() == 1){
-				return TCPClient.getInstance().getXYPosition(MMT.xyStage_);
-			}else{
-			double[] xpos = new  double[1];
-			double[] ypos = new  double[1];
-			core_.getXYPosition(MMT.xyStage_, xpos, ypos);
-			return new double[]{xpos[0],ypos[0]};
-			}
-		}
-		else
-			return new double[]{0,0};
-	}
 
-	public double getStageZPosition() throws  Exception {
-		if(MMT.zStage_ != null){
-			if(MMT.VariablesNUPD.needStageServer.value() == 1){
-			return 	TCPClient.getInstance().getZPosition(MMT.xyStage_);
-			}else{
-			return  core_.getPosition(MMT.zStage_);
-			}
-		}
-		else 
-			return 0;
-	}
 	public void setStageZPosition(double zPos) throws Exception {
 		if(MMT.zStage_ != null){
-			core_.setPosition(MMT.zStage_, zPos);
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+				TCPClient.getInstance().setPosition(MMT.zStage_,zPos);
+			}
+			else{
+				core_.setPosition(MMT.zStage_, zPos);
+			}
 			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
 		}
 	}
