@@ -27,6 +27,7 @@ public class MMTracker implements MMPlugin{
 	private TestAnalyzer testAnalyzer_;
 	private TCPServer tcpServer_;
 	private Function function_;
+	private TCPClient tcpClient_;
 	private static MMTracker instance_;
 
 	/**
@@ -61,6 +62,7 @@ public class MMTracker implements MMPlugin{
 			calAnalyzer_ = CalibrateAnalyzer.getInstance(kernel);
 			testAnalyzer_ = TestAnalyzer.getInstance(kernel);
 			tcpServer_ = TCPServer.getInstance(app_.getMMCore(), 50501);
+			tcpClient_ = TCPClient.getInstance("127.0.0.1", 50501);
 			tcpServer_.start();	
 			function_ = Function.getInstance(app_,roiList_);
 			function_.installAnalyzer("XYACQ");

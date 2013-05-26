@@ -548,11 +548,13 @@ public class Function {
 			MMT.logError("No roi in the image,Try ctrl+A");
 			return;
 		}
-		MMT.xyStage_ = (((int)MMT.VariablesNUPD.hasXYStage.value()) == 1)?core_.getXYStageDevice():null;
-		MMT.zStage_ = (((int)MMT.VariablesNUPD.hasZStage.value()) == 1)?core_.getFocusDevice():null;
-		if( MMT.zStage_ == null){
-			MMT.logError("there is no zstage avilable");
-			return;
+		if(MMT.VariablesNUPD.needStageServer.value() == 0){
+			MMT.xyStage_ = (((int)MMT.VariablesNUPD.hasXYStage.value()) == 1)?core_.getXYStageDevice():null;
+			MMT.zStage_ = (((int)MMT.VariablesNUPD.hasZStage.value()) == 1)?core_.getFocusDevice():null;
+			if( MMT.zStage_ == null){
+				MMT.logError("there is no zstage avilable");
+				return;
+			}
 		}
 		stopLiveView();
 		updateCalibrationProfile();
@@ -710,32 +712,57 @@ public class Function {
 
 	public void setStageXPosition(double xpos) throws Exception {
 		if(MMT.xyStage_ != null){
-			core_.setXYPosition(MMT.xyStage_, xpos, core_.getYPosition(MMT.xyStage_));
-			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+				TCPClient.getInstance().setXPosition(MMT.xyStage_, xpos);
+				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+			}else{
+				core_.setXYPosition(MMT.xyStage_, xpos, core_.getYPosition(MMT.xyStage_));
+				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+			}
 		}
 	}
 	public double getStageXPosition() throws Exception{
-		if(MMT.xyStage_ != null)
-			return core_.getXPosition(MMT.xyStage_);
+		if(MMT.xyStage_ != null){
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+				return TCPClient.getInstance().getXPosition(MMT.xyStage_);
+			}
+			else
+				return core_.getXPosition(MMT.xyStage_);
+		}
 		else 
 			return 0;
 	}
 	public void setStageYPosition(double ypos) throws Exception {
 		if(MMT.xyStage_ != null){
-			core_.setXYPosition(MMT.xyStage_, core_.getXPosition(MMT.xyStage_), ypos);
-			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+				TCPClient.getInstance().setYPosition(MMT.xyStage_,ypos);
+				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+			}
+			else{
+				core_.setXYPosition(MMT.xyStage_, core_.getXPosition(MMT.xyStage_), ypos);
+				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+			}
 		}
 	}
 	public double getStageYPosition() throws Exception{
 		if(MMT.xyStage_ != null)
-			return core_.getYPosition(MMT.xyStage_);
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+				return TCPClient.getInstance().getYPosition(MMT.xyStage_);
+			}else{
+				return core_.getYPosition(MMT.xyStage_);
+			}
 		else
 			return 0;
 	}
 	public void setStageXYPosition(double xpos,double ypos) throws Exception {
 		if(MMT.xyStage_ != null){
-			core_.setXYPosition(MMT.xyStage_,xpos, ypos);
-			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+				TCPClient.getInstance().setXYPosition(MMT.xyStage_,xpos, ypos);
+			}
+			else{
+				core_.setXYPosition(MMT.xyStage_,xpos, ypos);
+				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+			}
 		}
 	}
 	public void setStageXYZPosition(double[] pos) throws Exception {
@@ -751,18 +778,27 @@ public class Function {
 	}
 	public double[] getStageXYPosition() throws Exception {
 		if(MMT.xyStage_ != null){
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+				return TCPClient.getInstance().getXYPosition(MMT.xyStage_);
+			}else{
 			double[] xpos = new  double[1];
 			double[] ypos = new  double[1];
 			core_.getXYPosition(MMT.xyStage_, xpos, ypos);
 			return new double[]{xpos[0],ypos[0]};
+			}
 		}
 		else
 			return new double[]{0,0};
 	}
 
 	public double getStageZPosition() throws  Exception {
-		if(MMT.zStage_ != null)
+		if(MMT.zStage_ != null){
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+			return 	TCPClient.getInstance().getZPosition(MMT.xyStage_);
+			}else{
 			return  core_.getPosition(MMT.zStage_);
+			}
+		}
 		else 
 			return 0;
 	}
@@ -853,15 +889,11 @@ public class Function {
 			for(int i=0;i<3;i++){
 				delta[i] = currPos[i] - target[i];
 			}
-			
 			double[] stageTarget = new double[3];
-			stageTarget[0] = Kp*delta[1]+Ki*integrate[1] ; //xytransfer
+			stageTarget[0] = Kp*delta[1]+Ki*integrate[1];//xytransfer
 			stageTarget[1] = Kp*delta[0]+Ki*integrate[0];
 			stageTarget[2] = Kp*delta[2]+Ki*integrate[2];
-			
-			double maxStepSize = MMT.VariablesNUPD.feedBackMaxStepSize.value();
-			for(int i=0;i<3;i++)
-				stageTarget[i] = stageTarget[i] >maxStepSize?maxStepSize:stageTarget[i];
+
 			setStageRelativeXYZPosition(stageTarget );
 		}
 
