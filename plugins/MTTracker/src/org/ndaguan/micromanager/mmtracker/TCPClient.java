@@ -9,6 +9,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -45,8 +46,13 @@ class TCPClient {
 	public static void main(String[] argv) throws Exception {
 		TCPClient tcp = new TCPClient("localhost", 50501);
 
-		tcp.setPosition("",3,4);
-		TimeUnit.MILLISECONDS.sleep(100);
+		double[] aa = tcp.getPosition();
+		MMT.debugMessage("getPosition\t"+String.valueOf(aa[0])+"\t"+String.valueOf(aa[1])+"\t"+String.valueOf(aa[2]));
+//		tcp.setRelativePosition("zStage", 100,200);
+//		tcp.setRelativePosition("zStage", 300);
+//		
+//		tcp.setPosition("zStage", 100,200);
+//		tcp.setPosition("zStage", 300);
 
 	}
 
@@ -79,23 +85,43 @@ class TCPClient {
 	}
  
 
-	public void setPosition(String xyStage_, double xpos, double ypos) {//set x  y
-		// TODO Auto-generated method stub
+	public void setPosition(String xyStage_, double xpos, double ypos) throws IOException {//set x  y
+		byte CMD = (byte) ECMDLIST.MOV.ordinal();
+		int paraNum = 4;
+		short paralen = 8;
+		SendCommand(new Object[] { CMD, paraNum ,  paralen,0, paralen,	xpos, paralen,1, paralen,	ypos});
+		
+	}
+	public void setRelativePosition(String xyStage_, double xpos, double ypos) throws IOException {//set x  y
+		byte CMD = (byte) ECMDLIST.MVR.ordinal();
+		int paraNum = 4;
+		short paralen = 8;
+		SendCommand(new Object[] { CMD, paraNum ,  paralen,0, paralen,	xpos, paralen,1, paralen,	ypos});
 		
 	}
 
-	public void setPosition(String zStage_, double zPos) {//set z
-		// TODO Auto-generated method stub
-		
+	public void setPosition(String zStage_, double zpos) throws IOException {//set z
+		byte CMD = (byte) ECMDLIST.MOV.ordinal();
+		int paraNum = 2;
+		short paralen = 8;
+		SendCommand(new Object[] { CMD, paraNum ,  paralen,2, paralen,	zpos});
+	}
+	public void setRelativePosition(String zStage_, double zpos) throws IOException {//set z
+		byte CMD = (byte) ECMDLIST.MVR.ordinal();
+		int paraNum = 2;
+		short paralen = 8;
+		SendCommand(new Object[] { CMD, paraNum ,  paralen,2, paralen,	zpos});
 	}
 
 	public double[] getPosition() throws IOException {//return x y z
 		byte CMD = (byte) ECMDLIST.QPOS.ordinal();
 		SendCommand(new Object[]{CMD,0});
-		
+		Object[] ret = ReadMessage(socket);
+		if((boolean) ret[1])
+			return new double[]{(double) ret[3],(double) ret[5],(double) ret[7]};
 		return null;
 	}
-	protected void ReadMessage(Socket socket) {
+	protected Object[] ReadMessage(Socket socket) {
 		// COMMUNICATION HERE!!!!
 		try {
 			InputStream inStream = socket.getInputStream();
@@ -128,15 +154,15 @@ class TCPClient {
 				if (!packAnalyzer.checksum(rawData, length))
 					continue;
 				// OPERATION
-				phaseData(socket, rawData, length, offset);
-				offset[0] += 16;// Skip Checksum
+				offset[0] += 1;//skip CMD
+				return packAnalyzer.unpackParas(rawData, offset);
 			}
 
 			socket.shutdownInput();
 			socket.shutdownOutput();
+			return null;
 		} catch (IOException e) {
-			return;
+			return null ;
 		}
 	}
-
 }

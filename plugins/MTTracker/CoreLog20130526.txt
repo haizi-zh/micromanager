@@ -1,0 +1,33 @@
+LOG(2013-05-26T19:48:24.084400, 3212, 1018:): -------->>
+LOG(2013-05-26T19:48:24.084400, 3212, 1018:): Core session started on 2013-05-26T19:48:24.084400 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T19:48:24.084400, 3212, 1018:): Debug logging disabled
+LOG(2013-05-26T19:58:05.860200, 5880, bf8:): -------->>
+LOG(2013-05-26T19:58:05.860200, 5880, bf8:): Core session started on 2013-05-26T19:58:05.860200 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T19:58:05.860200, 5880, bf8:): Debug logging disabled
+LOG(2013-05-26T20:02:08.004400, 2568, 17e4:): -------->>
+LOG(2013-05-26T20:02:08.004400, 2568, 17e4:): Core session started on 2013-05-26T20:02:08.004400 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T20:02:08.004400, 2568, 17e4:): Debug logging disabled
+LOG(2013-05-26T20:03:28.768600, 2052, 4fc:): -------->>
+LOG(2013-05-26T20:03:28.768600, 2052, 4fc:): Core session started on 2013-05-26T20:03:28.768600 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T20:03:28.768600, 2052, 4fc:): Debug logging disabled
+LOG(2013-05-26T20:06:13.848800, 6072, f2c:): -------->>
+LOG(2013-05-26T20:06:13.848800, 6072, f2c:): Core session started on 2013-05-26T20:06:13.848800 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T20:06:13.848800, 6072, f2c:): Debug logging disabled
+LOG(2013-05-26T20:51:59.309400, 4112, e14:): -------->>
+LOG(2013-05-26T20:51:59.309400, 4112, e14:): Core session started on 2013-05-26T20:51:59.309400 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T20:51:59.309400, 4112, e14:): Debug logging disabled
+LOG(2013-05-26T20:54:18.901200, 3952, 125c:): -------->>
+LOG(2013-05-26T20:54:18.901200, 3952, 125c:): Core session started on 2013-05-26T20:54:18.901200 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T20:54:18.901200, 3952, 125c:): Debug logging disabled
+LOG(2013-05-26T21:00:40.634200, 4040, ff4:): -------->>
+LOG(2013-05-26T21:00:40.634200, 4040, ff4:): Core session started on 2013-05-26T21:00:40.634200 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T21:00:40.634200, 4040, ff4:): Debug logging disabled
+LOG(2013-05-26T21:04:18.863600, 5704, 1784:): -------->>
+LOG(2013-05-26T21:04:18.863600, 5704, 1784:): Core session started on 2013-05-26T21:04:18.863600 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T21:04:18.863600, 5704, 1784:): Debug logging disabled
+LOG(2013-05-26T21:05:36.989400, 5820, d7c:): -------->>
+LOG(2013-05-26T21:05:36.989400, 5820, d7c:): Core session started on 2013-05-26T21:05:36.989400 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T21:05:36.989400, 5820, d7c:): Debug logging disabled
+LOG(2013-05-26T21:06:56.441200, 2872, 14cc:): -------->>
+LOG(2013-05-26T21:06:56.441200, 2872, 14cc:): Core session started on 2013-05-26T21:06:56.441200 by Administrator on DEADNIGHT-TSJ
+LOG(2013-05-26T21:06:56.441200, 2872, 14cc:): Debug logging disabled
