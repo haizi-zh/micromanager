@@ -105,7 +105,7 @@ public class GetXYPositionAnalyzer extends TaggedImageAnalyzer {
 			}
 			synchronized(MMT.Acqlock){
 				if(kernel_.roiList_.size()<=0){
-					Function.getInstance().reDraw(acqName, frameNum_, update);
+					Function.getInstance().reDraw(acqName, frameNum_, update,true);
 					return;
 				}
 				if(!kernel_.getXYPosition(taggedImage.pix))return;
@@ -124,7 +124,7 @@ public class GetXYPositionAnalyzer extends TaggedImageAnalyzer {
 				} catch (IOException e) {
 					MMT.logError("Save data error");
 				}
-			Function.getInstance().reDraw(acqName, frameNum_, update);
+			Function.getInstance().reDraw(acqName, frameNum_, update,true);
 			if( MMT.VariablesNUPD.responceXY.value() == 1){
 				Function.getInstance().updateChart(frameNum_);
 				if(MMTFrame.getInstance().isMagnetAuto() && (frameNum_ % (int)(MMT.VariablesNUPD.frameToCalcForce.value()) == 0)){

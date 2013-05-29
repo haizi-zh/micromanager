@@ -111,6 +111,7 @@ public  class RoiItem {
 		feedbackTarget_[0] = xPhy_;
 		feedbackTarget_[1] = yPhy_;
 		feedbackTarget_[2] = zPhy_;
+		clearFeedbackData();
 	}
 	public double[] getFeedbackTarget(){
 		return feedbackTarget_;
@@ -279,7 +280,6 @@ public  class RoiItem {
 	public void setZ(double zpos) {
 		zPhy_ = zpos;
 		showChartXYZStatis_[2].addValue(zPhy_);
-		feedbackXYZStatis_[2].addValue(zPhy_);
 		if(MMT.isFeedbackRunning_){
 			feedbackXYZStatis_[2].addValue(zPhy_ - feedbackTarget_[2]);
 		}

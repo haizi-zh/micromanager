@@ -85,7 +85,7 @@ public class PreferDailog extends JFrame {
 
 	public double[] getUserData() {
 		try {
-			File loginDataFile = new File(System.getProperty("user.home")+"/MMTracker/userData.txt");
+			File loginDataFile = new File(System.getProperty("user.home")+"/MMTracker/userDataFeedback.txt");
 			if(!loginDataFile.exists())
 				return null;
 			BufferedReader in;
@@ -119,13 +119,13 @@ public class PreferDailog extends JFrame {
 	}
 
 
-	void saveUserData(){
+	public void saveUserData(){
 		try {
 			File dir = new File(System.getProperty("user.home"),"MMTracker");
 			if(!dir.isFile())
 				dir.mkdirs();
 
-			File loginDataFile = new File(System.getProperty("user.home")+"/MMTracker/userData.txt");
+			File loginDataFile = new File(System.getProperty("user.home")+"/MMTracker/userDataFeedback.txt");
 			FileWriter out = new FileWriter((loginDataFile)); 
 			String sData = "";
 			for (int i = 0; i < MMT.VariablesNUPD.values().length; i++) {

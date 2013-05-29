@@ -54,7 +54,7 @@ class TCPServer {
 		return instance_;
 	}
 	public static TCPServer getInstance() {
-		
+
 		return instance_;
 	}
 	public TCPServer(CMMCore core, int port) {
@@ -231,12 +231,9 @@ class TCPServer {
 		byte CMD = (byte) ECMDLIST.QPOS.ordinal();
 		short paraNum = 3;
 		try {
-//			double currxpos_ = core_.getXPosition(xystage_);
-//			double currypos_ = core_.getYPosition(xystage_);
-//			double currzpos_ = core_.getPosition(zstage_);
-			double currxpos_ = 10;
-			double currypos_ = 20;
- 			double currzpos_ = 30;
+			double currxpos_ = core_.getXPosition(xystage_);
+			double currypos_ = core_.getYPosition(xystage_);
+			double currzpos_ = core_.getPosition(zstage_);
 
 			short paralen = 8;
 			respond(socket, new Object[] { CMD, paraNum + 1, 1, true, paralen,
@@ -421,17 +418,17 @@ class TCPServer {
 		try {
 			if (paraMap.containsKey(zAxis)) {
 				double pos = ((Number) paraMap.get(zAxis)).doubleValue();
-				
+
 				if (flag)
 					MMT.debugMessage("SetPosition\t"+String.valueOf(pos));
 				else
 					MMT.debugMessage("setRelativePosition\t"+String.valueOf(pos));
-				
+
 				if (flag)
 					core_.setPosition(zstage_, pos);
 				else
 					core_.setRelativePosition(zstage_, pos);
-				
+
 			}
 
 			int bm = 0;
@@ -455,7 +452,7 @@ class TCPServer {
 				MMT.debugMessage("setXYPosition\t"+String.valueOf(xpos[0])+"\t"+String.valueOf(ypos[0]));
 			else
 				MMT.debugMessage("setRelativeXYPosition\t"+String.valueOf(xpos[0])+"\t"+String.valueOf(ypos[0]));
-			
+
 			if (flag)
 				core_.setXYPosition(xystage_, xpos[0], ypos[0]);
 			else

@@ -33,26 +33,26 @@ public class CalibrateAnalyzer extends TaggedImageAnalyzer {
 		double[] pos = null;
 		try {
 			pos = Function.getInstance().getStagePosition();
+			boolean ret = kernel_.calibration(taggedImage.pix, MMT.calibrateIndex_,pos[0],pos[1],pos[2]);
+			Function.getInstance().reDraw(MMStudioMainFrame.SIMPLE_ACQ,MMT.calibrateIndex_, true,true);
+			if(!ret) 
+			{
+				MMT.isCalibrationRunning_ = false;
+				MMT.isAnalyzerBusy_ = false;
+				return;
+			}
+			
+			MMT.logMessage(String.format("calibrating:\t\t%d/%d",MMT.calibrateIndex_,kernel_.zPosProfiles.length));
+			MMT.debugMessage((String.format("Z\t%d/%d\tXP\t%f\tYP\t%f\tZP\t%f\n",MMT.calibrateIndex_,kernel_.zPosProfiles.length,pos[0],pos[1],pos[2])));
+
+			MMT.isAnalyzerBusy_ = false;
 		} catch (Exception e) {
 			MMT.isCalibrationRunning_ = false;
 			MMT.isAnalyzerBusy_ = false;
 			MMT.lastError_ = "Get stage position error" +e.toString();
 			return;
 		}
-		
-		boolean ret = kernel_.calibration(taggedImage.pix, MMT.calibrateIndex_,pos[0],pos[1],pos[2]);
-		Function.getInstance().reDraw(MMStudioMainFrame.SIMPLE_ACQ,MMT.calibrateIndex_, true);
-		if(!ret) 
-		{
-			MMT.isCalibrationRunning_ = false;
-			MMT.isAnalyzerBusy_ = false;
-			return;
-		}
-		
-		MMT.logMessage(String.format("calibrating:\t\t%d/%d",MMT.calibrateIndex_,kernel_.zPosProfiles.length));
-		MMT.debugMessage((String.format("Z\t%d/%d\tXP\t%f\tYP\t%f\tZP\t%f\n",MMT.calibrateIndex_,kernel_.zPosProfiles.length,pos[0],pos[1],pos[2])));
 
-		MMT.isAnalyzerBusy_ = false;
 	}
 	
 	

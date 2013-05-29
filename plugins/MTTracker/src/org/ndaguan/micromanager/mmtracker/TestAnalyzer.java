@@ -31,7 +31,7 @@ public class TestAnalyzer extends TaggedImageAnalyzer {
 		try {
 			double[] pos = Function.getInstance().getStagePosition();
 			boolean ret = kernel_.getXYZPosition(taggedImage.pix);
-			Function.getInstance().reDraw(MMStudioMainFrame.SIMPLE_ACQ,MMT.testingIndex_, true);
+			Function.getInstance().reDraw(MMStudioMainFrame.SIMPLE_ACQ,MMT.testingIndex_, true,true);
 			if(!ret){
 				MMT.logError("Testting Error");
 				MMT.isTestingRunning_ = false;

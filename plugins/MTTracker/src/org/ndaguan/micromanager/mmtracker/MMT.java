@@ -25,7 +25,6 @@ public class MMT {
 	public static int calibrateIndex_ = 0;
 	public static int testingIndex_ = 0;
 	public static int currentframeIndex_ = 0;
-	public static double currentframeToRefreshImage_ = 0;
 	public static String lastError_ = "No Error";
 	
 	
@@ -62,7 +61,7 @@ public class MMT {
 	public static enum VariablesNUPD {
 		//general
 		beanRadiuPixel("/pixel ",55,0,1,"选中的框大小，此范围外的图像数据无效，太小则精度不好，太大了可能会导致定位不准和计算耗时"),
-		frameToCalcForce("/f ",1000,0,1,"多少帧移动一次磁铁，快速拉伸时推荐使用100+，要计算相对准确的力，推荐使用1000+"),
+		frameToCalcForce("/f ",300,0,1,"多少帧移动一次磁铁，快速拉伸时推荐使用100+，要计算相对准确的力，推荐使用1000+"),
 		magnetStepSize("/uM ",100,0,1,"移动一次磁铁走过的距离，太大时会导致MP285相应太慢"),
 		chartWidth("",2000,0,1,"数据图的长度，推荐2000+"),
 		
@@ -73,7 +72,7 @@ public class MMT {
 		//advance
 		rInterStep("/pixel ",0.2,0.1,0,"极坐标积分时的内插值大小，用来记录衍射环形状，太大时精度不好，太小时计算耗时，使用0.1时会有已知Bug，推荐使用默认值"),
 		persistance("/uM ",0.05,0.001,0,"DNA刚度，用来计算磁力，推荐使用默认值"),
-		kT("pN*nM ",4.2,0.001,0,"Kb*T,用来计算磁力，推荐使用默认值"),
+		kT("/pN*nM ",4.2,0.001,0,"Kb*T,用来计算磁力，推荐使用默认值"),
 		precision("/uM",0.0001,0.0001,0,"插值算法中的精度，即整个测量系统最终需要的最小精度，太大时精度不好，太小时计算耗时，推荐使用默认值"),
 		
 		pixelToPhysX("(Um/pixel) ",0.075,0.0001,0,"一个像素对应的物理大小，位移太可控制XY方向移动时无需设置，否则需要根据放大倍数和CCD参数确定"),
@@ -86,20 +85,20 @@ public class MMT {
 		saveFile(" ",1,0,0,"测试专用：是否保存数据,1：是，0：否"),
 		showDebugTime("",10000,0,0,"测试专用：更新correlation 及 posProfile 图像的帧距"),
 		
-		chartStatisWindow("",500,0,0,"数据图像显示：响应变化的帧数，太小时图像容易抖动，太大时图像不容易自动缩放，推荐使用200~1000"),
-		frameToRefreshChart("",50,0,0,"数据图像显示：更新图像的帧数，太小了计算耗时，太大了更新慢,推荐使用20~100"),
+		chartStatisWindow("",300,0,0,"数据图像显示：响应变化的帧数，太小时图像容易抖动，太大时图像不容易自动缩放，推荐使用200~1000"),
+		frameToRefreshChart("",10,0,0,"数据图像显示：更新图像的帧数，太小了计算耗时，太大了更新慢,推荐使用20~100"),
 		frameToRefreshImage("",50,0,0,"图像显示即响应鼠标操作时间，太小了计算耗时，太大了响应慢，容易出现选框跟不上球的移动，推荐使用50~100"),
 		stageMoveSleepTime("/ms",30,0,0,"位移台移动等待时间，太小了会导致位移台移动不到需要位置，太大了耗时，推荐参考位移台信息，或使用默认值"),
 		
-		hasZStage("",0,0,0,"位移台是否可以控制样品在Z方向移动，1：是，0：否"),
-		hasXYStage("",0,0,0,"位移台是否可以控制样品在XY方向移动，1：是，0：否"),
+		hasZStage("",1,0,0,"位移台是否可以控制样品在Z方向移动，1：是，0：否"),
+		hasXYStage("",1,0,0,"位移台是否可以控制样品在XY方向移动，1：是，0：否"),
 		needStageServer("",0,0,0,"是否需要使用位移台服务器，1：是，0：否"),
-		isFeedBack("",0,0,0,"是否添加反馈，1：是，0：否"),
-		frameToFeedBack("",50,0,0,"多少帧反馈一次"),
-		feedBackMaxStepSize("uM",0.50,0.001,0,"反馈最大步长"),
-		feedBackWindowSize("",50,0,0,"反馈滑动窗口大小"),
-		pTerm("",1,0.0001,0,"比例系数"),
-		iTerm("",1,0.0001,0,"积分系数");
+		frameToFeedBack("",5,0,0,"多少帧反馈一次"),
+		feedBackMaxStepSize("/uM",0.02,0.001,0,"反馈最大步长,每次反馈走的最大位移，太大了容易震荡，太小反馈慢"),
+		feedBackMinStepSize("/uM",0.000,0.001,0,"反馈最小步长，当飘逸小于此值时不触发反馈"),
+		feedBackWindowSize("",10,0,0,"反馈滑动窗口大小"),
+		pTerm("",-0.2,0.0001,0,"比例系数"),
+		iTerm("",-0.01,0.0001,0,"积分系数");
 		private String unit;
 		private double value;
 		private double presicion;

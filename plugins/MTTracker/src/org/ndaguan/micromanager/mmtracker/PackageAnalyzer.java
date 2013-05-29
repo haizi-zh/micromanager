@@ -35,7 +35,7 @@ public class PackageAnalyzer {
 
 		byte paraNum = rawData[offset[0]];
 		offset[0]++;
-		if (paraNum < 2)
+		if (paraNum < 1)
 			return null;
 
 		ByteBuffer buffer = ByteBuffer.wrap(rawData);

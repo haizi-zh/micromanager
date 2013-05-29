@@ -229,9 +229,11 @@ public class Function {
 
 	}
 
-	public void reDraw(final String acqName, final long frameNum_, final boolean update) {
-		if(frameNum_ %MMT.VariablesNUPD.frameToRefreshImage.value() !=0)
+	public void reDraw(final String acqName, final long frameNum_, final boolean update,boolean forceRedraw) {
+
+		if(frameNum_ %MMT.VariablesNUPD.frameToRefreshImage.value() !=0 && !forceRedraw)
 			return;
+
 		SwingUtilities.invokeLater(new Runnable(){
 			@Override
 			public void run() {
@@ -317,8 +319,14 @@ public class Function {
 
 	public void setXYZCalPosition(int z) throws Exception 
 	{
-		setStageZPosition(kernel_.zPosProfiles[z]);
-		setStageXYPosition(kernel_.xPosProfiles[z],kernel_.yPosProfiles[z]);
+		if(MMT.VariablesNUPD.needStageServer.value() == 1){
+			TCPClient.getInstance().setPosition(kernel_.xPosProfiles[z],kernel_.yPosProfiles[z],kernel_.zPosProfiles[z]);
+			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+		}
+		else{
+			setStageZPosition(kernel_.zPosProfiles[z]);
+			setStageXYPosition(kernel_.xPosProfiles[z],kernel_.yPosProfiles[z]);
+		}
 
 	}
 	public void setZCalPosition(int z) throws Exception {
@@ -478,7 +486,6 @@ public class Function {
 			MMT.isTestingRunning_ = false;
 			MMT.isGetXYPositionRunning_ = false;
 			MMT.isGetXYZPositionRunning_ = false;
-			MMT.VariablesNUPD.frameToRefreshImage.value(MMT.currentframeToRefreshImage_);
 			MMTFrame.getInstance().preferDailog.UpdateData(false);
 			MMTFrame.getInstance().preferDailog.enableEdit(true);
 			MMTFrame.getInstance().setCalibrateIcon(true);
@@ -571,6 +578,7 @@ public class Function {
 			}
 		}
 		stopLiveView();
+		stopFeedBack();
 		updateCalibrationProfile();
 		installAnalyzer("CAL");
 		WHATISLOVE("CalibrateStart");
@@ -612,6 +620,10 @@ public class Function {
 		WHATISLOVE("CalibrateTrue");
 		testing();
 	}
+	private void stopFeedBack() {
+		if(MMT.isFeedbackRunning_)
+			EnableFeedback();
+	}
 	private void stopLiveView() {
 		if (gui_.getAcquisitionEngine().isAcquisitionRunning()) {
 			gui_.getAcquisitionEngine().stop(true);
@@ -641,6 +653,10 @@ public class Function {
 	public void liveView() {
 		if(gui_.isLiveModeOn()){
 			gui_.enableLiveMode(false);
+			try {
+				TimeUnit.MICROSECONDS.sleep(200);
+			} catch (InterruptedException e) {
+			}
 			gui_.enableLiveMode(true);
 		}else{
 			gui_.enableLiveMode(true);
@@ -737,16 +753,32 @@ public class Function {
 			}
 		}
 	}
+	public void setStageRelativeXYPosition(double xpos,double ypos) throws Exception {
+		if(MMT.xyStage_ != null){
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+				TCPClient.getInstance().setRelativePosition(MMT.xyStage_,xpos, ypos);
+			}
+			else{
+				core_.setRelativeXYPosition(MMT.xyStage_,xpos, ypos);
+				TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+			}
+		}
+	}
 	public void setStageXYZPosition(double[] pos) throws Exception {
 		setStageXYPosition(pos[0],pos[1]);
 		setStageZPosition(pos[2]);
 	}
+
 	public void setStageRelativeXYZPosition(double[] pos) throws Exception {
-		double[] currPos = getStagePosition();
-		for(int i = 0;i<3;i++)
-			currPos[i] += pos[i];
-		setStageXYPosition(currPos[0],currPos[1]);
-		setStageZPosition(currPos[2]);
+		if(pos[0] != 0 || pos[1] != 0)
+			setStageRelativeXYPosition(pos[0],pos[1]);
+		if(pos[2] != 0)
+			setStageRelativeZPosition(pos[2]);
+	}
+
+	public void setStageRelativeXYPosition(double[] pos) throws Exception {
+		if(pos[0] != 0 || pos[1] != 0)
+			setStageRelativeXYPosition(pos[0],pos[1]);
 	}
 
 	public void setStageZPosition(double zPos) throws Exception {
@@ -756,6 +788,17 @@ public class Function {
 			}
 			else{
 				core_.setPosition(MMT.zStage_, zPos);
+			}
+			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+		}
+	}
+	public void setStageRelativeZPosition(double zPos) throws Exception {
+		if(MMT.zStage_ != null){
+			if(MMT.VariablesNUPD.needStageServer.value() == 1){
+				TCPClient.getInstance().setRelativePosition(MMT.zStage_,zPos);
+			}
+			else{
+				core_.setRelativePosition(MMT.zStage_, zPos);
 			}
 			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
 		}
@@ -771,6 +814,7 @@ public class Function {
 				it.setChartVisible(true);
 		}else{
 			installAnalyzer("XYACQ");
+			stopFeedBack();
 			MMTFrame.getInstance().preferDailog.enableEdit(true);
 			MMTFrame.getInstance().setLiveViewIcon(false);
 			for(RoiItem it:roiList_)
@@ -837,7 +881,17 @@ public class Function {
 			stageTarget[0] = Kp*delta[1]+Ki*integrate[1];//xytransfer
 			stageTarget[1] = Kp*delta[0]+Ki*integrate[0];
 			stageTarget[2] = Kp*delta[2]+Ki*integrate[2];
-			setStageRelativeXYZPosition(stageTarget );
+			double maxMoveStep = MMT.VariablesNUPD.feedBackMaxStepSize.value();
+			double minMoveStep = MMT.VariablesNUPD.feedBackMinStepSize.value();
+			for(int i=0;i<3;i++){
+				double absT = Math.abs(stageTarget[i]);
+				stageTarget[i] = absT>maxMoveStep?(maxMoveStep*(absT/stageTarget[i])):stageTarget[i];
+				stageTarget[i] = absT<minMoveStep?0:stageTarget[i];
+			}
+			if(kernel_.isCalibrated_)
+				setStageRelativeXYZPosition(stageTarget );
+			else
+				setStageRelativeXYPosition(stageTarget );
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -849,14 +903,14 @@ public class Function {
 			if(index != -1){
 				roiList_.get(index).setFeedbackTarget();
 				MMTFrame.getInstance().setFeedbackIcon(true);
+				MMT.logMessage("Feedback mode is ON");
 				MMT.isFeedbackRunning_ = true;
 			}else{
 				MMT.logError("No reference ROI is selected! try ctrl+s");
 			}
 		}else{
-			int index = getReferenceRoiIndex();
-			roiList_.get(index).clearFeedbackData();
 			MMTFrame.getInstance().setFeedbackIcon(false);
+			MMT.logMessage("Feedback mode is OFF");
 			MMT.isFeedbackRunning_ = false;
 		} 
 
@@ -864,11 +918,11 @@ public class Function {
 	public void TCPIPClient() {
 		TCPServer tcpServer = MMTracker.getInstance().getTcpServer();
 		if(tcpServer != null && tcpServer.isRunning())
-		try {
-			MMTracker.getInstance().getTcpServer().stop();
-		} catch (InterruptedException e) {
-			MMT.logError("TCPIPServer stop error!" + e.toString());
-		}
+			try {
+				MMTracker.getInstance().getTcpServer().stop();
+			} catch (InterruptedException e) {
+				MMT.logError("TCPIPServer stop error!" + e.toString());
+			}
 		try {
 			MMTracker.getInstance().setTcpClient(TCPClient.getInstance("127.0.0.1", MMT.TCPIPPort));
 			MMT.logMessage("TCPClient start ok");
@@ -882,11 +936,11 @@ public class Function {
 	public void TCPIPServer() {
 		TCPClient tcpClient = MMTracker.getInstance().getTcpClient();
 		if(tcpClient != null && tcpClient.isRunning())
-		try {
-			MMTracker.getInstance().getTcpClient().stop();
-		} catch ( IOException e) {
-			MMT.logError("TCPIPClient stop error!" + e.toString());
-		}
+			try {
+				MMTracker.getInstance().getTcpClient().stop();
+			} catch ( IOException e) {
+				MMT.logError("TCPIPClient stop error!" + e.toString());
+			}
 		MMTracker.getInstance().setTcpServer(TCPServer.getInstance(core_,MMT.TCPIPPort));
 		MMTracker.getInstance().getTcpServer().start();	
 		MMT.logMessage("TCPIPServer start ok");

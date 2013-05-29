@@ -67,20 +67,33 @@ class TCPClient {
 		outPutSteam.flush();
 	}
 
-
+	public void setPosition( double xpos, double ypos,double zpos) throws IOException {
+		byte CMD = (byte) ECMDLIST.MOV.ordinal();
+		int paraNum = 6;
+		short paralen = 8;
+		SendCommand(new Object[] { CMD, paraNum ,  paralen,0, paralen,	xpos, paralen,1, paralen,	ypos, paralen,2, paralen,	zpos});	
+		Object[] ret = ReadMessage(socket);
+		if(ret == null || !((boolean) ret[1]))
+			MMT.logError("SetPosition Error!");
+			 
+	}
 	public void setPosition(String xyStage_, double xpos, double ypos) throws IOException {//set x  y
 		byte CMD = (byte) ECMDLIST.MOV.ordinal();
 		int paraNum = 4;
 		short paralen = 8;
 		SendCommand(new Object[] { CMD, paraNum ,  paralen,0, paralen,	xpos, paralen,1, paralen,	ypos});
-
+		Object[] ret = ReadMessage(socket);
+		if(ret == null || !((boolean) ret[1]))
+			MMT.logError("SetPosition Error!");
 	}
 	public void setRelativePosition(String xyStage_, double xpos, double ypos) throws IOException {//set x  y
 		byte CMD = (byte) ECMDLIST.MVR.ordinal();
 		int paraNum = 4;
 		short paralen = 8;
 		SendCommand(new Object[] { CMD, paraNum ,  paralen,0, paralen,	xpos, paralen,1, paralen,	ypos});
-
+		Object[] ret = ReadMessage(socket);
+		if(ret == null ||  !((boolean) ret[1]))
+			MMT.logError("SetPosition Error!");
 	}
 
 	public void setPosition(String zStage_, double zpos) throws IOException {//set z
@@ -88,19 +101,25 @@ class TCPClient {
 		int paraNum = 2;
 		short paralen = 8;
 		SendCommand(new Object[] { CMD, paraNum ,  paralen,2, paralen,	zpos});
+		Object[] ret = ReadMessage(socket);
+		if(ret == null || !((boolean) ret[1]))
+			MMT.logError("SetPosition Error!");
 	}
 	public void setRelativePosition(String zStage_, double zpos) throws IOException {//set z
 		byte CMD = (byte) ECMDLIST.MVR.ordinal();
 		int paraNum = 2;
 		short paralen = 8;
 		SendCommand(new Object[] { CMD, paraNum ,  paralen,2, paralen,	zpos});
+		Object[] ret = ReadMessage(socket);
+		if(ret == null ||  !((boolean) ret[1]))
+			MMT.logError("SetPosition Error!");
 	}
 
 	public double[] getPosition() throws IOException {//return x y z
 		byte CMD = (byte) ECMDLIST.QPOS.ordinal();
 		SendCommand(new Object[]{CMD,0});
 		Object[] ret = ReadMessage(socket);
-		if((boolean) ret[1])
+		if(ret != null && (boolean) ret[1])
 			return new double[]{(double) ret[3],(double) ret[5],(double) ret[7]};
 		return null;
 	}
@@ -166,4 +185,6 @@ class TCPClient {
 			packAnalyzer = null;
 		}
 	}
+
+
 }

@@ -63,8 +63,6 @@ public class MMTracker implements MMPlugin{
 			testAnalyzer_ = TestAnalyzer.getInstance(kernel);
 			function_ = Function.getInstance(app_,roiList_);
 			function_.installAnalyzer("XYACQ");
-			MMT.currentframeToRefreshImage_ = MMT.VariablesNUPD.frameToRefreshImage.value();
-			MMT.VariablesNUPD.frameToRefreshImage.value(1);
 			frame_.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	
 			frame_.setVisible(true);
 			MMT.xyStage_ = core_.getXYStageDevice();
