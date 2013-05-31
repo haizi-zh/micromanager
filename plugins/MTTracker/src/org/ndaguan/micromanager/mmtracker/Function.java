@@ -822,15 +822,18 @@ public class Function {
 		}
 		liveView();
 	}
+	
 	public void cleanStaticData() {
 		for(RoiItem item: roiList_){
 			item.clearStaticData();
 		}
 	}
+	
 	public void lockEveryThingButThis() {
 		MMTFrame.getInstance().lockEveryThingButThis(!buttonIsLocked_);
 		buttonIsLocked_ = !buttonIsLocked_;
 	}
+	
 	public void updateCorrChart(final int roiIndex,final double[] yArray) {
 
 		if(MMT.debug && MMT.currentframeIndex_% MMT.VariablesNUPD.showDebugTime.value() == 0){
@@ -845,8 +848,8 @@ public class Function {
 			});
 		}
 	}
+	
 	public void updatePosProfileChart(final int roiIndex,final double[] currProfiles) {
-
 		final  double[] posProfile = currProfiles;
 		if(MMT.debug && MMT.currentframeIndex_% MMT.VariablesNUPD.showDebugTime.value() == 0){
 			roiList_.get(roiIndex).clearChart("Chart-PosProfile");
@@ -860,11 +863,12 @@ public class Function {
 			});		
 		}
 	}
+	
 	public void SetXYOrign() {
 		for(RoiItem it:roiList_)
 			it.setXYOrign();
-
 	}
+	
 	public void doFeedback() {
 		try {
 			double Kp = MMT.VariablesNUPD.pTerm.value();
@@ -878,7 +882,7 @@ public class Function {
 				delta[i] = currPos[i] - target[i];
 			}
 			double[] stageTarget = new double[3];
-			stageTarget[0] = Kp*delta[1]+Ki*integrate[1];//xytransfer
+			stageTarget[0] = Kp*delta[1]+Ki*integrate[1];//XY Transfer
 			stageTarget[1] = Kp*delta[0]+Ki*integrate[0];
 			stageTarget[2] = Kp*delta[2]+Ki*integrate[2];
 			double maxMoveStep = MMT.VariablesNUPD.feedBackMaxStepSize.value();
@@ -895,8 +899,8 @@ public class Function {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 	}
+	
 	public void EnableFeedback() {
 		if(!MMT.isFeedbackRunning_){
 			int index = getReferenceRoiIndex();
