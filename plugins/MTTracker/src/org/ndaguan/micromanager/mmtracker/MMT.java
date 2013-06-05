@@ -30,7 +30,7 @@ public class MMT {
 	
 	public static String[] CHARTLIST = new String[]{
 		"Chart-Z","Chart-X","Chart-Y","Chart-L","Chart-FX","Chart-FY",
-		"Chart-STDXDY","Chart-SKREWNESS","Chart-Testing","Chart-Corr","Chart-PosProfile"
+		"Chart-STDXDY","Chart-SKREWNESS","Chart-Testing","Chart-Corr","Chart-PosProfile","Chart-SumX","Chart-SumY"
 	};
 
 	public static void logError(String string) 
@@ -98,6 +98,8 @@ public class MMT {
 		feedBackMinStepSize("/uM",0.000,0.001,0,"反馈最小步长，当飘逸小于此值时不触发反馈"),
 		feedBackWindowSize("",10,0,0,"反馈滑动窗口大小"),
 		pTerm("",-0.2,0.0001,0,"比例系数"),
+		xyCrossBorder("",10,0,0,"比例系数"),
+		crossSize("",20,0,0,"十字×"),
 		iTerm("",-0.01,0.0001,0,"积分系数");
 		private String unit;
 		private double value;

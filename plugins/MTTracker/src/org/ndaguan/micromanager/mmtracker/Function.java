@@ -673,6 +673,7 @@ public class Function {
 			}
 		});
 	}
+
 	public void cleanTestingData() {
 		for(int i = 0;i<roiList_.size();i++)
 		{
@@ -848,7 +849,22 @@ public class Function {
 			});
 		}
 	}
-	
+	public void updateChartSumXY(final int roiIndex, final double[][] sumXY) {
+		if(MMT.debug && MMT.currentframeIndex_% MMT.VariablesNUPD.showDebugTime.value() == 0){
+			roiList_.get(roiIndex).clearChart("Chart-SumX");
+			roiList_.get(roiIndex).clearChart("Chart-SumY");
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					for (int j = 0; j < sumXY[0].length; j++) {
+						roiList_.get(roiIndex).addChartData("Chart-SumX",j,sumXY[0][j]);
+						roiList_.get(roiIndex).addChartData("Chart-SumY",j,sumXY[1][j]);
+					}
+				}
+			});
+		}
+		
+	}
 	public void updatePosProfileChart(final int roiIndex,final double[] currProfiles) {
 		final  double[] posProfile = currProfiles;
 		if(MMT.debug && MMT.currentframeIndex_% MMT.VariablesNUPD.showDebugTime.value() == 0){
@@ -949,4 +965,5 @@ public class Function {
 		MMTracker.getInstance().getTcpServer().start();	
 		MMT.logMessage("TCPIPServer start ok");
 	}
+	
 }
