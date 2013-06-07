@@ -175,77 +175,94 @@ public class PreferDailog extends JFrame {
 			getContentPane().setLayout(null);
 			int frameWidth = (int)(ITEMWIDTH*columnNum);
 			int frameHeight = 2*ITEMHEIGHT*preferencesLen/columnNum + ITEMHEIGHT*ITEMROW/3 ;
-			setBounds((int)(screen.width -frameWidth)/2,(int)(screen.height-frameHeight)/2,frameWidth ,frameHeight);
-			setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+			setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 			final JTabbedPane tabbedPane = new JTabbedPane();
-			tabbedPane.setBounds(0,0,(int)(ITEMWIDTH*4.2), ITEMHEIGHT*ITEMROW);
-			getContentPane().add(tabbedPane);
-
-			final JPanel panel = new JPanel();
-			panel.setLayout(null);
-			tabbedPane.addTab("Preferences", null, panel, null);
-			int y = 0;
-			int x = 0;
+	 
+			int classifyLen = MMT.VariablesClassify.values().length;
+			JPanel tab[] = new JPanel[classifyLen];
+			for(int i = 0;i<classifyLen;i++){
+				tab[i] = new JPanel();
+				tab[i].setLayout(null);
+				tabbedPane.addTab(MMT.VariablesClassify.values()[i].name(),null,tab[i],null);
+			}
+			int tabY[] = new int[classifyLen];
+			int tabX[] = new int[classifyLen];
 			for (int i = 0; i < preferencesLen; i++) {//edit & label
+				int tabIndex = MMT.VariablesNUPD.values()[i].getTabIndex();
+				if(tabIndex == -1)continue;
 				jLabel[i] = new JLabel();
 				jLabel[i].setText(String.format("%s%s", MMT.VariablesNUPD.values()[i].name(),MMT.VariablesNUPD.values()[i].getUnit()));
-				jLabel[i].setBounds(x,y,ITEMWIDTH,ITEMHEIGHT);
-				panel.add(jLabel[i]);
-				y += ITEMHEIGHT;
+				jLabel[i].setBounds(tabX[tabIndex],tabY[tabIndex],ITEMWIDTH,ITEMHEIGHT);
+				
+				tabY[tabIndex] += ITEMHEIGHT;
 				jTextField[i] = new JTextField();
-				jTextField[i].setBounds(x, y, ITEMWIDTH,ITEMHEIGHT);
+				jTextField[i].setBounds(tabX[tabIndex], tabY[tabIndex], ITEMWIDTH,ITEMHEIGHT);
 				jTextField[i].setToolTipText(MMT.VariablesNUPD.values()[i].getToolTip());
 				if(MMT.VariablesNUPD.values()[i].getImp()==1)
 				jTextField[i].setForeground(new Color(255,0,0));
-				panel.add(jTextField[i]);
-				x += ITEMWIDTH;
-				y -= ITEMHEIGHT;
-				if((i+1)%columnNum  == 0 ){
-					y += 2*ITEMHEIGHT;
-					x = 0;
+				tab[tabIndex].add(jLabel[i]);
+				tab[tabIndex].add(jTextField[i]);
+				tabX[tabIndex] += ITEMWIDTH;
+				tabY[tabIndex] -= ITEMHEIGHT;
+				if(tabX[tabIndex]/ITEMWIDTH  == columnNum ){
+					tabY[tabIndex] += 2*ITEMHEIGHT;
+					tabX[tabIndex] = 0;
 				}
 			}			
-
-			y +=ITEMHEIGHT*2;
-			x = 0;
+			int x = 0;
+			int y = 0;
+			for(int i=0;i<classifyLen;i++){
+				y = y<tabY[i]?tabY[i]:y;
+			}
+			y += ITEMHEIGHT;
+			frameHeight = y+ITEMHEIGHT*4;
+			setBounds((int)(screen.width -frameWidth)/2,(int)(screen.height-frameHeight)/2,frameWidth ,frameHeight);
 			
-
+			tabbedPane.setBounds(0,0,(int)(ITEMWIDTH*(columnNum+0.2)), y);
+			getContentPane().add(tabbedPane);
+			final JPanel buttonBox = new JPanel();
+			buttonBox.setLayout(null);
+			buttonBox.setBounds(0, 10,  frameWidth,frameHeight);
+			getContentPane().add(buttonBox);
+			
 			final JSeparator separator2 = new JSeparator();
 			separator2.setBounds(0,y, ITEMWIDTH*4, 50);
-			panel.add(separator2);
-			y += ITEMHEIGHT;
+			buttonBox.add(separator2);
 			
 			ITEMWIDTH = ITEMWIDTH*3/4;
 			
 			final JButton OK = new JButton("OK");
 			OK.setBounds(0,  y,ITEMWIDTH,(int)(ITEMHEIGHT*1.5));
-			panel.add(OK);
+			buttonBox.add(OK);
 			x += ITEMWIDTH;
 			
 			final JButton Apply = new JButton("Apply");
-			Apply.setBounds(x,  y,ITEMWIDTH,(int)(ITEMHEIGHT*1.5));
-			panel.add(Apply);
+			Apply.setBounds(x,y,ITEMWIDTH,(int)(ITEMHEIGHT*1.5));
+			buttonBox.add(Apply);
 			x += ITEMWIDTH;
 
 			final JButton Cancel = new JButton("Cancel");
 			Cancel.setBounds(x,y, ITEMWIDTH,(int)(ITEMHEIGHT*1.5));
-			panel.add(Cancel);
+			buttonBox.add(Cancel);
 			x += ITEMWIDTH;
 
 			final JButton SelectDir = new JButton("SelectDir");
 			SelectDir.setBounds(x,y, ITEMWIDTH,(int)(ITEMHEIGHT*1.5));
-			panel.add(SelectDir);
+			buttonBox.add(SelectDir);
 			x += ITEMWIDTH;
 
 			final JButton OpenDir = new JButton("OpenDir");
 			OpenDir.setBounds(x,y, ITEMWIDTH,(int)(ITEMHEIGHT*1.5));
-			panel.add(OpenDir);
+			buttonBox.add(OpenDir);
 
 			OK.addActionListener(DialogListener);
 			Apply.addActionListener(DialogListener);
 			Cancel.addActionListener(DialogListener);
 			SelectDir.addActionListener(DialogListener);
 			OpenDir.addActionListener(DialogListener);
+			
+			
+			
 	}
 
 	private void PhraseActionEvent(ActionEvent e){

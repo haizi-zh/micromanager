@@ -325,7 +325,24 @@ public class Function {
 		}
 		else{
 			setStageZPosition(kernel_.zPosProfiles[z]);
-			setStageXYPosition(kernel_.xPosProfiles[z],kernel_.yPosProfiles[z]);
+			if(MMT.VariablesNUPD.needXYcalibrate.value() == 1)
+				setStageXYPosition(kernel_.xPosProfiles[z],kernel_.yPosProfiles[z]);
+			
+			if(MMT.VariablesNUPD.needCheckStageMovment.value() == 1){
+				boolean stageReady = false;
+				double targetPosition[] = new double[]{kernel_.xPosProfiles[z],kernel_.yPosProfiles[z],kernel_.zPosProfiles[z]};
+				double allowError = MMT.VariablesNUPD.stageMovmentPrecision.value();
+				while(!stageReady){
+					double[] pos = getStagePosition();
+					for(int i = 0;i<3;i++){
+						stageReady = pos[i]-targetPosition[i]<allowError;
+						if(!stageReady){
+							TimeUnit.MICROSECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
+							break;
+						}
+					}
+				}
+			}
 		}
 
 	}
@@ -426,7 +443,8 @@ public class Function {
 			MMT.logMessage("Calibration Start......");
 			break;
 		case "CalibrateTrue":
-			kernel_.setPixelToPhys();
+			if(MMT.VariablesNUPD.needXYcalibrate.value() == 1)
+				kernel_.setPixelToPhys();
 
 			kernel_.isCalibrated_ = false;
 
@@ -823,18 +841,18 @@ public class Function {
 		}
 		liveView();
 	}
-	
+
 	public void cleanStaticData() {
 		for(RoiItem item: roiList_){
 			item.clearStaticData();
 		}
 	}
-	
+
 	public void lockEveryThingButThis() {
 		MMTFrame.getInstance().lockEveryThingButThis(!buttonIsLocked_);
 		buttonIsLocked_ = !buttonIsLocked_;
 	}
-	
+
 	public void updateCorrChart(final int roiIndex,final double[] yArray) {
 
 		if(MMT.debug && MMT.currentframeIndex_% MMT.VariablesNUPD.showDebugTime.value() == 0){
@@ -863,7 +881,7 @@ public class Function {
 				}
 			});
 		}
-		
+
 	}
 	public void updatePosProfileChart(final int roiIndex,final double[] currProfiles) {
 		final  double[] posProfile = currProfiles;
@@ -879,12 +897,12 @@ public class Function {
 			});		
 		}
 	}
-	
+
 	public void SetXYOrign() {
 		for(RoiItem it:roiList_)
 			it.setXYOrign();
 	}
-	
+
 	public void doFeedback() {
 		try {
 			double Kp = MMT.VariablesNUPD.pTerm.value();
@@ -916,7 +934,7 @@ public class Function {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void EnableFeedback() {
 		if(!MMT.isFeedbackRunning_){
 			int index = getReferenceRoiIndex();
@@ -965,5 +983,5 @@ public class Function {
 		MMTracker.getInstance().getTcpServer().start();	
 		MMT.logMessage("TCPIPServer start ok");
 	}
-	
+
 }
