@@ -10,6 +10,7 @@
 *.sln
 *.suo
 *.sdf
+*.ipch
 Debug/
 Release/
 bin_Win32/
@@ -41,6 +42,14 @@ bin/
 *.classpath
 *.cproject
 *.pydevproject
+*.gif
+*.jpg
+*.css
+*.xml
+*.props
+*.xslt
+*.old
+*.gitignore
 
 micromanager/MMCoreJ_wrap/mmcorej/*.java
 Install_Win32/

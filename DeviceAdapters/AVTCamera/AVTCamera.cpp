@@ -140,7 +140,8 @@ int AVTCamera::Initialize()
 	assert(cam.Connect(&nodeInfo[0].Guid) == FCE_NOERROR);
 
 	FGPINFO info;
-	assert(cam.SetParameter(FGP_IMAGEFORMAT, MAKEIMAGEFORMAT(RES_SCALABLE, CM_Y8, 0)) == FCE_NOERROR);
+//	assert(cam.SetParameter(FGP_IMAGEFORMAT, MAKEIMAGEFORMAT(RES_SCALABLE, CM_Y8, 0)) == FCE_NOERROR);
+	assert(cam.SetParameter(FGP_IMAGEFORMAT, MAKEDCAMFORMAT(7,2, CM_Y8)) == FCE_NOERROR);
 	//assert(cam.SetParameter(FGP_AUTOEXPOSURE, PVAL_OFF) == FCE_NOERROR);
 	//assert(cam.SetParameter(FGP_GAIN, PVAL_OFF) == FCE_NOERROR);
 	//assert(cam.SetParameter(FGP_SHUTTER, PVAL_OFF) == FCE_NOERROR);
