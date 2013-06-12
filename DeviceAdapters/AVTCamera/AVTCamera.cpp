@@ -63,24 +63,26 @@ MODULE_API void DeleteDevice(MM::Device* pDevice)
 
 DriverGuard::DriverGuard(const AVTCamera * cam)
 {
-    g_AVTCamDriverLock.Lock();
+	g_AVTCamDriverLock.Lock();
 }
 
 DriverGuard::~DriverGuard()
 {
-    g_AVTCamDriverLock.Unlock();
+	g_AVTCamDriverLock.Unlock();
 }
 
 AVTCamera::AVTCamera() :
-binSize_(1),
-depth_(8),
-initialized_(false),
-fullFrameX_(0),
-fullFrameY_(0),
-fullFrameBufferSize_(0),
-sequenceRunning_(false),
-timeout_(1000),
-deinterlace_(1)
+				binSize_(1),
+				depth_(8),
+				initialized_(false),
+				fullFrameX_(0),
+				fullFrameY_(0),
+				fullFrameBufferSize_(0),
+				sequenceRunning_(false),
+				timeout_(1000),
+				thd_(0),
+				exposure_(20),
+				deinterlace_(0)
 {
 	InitializeDefaultErrorMessages();
 	// add custom messages
@@ -93,24 +95,26 @@ deinterlace_(1)
 	SetErrorText(ERR_SOFTWARE_TRIGGER_IN_USE, "Only one camera can use software trigger.");
 
 	// Find cameras
+	thd_ = new SequenceThread(this);
 
 }
 
 AVTCamera::~AVTCamera()
 {
-   DriverGuard dg(this);
+	DriverGuard dg(this);
 
-   refCount_--;
-   if (refCount_ == 0) {
-      // release resources
-      if (initialized_) {
-         Shutdown();
-      }
-	  FGExitModule();
+	refCount_--;
+	if (refCount_ == 0) {
+		// release resources
+		if (initialized_) {
+			Shutdown();
+		}
+		FGExitModule();
 
-      // clear the instance pointer
-      instance_ = NULL;
-   }
+		// clear the instance pointer
+		instance_ = NULL;
+	}
+	delete thd_;
 }
 
 AVTCamera* AVTCamera::GetInstance()
@@ -140,11 +144,8 @@ int AVTCamera::Initialize()
 	assert(cam.Connect(&nodeInfo[0].Guid) == FCE_NOERROR);
 
 	FGPINFO info;
-//	assert(cam.SetParameter(FGP_IMAGEFORMAT, MAKEIMAGEFORMAT(RES_SCALABLE, CM_Y8, 0)) == FCE_NOERROR);
+	//	assert(cam.SetParameter(FGP_IMAGEFORMAT, MAKEIMAGEFORMAT(RES_SCALABLE, CM_Y8, 0)) == FCE_NOERROR);
 	assert(cam.SetParameter(FGP_IMAGEFORMAT, MAKEDCAMFORMAT(7,2, CM_Y8)) == FCE_NOERROR);
-	//assert(cam.SetParameter(FGP_AUTOEXPOSURE, PVAL_OFF) == FCE_NOERROR);
-	//assert(cam.SetParameter(FGP_GAIN, PVAL_OFF) == FCE_NOERROR);
-	//assert(cam.SetParameter(FGP_SHUTTER, PVAL_OFF) == FCE_NOERROR);
 	assert(cam.SetParameter(FGP_XPOSITION, 0) == FCE_NOERROR);
 	assert(cam.SetParameter(FGP_YPOSITION, 0) == FCE_NOERROR);
 	assert(cam.GetParameterInfo(FGP_XSIZE, &info) == FCE_NOERROR);
@@ -211,28 +212,28 @@ int AVTCamera::Initialize()
 
 int AVTCamera::ResizeImageBuffer()
 {
-    // resize internal buffers
-    // NOTE: we are assuming 16-bit pixel type
+	// resize internal buffers
+	// NOTE: we are assuming 16-bit pixel type
 	const int bpp = (int)ceil(depth_/8.0);
 	img_.Resize(roi_.xSize / binSize_, roi_.ySize / binSize_, bpp);
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 /**
-* Deactivate the camera, reverse the initialization process.
-*/
+ * Deactivate the camera, reverse the initialization process.
+ */
 int AVTCamera::Shutdown()
 {
-    if (initialized_)
-    {
+	if (initialized_)
+	{
 		StopCamera();
 		cam.Disconnect();
 
 		delete fullFrameBuffer_;
-    }
+	}
 
-    initialized_ = false;
-    return DEVICE_OK;
+	initialized_ = false;
+	return DEVICE_OK;
 }
 
 void AVTCamera::StopCamera()
@@ -248,11 +249,11 @@ void AVTCamera::StopCamera()
 
 //added to use RTA
 /**
-* Acquires a single frame.
-* Micro-Manager expects that this function blocks the calling thread until the exposure phase is over.
-* This wait is implemented by sleeping ActualInterval_ms_ - ReadoutTime_ + 0.99 ms.
-* Note that this is likely not long enough when using internal triggering.
-*/
+ * Acquires a single frame.
+ * Micro-Manager expects that this function blocks the calling thread until the exposure phase is over.
+ * This wait is implemented by sleeping ActualInterval_ms_ - ReadoutTime_ + 0.99 ms.
+ * Note that this is likely not long enough when using internal triggering.
+ */
 int AVTCamera::SnapImage()
 {
 	DriverGuard dg(this);
@@ -266,7 +267,7 @@ int AVTCamera::SnapImage()
 	ret = cam.StartDevice();
 	if (ret != FCE_NOERROR)
 		return ret + g_Err_Offset;
-	
+
 	FGFRAME frame;
 	ret = cam.GetFrame(&frame, timeout_);
 	if (ret != FCE_NOERROR)
@@ -309,7 +310,7 @@ int AVTCamera::SnapImage()
 	default:
 		return ERR_INCOMPLETE_SNAP_IMAGE_CYCLE;
 	}
-	
+
 	ret = cam.PutFrame(&frame);
 	if (ret != FCE_NOERROR)
 		return ret + g_Err_Offset;
@@ -317,7 +318,7 @@ int AVTCamera::SnapImage()
 	ret = cam.CloseCapture();
 	if (ret != FCE_NOERROR)
 		return ret + g_Err_Offset;
-	
+
 	return DEVICE_OK;
 }
 
@@ -340,12 +341,13 @@ int AVTCamera::SetBinning(int bin)
 
 void AVTCamera::SetExposure(double exp)
 {
+	exposure_ = exp;
 }
 
 double AVTCamera::GetExposure() const
 {
 	DriverGuard dg(this);
-	return 10;
+	return exposure_;
 }
 
 int AVTCamera::SetROI(unsigned uX, unsigned uY, unsigned uXSize, unsigned uYSize)
@@ -466,4 +468,193 @@ int AVTCamera::OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct)
 		binSize_ = tmp;
 	}
 	return DEVICE_OK;
+}
+
+int AVTCamera::PrepareSequenceAcqusition()
+{
+	if (IsCapturing())
+		return DEVICE_CAMERA_BUSY_ACQUIRING;
+
+	int ret = GetCoreCallback()->PrepareForAcq(this);
+	if (ret != DEVICE_OK)
+		return ret;
+
+	return DEVICE_OK;
+}
+
+
+/**
+ * Required by the MM::Camera API
+ * Please implement this yourself and do not rely on the base class implementation
+ * The Base class implementation is deprecated and will be removed shortly
+ */
+int AVTCamera::StartSequenceAcquisition(double interval) {
+
+	return StartSequenceAcquisition(LONG_MAX, interval, false);
+}
+
+/**
+ * Stop and wait for the Sequence thread finished
+ */
+int AVTCamera::StopSequenceAcquisition()
+{
+	if (!thd_->IsStopped()) {
+		thd_->Stop();
+		thd_->wait();
+	}
+
+	return DEVICE_OK;
+}
+
+/**
+ * Simple implementation of Sequence Acquisition
+ * A sequence acquisition should run on its own thread and transport new images
+ * coming of the camera into the MMCore circular buffer.
+ */
+int AVTCamera::StartSequenceAcquisition(long numImages, double interval_ms, bool stopOnOverflow)
+{
+	if (IsCapturing())
+		return DEVICE_CAMERA_BUSY_ACQUIRING;
+
+	int ret = GetCoreCallback()->PrepareForAcq(this);
+	if (ret != DEVICE_OK)
+		return ret;
+	thd_->Start(numImages, interval_ms);
+	return DEVICE_OK;
+}
+
+/*
+ * Inserts Image and MetaData into MMCore circular Buffer
+ */
+int AVTCamera::InsertImage()
+{
+
+	MM::MMTime timeStamp = this->GetCurrentMMTime();
+	char label[MM::MaxStrLength];
+	this->GetLabel(label);
+
+	// Important:  metadata about the image are generated here:
+	Metadata md;
+	md.put("Camera", label);
+	md.put(MM::g_Keyword_Metadata_StartTime, CDeviceUtils::ConvertToString(sequenceStartTime_.getMsec()));
+	md.put(MM::g_Keyword_Elapsed_Time_ms, CDeviceUtils::ConvertToString((timeStamp - sequenceStartTime_).getMsec()));
+	md.put(MM::g_Keyword_Metadata_ROI_X, CDeviceUtils::ConvertToString( (long)roi_.x));
+	md.put(MM::g_Keyword_Metadata_ROI_Y, CDeviceUtils::ConvertToString( (long) roi_.y));
+
+	imageCounter_++;
+
+	char buf[MM::MaxStrLength];
+	GetProperty(MM::g_Keyword_Binning, buf);
+	md.put(MM::g_Keyword_Binning, buf);
+
+
+	const unsigned char* pI;
+	pI = GetImageBuffer();
+
+	unsigned int w = GetImageWidth();
+	unsigned int h = GetImageHeight();
+	unsigned int b = GetImageBytesPerPixel();
+
+	int ret = GetCoreCallback()->InsertImage(this, pI, w, h, b, md.Serialize().c_str());
+	if (!stopOnOverflow_ && ret == DEVICE_BUFFER_OVERFLOW)
+	{
+		// do not stop on overflow - just reset the buffer
+		GetCoreCallback()->ClearImageBuffer(this);
+		// don't process this same image again...
+		return GetCoreCallback()->InsertImage(this, pI, w, h, b, md.Serialize().c_str(), false);
+	} else
+		return ret;
+}
+
+
+
+/*
+ * Do actual capturing
+ * Called from inside the thread
+ */
+
+bool AVTCamera::IsCapturing() {
+	return !thd_->IsStopped();
+}
+int  AVTCamera::ThreadRun (MM::MMTime startTime)
+{
+	int ret=DEVICE_ERR;
+	GenerateImage(img_, GetSequenceExposure());
+	return  InsertImage();
+};
+int AVTCamera::GenerateImage(ImgBuffer& img, double exp)
+{
+	static int index = 0;
+	if(index>img_.Width()*img_.Height()-1)
+		index = 0;
+	//std::string pixelType;
+	char buf[MM::MaxStrLength];
+	GetProperty(MM::g_Keyword_PixelType, buf);
+	std::string pixelType(buf);
+
+	if (img_.Height() == 0 || img_.Width() == 0 || img_.Depth() == 0)
+		return DEVICE_ERR;
+
+	unsigned char* pBuf = fullFrameBuffer_;
+	FGFRAME frame;
+	int ret = cam.GetFrame(&frame,exp);
+	if (ret != FCE_NOERROR)
+		return ret + g_Err_Offset;
+
+	int bpp = GetImageBytesPerPixel();
+	int w = GetImageWidth();
+	int h = GetImageHeight();
+	switch (deinterlace_)
+	{
+	case 0:
+		memcpy_s(fullFrameBuffer_, fullFrameBufferSize_, frame.pData, frame.Length);
+		break;
+	case 1:
+		for (int i=0; i<GetImageHeight(); i++)
+		{
+			if (i % 2 == 0)
+			{
+				memcpy_s(fullFrameBuffer_ + i * w, fullFrameBufferSize_, frame.pData + (i/2) * w, w);
+			}
+			else
+			{
+				memcpy_s(fullFrameBuffer_ + i * w, fullFrameBufferSize_, frame.pData + ((i-1)/2 + h/2) * w, w);
+			}
+		}
+		break;
+	case 2:
+		for (int i=0; i<GetImageHeight(); i++)
+		{
+			if (i % 2 == 0)
+			{
+				memcpy_s(fullFrameBuffer_ + i * w, fullFrameBufferSize_, frame.pData + (i/2) * w, w);
+			}
+			else
+			{
+				memcpy_s(fullFrameBuffer_ + i * w, fullFrameBufferSize_, frame.pData + ((i+1)/2 + h/2) * w, w);
+			}
+		}
+		break;
+	default:
+		return ERR_INCOMPLETE_SNAP_IMAGE_CYCLE;
+	}
+
+	ret = cam.PutFrame(&frame);
+	if (ret != FCE_NOERROR)
+		return ret + g_Err_Offset;
+	return DEVICE_OK;
+}
+double AVTCamera::GetSequenceExposure()
+{
+	if (exposureSequence_.size() == 0)
+		return this->GetExposure();
+	if (sequenceIndex_ > exposureSequence_.size() - 1)
+		sequenceIndex_ = 0;
+	double exposure = exposureSequence_[sequenceIndex_];
+	sequenceIndex_++;
+	if (sequenceIndex_ >= exposureSequence_.size())
+	{
+		sequenceIndex_ = 0;
+	}
+	return exposure;
 }
