@@ -113,7 +113,7 @@ int XMTE517Ctrl::Initialize()
 	std::ostringstream osMessage;
 
 	// empty the Rx serial buffer before sending command
-	int ret = ClearPort(*this, *GetCoreCallback(), XMTE517::Instance()->GetSerialPort().c_str());
+	int ret = DEVICE_OK ;//= ClearPort(*this, *GetCoreCallback(), XMTE517::Instance()->GetSerialPort().c_str());
 
 	if (XMTE517::Instance()->GetDebugLogFlag() > 0)
 	{

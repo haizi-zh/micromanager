@@ -431,14 +431,23 @@ int ZStage::SetPositionUm(double dZPosUm)
 
 		 
 
-		CDeviceUtils::SleepMs(10);
-	XMTE517::Instance()->SetPositionZ(dZPosUm);
+		CDeviceUtils::SleepMs(30);
+
 
 	double dPosZ = 0.;
-
+	Sleep(30);
 	ret = GetPositionUm(dPosZ);
+	bool ready = abs(dPosZ - lZPosSteps)<0.05;
+	while(!ready){
+		ret = WriteCommand(buf, 9);
+		CDeviceUtils::SleepMs(500);
+		ret = GetPositionUm(dPosZ);
+		if (ret != DEVICE_OK)  return ret;
+		ready = abs(dPosZ - lZPosSteps)<0.05;
+	}
 
 	if (ret != DEVICE_OK) return ret;
+		XMTE517::Instance()->SetPositionZ(dPosZ);
 
 	return ret;
 }
