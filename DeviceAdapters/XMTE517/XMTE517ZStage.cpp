@@ -197,13 +197,14 @@ void ZStage::GetName(char* Name) const
 //
 int ZStage::SetMotionMode(long lMotionMode)
 {
+	return 0;
 	std::ostringstream osMessage;
 	 
 	unsigned char sResponse[64];
 	int ret = DEVICE_OK;
-	return ret;
+	 
 	unsigned char buf[9];
-	
+	lMotionMode = 0;
 	if (lMotionMode == 0)
 		XMTE517::Instance()->PackageCommand("TQH",NULL,buf);
 	else
@@ -435,8 +436,9 @@ int ZStage::SetPositionUm(double dZPosUm)
 
 
 	double dPosZ = 0.;
-	Sleep(30);
+	Sleep(50);
 	ret = GetPositionUm(dPosZ);
+ 
 	bool ready = abs(dPosZ - lZPosSteps)<0.05;
 	while(!ready){
 		ret = WriteCommand(buf, 9);
@@ -444,7 +446,7 @@ int ZStage::SetPositionUm(double dZPosUm)
 		ret = GetPositionUm(dPosZ);
 		if (ret != DEVICE_OK)  return ret;
 		ready = abs(dPosZ - lZPosSteps)<0.05;
-	}
+	} 
 
 	if (ret != DEVICE_OK) return ret;
 		XMTE517::Instance()->SetPositionZ(dPosZ);
