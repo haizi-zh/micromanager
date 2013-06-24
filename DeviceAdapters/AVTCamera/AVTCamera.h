@@ -11,8 +11,10 @@
 #endif
 
 #include "../../MMDevice/DeviceBase.h"
-#include "../../MMDevice/ImgBuffer.h"
 #include "../../MMDevice/DeviceThreads.h"
+#include "../../MMDevice/ImgBuffer.h"
+#include "../../MMDevice/DeviceUtils.h"
+
 #include "FGCamera.h"
 #include <string>
 
@@ -29,7 +31,7 @@
 #define ERR_OPEN_OR_CLOSE_SHUTTER_IN_ACQUISITION_NOT_ALLOWEDD 110
 #define ERR_NO_AVAIL_AMPS 111
 #define ERR_SOFTWARE_TRIGGER_IN_USE 112
-
+class  SequenceThread;
 class AVTCamera : public CCameraBase<AVTCamera>
 {
 public:
@@ -39,7 +41,7 @@ public:
 	// MMDevice API
 	int Initialize();
 	int Shutdown();
-   
+
 	void GetName(char* pszName) const;
 	bool Busy() { return false; }
 
@@ -59,11 +61,15 @@ public:
 	int GetROI(unsigned& uX, unsigned& uY, unsigned& uXSize, unsigned& uYSize);
 	int ClearROI();
 	int IsExposureSequenceable(bool& isSequenceable) const { isSequenceable = false; return DEVICE_OK; }
-	//int StartSequenceAcquisition(long numImages, double interval_ms, bool stopOnOverflow);
-	//int StopSequenceAcquisition(); // temporary=true
-	//int StopSequenceAcquisition(bool temporary); // temporary=true
-
+	int PrepareSequenceAcqusition();
+	int StartSequenceAcquisition(double interval);
+	int StartSequenceAcquisition(long numImages, double interval_ms, bool stopOnOverflow);
+	int StopSequenceAcquisition();
+	void GenerateImage();
+	int InsertImage();
+	bool IsCapturing();
 private:
+	friend class  SequenceThread;
 	AVTCamera();
 
 	// Update the image buffer information
@@ -75,6 +81,17 @@ private:
 	int OnDeInterlace(MM::PropertyBase* pProp, MM::ActionType eAct);
 	int OnBinning(MM::PropertyBase* pProp, MM::ActionType eAct);
 
+	double GetSequenceExposure();
+	std::vector<double> exposureSequence_;
+	MM::MMTime sequenceStartTime_;
+	bool isSequenceable_;
+	long sequenceMaxLength_;
+	bool sequenceRunning_;
+	long sequenceIndex_;
+	long imageCounter_;
+	int ThreadRun(MM::MMTime startTime);
+	int GenerateImage(ImgBuffer& img, double exp);
+	SequenceThread* thd_;
 	// Camera information
 	ImgBuffer img_;
 	int depth_;
@@ -84,11 +101,10 @@ private:
 	int fullFrameY_;
 	unsigned char* fullFrameBuffer_;
 	int fullFrameBufferSize_;
-	bool sequenceRunning_;
 	unsigned long timeout_;
 	// Methods for de-interlacing. 0 for none, 1 for normal, 2 for Jiwei's special algorithm
 	int deinterlace_;
-
+	double exposure_;
 	static unsigned int refCount_;
 	static AVTCamera* instance_;
 	bool initialized_;
@@ -110,9 +126,44 @@ private:
 
 };
 
+class SequenceThread : public MMDeviceThreadBase
+{
+	friend class AVTCamera;
+	enum { default_numImages=1, default_intervalMS = 100 };
+public:
+	SequenceThread(AVTCamera* pCam);
+	~SequenceThread();
+	void Stop();
+	void Start(long numImages, double intervalMs);
+	bool IsStopped();
+	void Suspend();
+	bool IsSuspended();
+	void Resume();
+	double GetIntervalMs(){return intervalMs_;}
+	void SetLength(long images) {numImages_ = images;}
+	long GetLength() const {return numImages_;}
+	long GetImageCounter(){return imageCounter_;}
+	MM::MMTime GetStartTime(){return startTime_;}
+	MM::MMTime GetActualDuration(){return actualDuration_;}
+private:
+	int svc(void) throw();
+	AVTCamera* camera_;
+	bool stop_;
+	bool suspend_;
+	long numImages_;
+	long imageCounter_;
+	double intervalMs_;
+	MM::MMTime startTime_;
+	MM::MMTime actualDuration_;
+	MM::MMTime lastFrameTime_;
+	MMThreadLock stopLock_;
+	MMThreadLock suspendLock_;
+	double exposure_;
+};
+
 class DriverGuard
 {
 public:
-   DriverGuard(const AVTCamera * cam);
-   ~DriverGuard();
+	DriverGuard(const AVTCamera * cam);
+	~DriverGuard();
 };
