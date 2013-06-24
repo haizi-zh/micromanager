@@ -76,12 +76,7 @@ pushd plugins/CCDGainCalc
 build $BUILDMODE
 popd
 
-echo Building MultiROI:
-pushd plugins/multRoiCalc
-build $BUILDMODE
-popd
-
-echo Building ZIndexMeasure:
-pushd plugins/ZIndexMeasure
+echo Building MTTracker:
+pushd plugins/MTTracker
 ant -buildfile build.xml build
 popd
