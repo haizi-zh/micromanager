@@ -31,7 +31,7 @@ public class MMTFrame extends JFrame {
 	private final int DEFAULT_HEIGHT =150;
 	private final int DEFAULT_LOCATION_X = 0;
 	private final int DEFAULT_LOCATION_Y = 10;
-	private final String DEFAULT_TITLE = MMT.DEFAULT_TITLE;;
+	private final String DEFAULT_TITLE = MMT.DEFAULT_TITLE + "=========Current user is : "+MMT.currentUser+"=========";
 	private final String DEFAULT_IMAGE = "icon/I.gif";
 	private final int DEFAULT_CLOSE_OPERATION =JFrame.HIDE_ON_CLOSE;
 
