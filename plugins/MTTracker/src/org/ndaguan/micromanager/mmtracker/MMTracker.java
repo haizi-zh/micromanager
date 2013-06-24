@@ -51,34 +51,36 @@ public class MMTracker implements MMPlugin{
 	public void show() {
 		if(frame_ == null){
 			//data 
-			roiList_ = Collections.synchronizedList(new ArrayList<RoiItem>());
-			//operation
-			render_ = OverlayRender.getInstance(app_);
-			listener_ =Listener.getInstance(app_);
-			frame_ = MMTFrame.getInstance(app_,listener_);
-			kernel = Kernel.getInstance(roiList_);
-			xyAnalyzer_ = GetXYPositionAnalyzer.getInstance(kernel,listener_,roiList_,render_);
-			xyzAnalyzer_ = GetXYZPositionAnalyzer.getInstance(kernel,listener_,roiList_,render_);
-			calAnalyzer_ = CalibrateAnalyzer.getInstance(kernel);
-			testAnalyzer_ = TestAnalyzer.getInstance(kernel);
-			function_ = Function.getInstance(app_,roiList_);
-			function_.installAnalyzer("XYACQ");
-			frame_.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	
-			frame_.setVisible(true);
-			MMT.xyStage_ = core_.getXYStageDevice();
-			MMT.zStage_ = core_.getFocusDevice();
+			LoginDailog pre = new LoginDailog();
+			pre.setVisible(true);
+			
 		}
 		else{
 			frame_.setVisible(true);
 		}
-
+	}
+	public void initialize(){
+		roiList_ = Collections.synchronizedList(new ArrayList<RoiItem>());
+		//operation
+		render_ = OverlayRender.getInstance(app_);
+		listener_ =Listener.getInstance(app_);
+		frame_ = MMTFrame.getInstance(app_,listener_);
+		kernel = Kernel.getInstance(roiList_);
+		xyAnalyzer_ = GetXYPositionAnalyzer.getInstance(kernel,listener_,roiList_,render_);
+		xyzAnalyzer_ = GetXYZPositionAnalyzer.getInstance(kernel,listener_,roiList_,render_);
+		calAnalyzer_ = CalibrateAnalyzer.getInstance(kernel);
+		testAnalyzer_ = TestAnalyzer.getInstance(kernel);
+		function_ = Function.getInstance(app_,roiList_);
+		function_.installAnalyzer("XYACQ");
+		frame_.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	
+		frame_.setVisible(true);
+		MMT.xyStage_ = core_.getXYStageDevice();
+		MMT.zStage_ = core_.getFocusDevice();
 		if ((!app_.getAcquisitionEngine().isAcquisitionRunning())
 				&& (!app_.isLiveModeOn())) {
 			app_.enableLiveMode(true);
 		}
-		 	
 	}
-
 	public static MMTracker getInstance(){
 		return instance_;
 	}

@@ -58,6 +58,7 @@ public class MMT {
 	public static int[] unEditAfterCalbration = new int[]{0,4,5,8};
 	public static double currXP = 40;
 	public static boolean isFeedbackRunning_ = false;
+	protected static String currentUser;
 	public static enum VariablesClassify{
 		General,
 		DataSheet,
