@@ -238,8 +238,8 @@ CDemoCamera::CDemoCamera() :
 				   sequenceRunning_(false),
 				   sequenceIndex_(0),
 				   binSize_(1),
-				   cameraCCDXSize_(300),
-				   cameraCCDYSize_(300),
+				   cameraCCDXSize_(512),
+				   cameraCCDYSize_(512),
 				   xPostion_(0),
 				   yPostion_(0),
 				   zPostion_(0),
@@ -253,8 +253,8 @@ CDemoCamera::CDemoCamera() :
 				   saturatePixels_(false),
 				   fractionOfPixelsToDropOrSaturate_(0.002)
 				   {
-	imageFielData_ = new float[300*300];
-	GetImageFromFile(0,imageFielData_,300*300);
+//	imageFielData_ = new float[300*300];
+//	GetImageFromFile(0,imageFielData_,300*300);
 	memset(testProperty_,0,sizeof(testProperty_));
 
 	// call the base class method to set-up default error codes/messages
@@ -559,7 +559,7 @@ int CDemoCamera::SnapImage()
 		exp = GetSequenceExposure();
 	}
 
-	GenerateSyntheticImage(img_, exp);
+ 	GenerateSyntheticImage(img_, exp);
 
 	MM::MMTime s0(0,0);
 	if( s0 < startTime )
@@ -1780,7 +1780,8 @@ void CDemoCamera::GenerateSyntheticImage(ImgBuffer& img, double exp)
 	int center = (int)((img.Height()/2)*img.Width()+img.Width()/2);
 	srand( (unsigned)time( NULL ) );
 
-	int background = rand()%50 + 1000;
+	int noise = rand()%20 + 200;
+	int background = 10;
 	double sinValue = sin((double)intensity++);
 	if (img.Height() == 0 || img.Width() == 0 || img.Depth() == 0)
 		return;
@@ -1788,24 +1789,24 @@ void CDemoCamera::GenerateSyntheticImage(ImgBuffer& img, double exp)
 	if (pixelType.compare(g_PixelType_8bit) == 0)
 	{
 		unsigned char* pBuf = const_cast<unsigned char*>(img.GetPixels());
-		memset(pBuf,0,img.Height()*img.Width()*img.Depth());
-		pBuf[center] = 255*sinValue +  background;
+		memset(pBuf,background,img.Height()*img.Width()*img.Depth());
+		pBuf[center] = 20*sinValue +  noise;
 //		for(int i = 0;i<img.Height()*img.Width();i++)
 //			pBuf[i] = imageFielData_[i];
 	}
 	else if (pixelType.compare(g_PixelType_16bit) == 0)
 	{
 		unsigned short* pBuf = (unsigned short*) const_cast<unsigned char*>(img.GetPixels());
-		memset(pBuf,0,img.Height()*img.Width()*img.Depth());
-		pBuf[center] =  512*sinValue +  background;
+		memset(pBuf,background,img.Height()*img.Width()*img.Depth());
+		pBuf[center] =  512*sinValue +  noise;
 		//	for(int i = 0;i<img.Height()*img.Width();i++)
 		//				pBuf[i] = imageFielData_[i];
 	}
 	else if (pixelType.compare(g_PixelType_32bit) == 0)
 	{
 		float* pBuf = (float*) const_cast<unsigned char*>(img.GetPixels());
-		memset(pBuf, 0, img.Height()*img.Width()*img.Depth());
-		pBuf[center] =  255*sinValue +  background;
+		memset(pBuf, background, img.Height()*img.Width()*img.Depth());
+		pBuf[center] =  255*sinValue +  noise;
 		//for(int i = 0;i<img.Height()*img.Width();i++)
 		//			pBuf[i] = imageFielData_[i];
 

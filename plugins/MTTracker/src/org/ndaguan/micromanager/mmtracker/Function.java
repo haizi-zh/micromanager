@@ -145,7 +145,7 @@ public class Function {
 		}
 		return -1;
 	}
-	private int getBackgroundRoiIndex() {
+	public int getBackgroundRoiIndex() {
 		int index =0;
 		for(RoiItem it:roiList_){			
 			if(it.isBackground())
@@ -155,7 +155,7 @@ public class Function {
 		}
 		return -1;
 	}
-	 
+
 
 	public void reSetFocusRoi() {
 		ImagePlus ip = WindowManager.getCurrentImage();
@@ -207,7 +207,28 @@ public class Function {
 			}
 		}
 	}
-
+	public void selectRoiAsBackground(Rectangle rectangle) {
+		int index = getFocusRoiIndex();
+		if( index != -1){
+			int backgroundIndex = getBackgroundRoiIndex();
+			if(backgroundIndex != -1){
+				roiList_.get(backgroundIndex).setBackground(false);
+			}
+			roiList_.get(index).setBackground(true);
+			MMT.logMessage("ROI"+String.valueOf(index)+" is selected as background ");
+		}else{
+			int xCenter = rectangle.x+rectangle.width/2;
+			int yCenter = rectangle.y+rectangle.height/2;
+			if(kernel_.isCalibrated_)
+				return;
+			if(!overlapCheck(xCenter,yCenter))//selected area exist ROI
+			{	
+				synchronized(MMT.Acqlock){
+					roiList_.add(RoiItem.createInstance(new double[]{xCenter,yCenter,1,0,0,},GetXYPositionAnalyzer.getInstance().acqName_));
+				}
+			}
+		}
+	}
 	public void deleteRoi() {
 		int index = getFocusRoiIndex();
 		if( index != -1){
@@ -232,17 +253,7 @@ public class Function {
 			MMT.logMessage("ROI"+String.valueOf(index)+" is selected as Reference ");
 		}
 	}
-	public void selectRoiAsBackground() {
-		int index = getFocusRoiIndex();
-		if( index != -1){
-			int backgroundIndex = getBackgroundRoiIndex();
-			if(backgroundIndex != -1){
-				roiList_.get(backgroundIndex).setBackground(false);
-			}
-			roiList_.get(index).setBackground(true);
-			MMT.logMessage("ROI"+String.valueOf(index)+" is selected as background ");
-		}
-	}
+
 
 
 	public void showChartManager() {
@@ -261,15 +272,14 @@ public class Function {
 		SwingUtilities.invokeLater(new Runnable(){
 			@Override
 			public void run() {
-				reSetFocusRoi();
 				try {
 					OverlayRender.getInstance().render(acqName, roiList_, frameNum_, update);
+					reSetFocusRoi();
 				} catch (MMScriptException e) {
 					MMT.logError("Render error!");
 				}
 			}
 		});
-
 	}
 
 	public void showPreferencesDialog() {
@@ -351,7 +361,7 @@ public class Function {
 			setStageZPosition(kernel_.zPosProfiles[z]);
 			if(MMT.VariablesNUPD.needXYcalibrate.value() == 1)
 				setStageXYPosition(kernel_.xPosProfiles[z],kernel_.yPosProfiles[z]);
-			
+
 			if(MMT.VariablesNUPD.needCheckStageMovment.value() == 1){
 				boolean stageReady = false;
 				double targetPosition[] = new double[]{kernel_.xPosProfiles[z],kernel_.yPosProfiles[z],kernel_.zPosProfiles[z]};
@@ -1007,7 +1017,7 @@ public class Function {
 		MMTracker.getInstance().getTcpServer().start();	
 		MMT.logMessage("TCPIPServer start ok");
 	}
-	
+
 	public void runDebug() {
 		gaussionCenterlization();		
 	}
@@ -1033,5 +1043,5 @@ public class Function {
 		}
 
 	}
-	
+
 }

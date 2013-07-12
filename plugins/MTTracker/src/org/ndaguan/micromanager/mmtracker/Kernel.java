@@ -57,7 +57,7 @@ public class Kernel {
 		regrX = new SimpleRegression(); //XY calibration
 		regrY = new SimpleRegression(); //XY calibration
 	}
-	
+
 	public static  Kernel getInstance(List<RoiItem> roiList) 
 	{
 		if(kernel_ == null)
@@ -519,13 +519,24 @@ public class Kernel {
 			}
 			int crossSize = (int) MMT.VariablesNUPD.crossSize.value();
 			double[][] sumXY = getXYSum(image, roiX,roiY,crossSize);
-			 Function.getInstance().updateChartSumXY(i, sumXY);
+			Function.getInstance().updateChartSumXY(i, sumXY);
 			double xPos = getCurveCenter(sumXY[0])+ roiX;
 			double yPos= getCurveCenter(sumXY[1])+ roiY;
 			double counter = sumXY[2][0];
 			position[i][0] = xPos;
 			position[i][1] = yPos;
 			position[i][2] = counter;
+		}
+		//deBackground
+		int bgIndex = Function.getInstance().getBackgroundRoiIndex();
+		if(bgIndex != -1){
+			double bgMeanGray = position[bgIndex][2];
+			for (int i = 0; i < roiNum; i++)
+			{
+				if(i == bgIndex)
+					continue;
+				position[i][2] = position[i][2] - bgMeanGray;
+			}
 		}
 		return position;
 	}

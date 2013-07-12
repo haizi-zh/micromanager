@@ -69,12 +69,16 @@ public  class RoiItem {
 		isPreference_ = false;
 		isBackground_ = false;
 		setItemColor(Color.GREEN);
+		if(itemData[2] == 1){
+			isBackground_ = true;
+			setItemColor(Color.BLUE);
+		}
 		chart_ = new ChartManager(MMT.CHARTLIST,(int) MMT.VariablesNUPD.chartWidth.value(),String.format("%s-----%d",titleName,index_));
 
 		x_ = itemData[0];
 		y_ = itemData[1];
 		feedbackTarget_ = new double[3];
-		
+
 		int calcForceWindowSize = (int) MMT.VariablesNUPD.frameToCalcForce.value();
 		int showChartWindowSize = (int) MMT.VariablesNUPD.chartStatisWindow.value();
 		int feedbackWindowSize = (int) MMT.VariablesNUPD.frameToFeedBack.value();
@@ -123,19 +127,19 @@ public  class RoiItem {
 	public String getMsg(){
 		return String.format("\\(%.2f, %.2f,%.2f)/",xPhy_,yPhy_,zPhy_);
 	}
-	
+
 	public boolean isPreference() {
 		return isPreference_;
 	}
 	public boolean isBackground() {
 		return isBackground_;
 	}
-	 
+
 	public void setBackground(boolean flag){
 		isBackground_ = flag;
 		isPreference_ = false;
 		if(flag){
-			setItemColor(Color.GREEN);
+			setItemColor(Color.BLUE);
 		}
 		else{
 			setItemColor(Color.GREEN);
@@ -279,6 +283,8 @@ public  class RoiItem {
 		y_ = yPos;
 	}
 	public void setXY(double[] pos){
+		if(isBackground_)
+			return;
 		//pixel
 		x_ = pos[0];
 		y_ = pos[1];

@@ -125,6 +125,9 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		if(e.getKeyCode() == KeyEvent.VK_D){
 			deleteRoi();
 		}
+		if(e.getKeyCode() == KeyEvent.VK_B){
+			selectRoiAsBackground(rectangle);
+		}
 		if(e.getKeyCode() == KeyEvent.VK_S){
 			selectRoiAsReference();
 		}
@@ -165,7 +168,6 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 			showGui();
 			break;
 		case "Add ROI":
-
 			Roi ROI = canvas_.getImage().getRoi();
 			if(ROI == null){
 				MMT.logError("Select a ROI first!");
@@ -181,7 +183,13 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 			selectRoiAsReference();
 			break;
 		case "Set Current ROI as Background":
-			selectRoiAsBackground();
+			Roi bgROI = canvas_.getImage().getRoi();
+			if(bgROI == null){
+				MMT.logError("Select a ROI first!");
+				return;
+			}
+			Rectangle bgRectangle = bgROI.getBounds();
+			selectRoiAsBackground(bgRectangle);
 			break;
 		case "Show Detail in Chart":
 			showChartManager();
@@ -262,8 +270,8 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 	private void selectRoiAsReference() {
 		Function.getInstance().selectRoiAsReference();
 	}
-	private void selectRoiAsBackground() {
-		Function.getInstance().selectRoiAsBackground();
+	private void selectRoiAsBackground(Rectangle bgRectangle) {
+		Function.getInstance().selectRoiAsBackground(bgRectangle);
 	}
 
 	private void liveView() {
