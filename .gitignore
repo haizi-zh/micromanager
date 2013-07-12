@@ -21,11 +21,10 @@ bin/
 *.ipch
 *.gif
 *.old
-*.xml
 *.css
 *.xslt
 *.opensdf
-
+*.xml
 # Java
 *.class
 *.jar
@@ -54,7 +53,6 @@ bin/
 *.gif
 *.jpg
 *.css
-*.xml
 *.props
 *.xslt
 *.old
