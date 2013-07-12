@@ -136,6 +136,10 @@ public class MMTFrame extends JFrame {
 		SetPref.setToolTipText("Set Current ROI as Preferences");
 		SetPref.addActionListener(listener_);
 		ROI.add(SetPref);
+		final JMenuItem SetBg = new JMenuItem("SetBackground");	
+		SetBg.setToolTipText("Set Current ROI as Background");
+		SetBg.addActionListener(listener_);
+		ROI.add(SetBg);
 		final JMenuItem ShowChart = new JMenuItem("ShowChart");
 		ShowChart.setToolTipText("Show Detail in Chart");
 		ShowChart.addActionListener(listener_);
@@ -191,6 +195,13 @@ public class MMTFrame extends JFrame {
 		lock.addActionListener(listener_);
 		Other.add(lock);
 
+		final JMenuItem runDebug = new JMenuItem("runDebug");		
+		runDebug.setToolTipText("runDebug");	
+		runDebug.addActionListener(listener_);
+		runDebug.setVisible(true);
+		Other.add(runDebug);
+
+		
 		Preferences.addActionListener(listener_);
 		MagnetManual.addActionListener(listener_);
 		TCPIPClient.addActionListener(listener_);

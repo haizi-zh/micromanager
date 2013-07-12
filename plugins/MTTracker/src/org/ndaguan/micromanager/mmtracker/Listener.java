@@ -180,6 +180,9 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		case "Set Current ROI as Preferences":
 			selectRoiAsReference();
 			break;
+		case "Set Current ROI as Background":
+			selectRoiAsBackground();
+			break;
 		case "Show Detail in Chart":
 			showChartManager();
 			break;
@@ -216,11 +219,17 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		case "lock":
 			lockEveryThingButThis();
 			break;
+		case "runDebug":
+			runDebug();
+			break;
 
 		}
 
 	}
 
+	private void runDebug() {
+		Function.getInstance().runDebug();		
+	}
 	private void TCPIPServer() {
 		Function.getInstance().TCPIPServer();
 	}
@@ -252,6 +261,9 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 
 	private void selectRoiAsReference() {
 		Function.getInstance().selectRoiAsReference();
+	}
+	private void selectRoiAsBackground() {
+		Function.getInstance().selectRoiAsBackground();
 	}
 
 	private void liveView() {

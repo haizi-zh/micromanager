@@ -1,6 +1,7 @@
 package org.ndaguan.micromanager.mmtracker;
 
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.WindowManager;
 
 import java.awt.Point;
@@ -137,13 +138,24 @@ public class Function {
 	public int getReferenceRoiIndex() {
 		int index =0;
 		for(RoiItem it:roiList_){			
-			if(it.isSelected())
+			if(it.isPreference())
 				return index;
 			else
 				index++;		
 		}
 		return -1;
 	}
+	private int getBackgroundRoiIndex() {
+		int index =0;
+		for(RoiItem it:roiList_){			
+			if(it.isBackground())
+				return index;
+			else
+				index++;		
+		}
+		return -1;
+	}
+	 
 
 	public void reSetFocusRoi() {
 		ImagePlus ip = WindowManager.getCurrentImage();
@@ -214,12 +226,24 @@ public class Function {
 		if( index != -1){
 			int preReferenceIndex = getReferenceRoiIndex();
 			if(preReferenceIndex != -1){
-				roiList_.get(preReferenceIndex).setSelect(false);
+				roiList_.get(preReferenceIndex).setPreference(false);
 			}
-			roiList_.get(index).setSelect(true);
+			roiList_.get(index).setPreference(true);
 			MMT.logMessage("ROI"+String.valueOf(index)+" is selected as Reference ");
 		}
 	}
+	public void selectRoiAsBackground() {
+		int index = getFocusRoiIndex();
+		if( index != -1){
+			int backgroundIndex = getBackgroundRoiIndex();
+			if(backgroundIndex != -1){
+				roiList_.get(backgroundIndex).setBackground(false);
+			}
+			roiList_.get(index).setBackground(true);
+			MMT.logMessage("ROI"+String.valueOf(index)+" is selected as background ");
+		}
+	}
+
 
 	public void showChartManager() {
 		int focus = getFocusRoiIndex();
@@ -983,5 +1007,31 @@ public class Function {
 		MMTracker.getInstance().getTcpServer().start();	
 		MMT.logMessage("TCPIPServer start ok");
 	}
+	
+	public void runDebug() {
+		gaussionCenterlization();		
+	}
+	public void gaussionCenterlization(){
+		final ImagePlus currentImage = WindowManager.getCurrentImage();
+		ImageStack images = currentImage.getImageStack();
 
+		kernel_.imageHeight = images.getHeight();
+		kernel_.imageWidth = images.getWidth();
+		kernel_.roiList_.add(RoiItem.createInstance(new double[]{ images.getHeight()/2, images.getWidth()/2,0,0,0,},"test"));
+		for (int i = 0; i < images.getSize(); i++) {
+			if(!kernel_.getXYPosition(images.getPixels(i+1)))return;
+			final int index = i;
+			SwingUtilities.invokeLater(new Runnable(){
+				@Override
+				public void run() {
+					currentImage.setSlice(index+2);
+					updateChart(index);
+				}
+			});
+			reDraw(currentImage.getWindow().getName(), i,true,true);
+
+		}
+
+	}
+	
 }

@@ -25,7 +25,7 @@ public  class RoiItem {
 	private Color itemColor_;
 	private int index_ = 0;
 
-	private  boolean isSelected_  = false;
+	private  boolean isPreference_  = false;
 	private  boolean isFocus_ = true;
 
 	private double x_ = 0 ;
@@ -52,6 +52,7 @@ public  class RoiItem {
 	private double xPhy0_;
 	private double zPhy0_;
 	private double l_;
+	private boolean isBackground_;
 
 	public static RoiItem createInstance(double[] itemData,String titleName) {
 		return new RoiItem(itemData,titleName);
@@ -65,13 +66,15 @@ public  class RoiItem {
 	private RoiItem( double[] itemData,String titleName) {
 		index_ = counter;
 		counter ++;
-		isSelected_ = false;
+		isPreference_ = false;
+		isBackground_ = false;
 		setItemColor(Color.GREEN);
 		chart_ = new ChartManager(MMT.CHARTLIST,(int) MMT.VariablesNUPD.chartWidth.value(),String.format("%s-----%d",titleName,index_));
 
 		x_ = itemData[0];
 		y_ = itemData[1];
 		feedbackTarget_ = new double[3];
+		
 		int calcForceWindowSize = (int) MMT.VariablesNUPD.frameToCalcForce.value();
 		int showChartWindowSize = (int) MMT.VariablesNUPD.chartStatisWindow.value();
 		int feedbackWindowSize = (int) MMT.VariablesNUPD.frameToFeedBack.value();
@@ -120,15 +123,33 @@ public  class RoiItem {
 	public String getMsg(){
 		return String.format("\\(%.2f, %.2f,%.2f)/",xPhy_,yPhy_,zPhy_);
 	}
-	public void setSelect(boolean isSelected){
-		isSelected_ = isSelected;
-		if(isSelected){
+	
+	public boolean isPreference() {
+		return isPreference_;
+	}
+	public boolean isBackground() {
+		return isBackground_;
+	}
+	 
+	public void setBackground(boolean flag){
+		isBackground_ = flag;
+		isPreference_ = false;
+		if(flag){
+			setItemColor(Color.GREEN);
+		}
+		else{
+			setItemColor(Color.GREEN);
+		}
+	}
+	public void setPreference(boolean flag){
+		isPreference_ = flag;
+		isBackground_ = false;;
+		if(flag){
 			setItemColor(Color.RED);
 		}
 		else{
 			setItemColor(Color.GREEN);
 		}
-
 	}
 	public Color getItemColor() {
 		return itemColor_;
@@ -290,12 +311,6 @@ public  class RoiItem {
 		double deltaz = ( zPhy_ -zPhy0_);
 		l_ = Math.sqrt(deltax*deltax + deltay*deltay + deltaz*deltaz);
 		showChartXYZStatis_[3].addValue(l_);
-	}
-	public boolean isSelected() {
-		return isSelected_;
-	}
-	public void setSelected(boolean flag){
-		isSelected_ = flag;
 	}
 	public void setChartVisible(boolean flag) {
 		chart_.setVisible(flag);

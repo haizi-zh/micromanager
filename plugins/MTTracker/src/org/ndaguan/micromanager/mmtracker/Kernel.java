@@ -601,164 +601,128 @@ public class Kernel {
 		return (pos+1)/2;
 	}
 
-	private double[][] getXYSum(Object image,int roiX,int roiY){
+	private double [][] getXYSum(Object image, int roiX,int roiY,int CrossSize) {
 
 		int roiBorder = (int) (2*MMT.VariablesNUPD.beanRadiuPixel.value());
+		int centerX = roiX + roiBorder/2;
+		int centerY = roiY + roiBorder/2;
+		double sumGrayValue = 0;
 		int sRoi = roiBorder*roiBorder;
 		double[][] sumXY = new double[3][roiBorder];
 		sumX_.clear();
 		sumY_.clear();
 		switch(image.getClass().getName()){
-		case "[D":
+		case "[D" :
+			//x
+			for (int x = roiX; x < roiX+roiBorder; x++) {
+				for (int y = centerY-CrossSize/2; y < centerY+CrossSize/2; y++) {
+					double gray = (double ) ((double[])image)[(y)*imageWidth +x];
+					sumXY[0][x-roiX] += gray;
+				}
+				sumX_.addValue(sumXY[0][x-roiX]);
+			}
+			//y
+			for (int y = roiY; y < roiY+roiBorder; y++) {
+				for (int x = centerX-CrossSize/2; x < centerX+CrossSize/2; x++) {
+					double gray = (double ) ((double[])image)[(y)*imageWidth +x];
+					sumXY[1][y-roiY] += gray;
+				}
+				sumY_.addValue(sumXY[1][y-roiY]);
+			}
+			//intensity
 			for (int x = 0; x < roiBorder; x++) {
 				for (int y = 0; y < roiBorder; y++) {
 					double gray = (double) ((double[])image)[(y+roiY)*imageWidth+(x+roiX)];
-					sumXY[0][x] += gray;
-					sumXY[1][y] += gray;
-					sumXY[2][0] += gray/sRoi;
+					sumGrayValue += gray/sRoi;
 				}
 				sumX_.addValue(sumXY[0][x]);
 			}
 			break;
-		case "[F":
+		case "[F" :
+			//x
+			for (int x = roiX; x < roiX+roiBorder; x++) {
+				for (int y = centerY-CrossSize/2; y < centerY+CrossSize/2; y++) {
+					double gray = (double ) ((float[])image)[(y)*imageWidth +x];
+					sumXY[0][x-roiX] += gray;
+				}
+				sumX_.addValue(sumXY[0][x-roiX]);
+			}
+			//y
+			for (int y = roiY; y < roiY+roiBorder; y++) {
+				for (int x = centerX-CrossSize/2; x < centerX+CrossSize/2; x++) {
+					double gray = (double ) ((float[])image)[(y)*imageWidth +x];
+					sumXY[1][y-roiY] += gray;
+				}
+				sumY_.addValue(sumXY[1][y-roiY]);
+			}
+			//intensity
 			for (int x = 0; x < roiBorder; x++) {
 				for (int y = 0; y < roiBorder; y++) {
 					double gray = (double) ((float[])image)[(y+roiY)*imageWidth+(x+roiX)];
-					sumXY[0][x] += gray;
-					sumXY[1][y] += gray;
-					sumXY[2][0] += gray/sRoi;
+					sumGrayValue += gray/sRoi;
 				}
 				sumX_.addValue(sumXY[0][x]);
 			}
 			break;
-		case "[S":
+		case "[S" :
+			//x
+			for (int x = roiX; x < roiX+roiBorder; x++) {
+				for (int y = centerY-CrossSize/2; y < centerY+CrossSize/2; y++) {
+					double gray = (double ) ((short[])image)[(y)*imageWidth +x];
+					sumXY[0][x-roiX] += gray;
+				}
+				sumX_.addValue(sumXY[0][x-roiX]);
+			}
+			//y
+			for (int y = roiY; y < roiY+roiBorder; y++) {
+				for (int x = centerX-CrossSize/2; x < centerX+CrossSize/2; x++) {
+					double gray = (double ) ((short[])image)[(y)*imageWidth +x];
+					sumXY[1][y-roiY] += gray;
+				}
+				sumY_.addValue(sumXY[1][y-roiY]);
+			}
+			//intensity
 			for (int x = 0; x < roiBorder; x++) {
 				for (int y = 0; y < roiBorder; y++) {
 					double gray = (double) ((short[])image)[(y+roiY)*imageWidth+(x+roiX)];
-					sumXY[0][x] += gray;
-					sumXY[1][y] += gray;
-					sumXY[2][0] += gray/sRoi;
+					sumGrayValue += gray/sRoi;
 				}
 				sumX_.addValue(sumXY[0][x]);
 			}
 			break;
-		case "[B":
+		case "[B" :
+			//x
+			for (int x = roiX; x < roiX+roiBorder; x++) {
+				for (int y = centerY-CrossSize/2; y < centerY+CrossSize/2; y++) {
+					double gray = (double ) ((byte[])image)[(y)*imageWidth +x];
+					sumXY[0][x-roiX] += gray;
+				}
+				sumX_.addValue(sumXY[0][x-roiX]);
+			}
+			//y
+			for (int y = roiY; y < roiY+roiBorder; y++) {
+				for (int x = centerX-CrossSize/2; x < centerX+CrossSize/2; x++) {
+					double gray = (double ) ((byte[])image)[(y)*imageWidth +x];
+					sumXY[1][y-roiY] += gray;
+				}
+				sumY_.addValue(sumXY[1][y-roiY]);
+			}
+			//intensity
 			for (int x = 0; x < roiBorder; x++) {
 				for (int y = 0; y < roiBorder; y++) {
 					double gray = (double) ((byte[])image)[(y+roiY)*imageWidth+(x+roiX)];
-					sumXY[0][x] += gray;
-					sumXY[1][y] += gray;
-					sumXY[2][0] += gray/sRoi;
+					sumGrayValue += gray/sRoi;
 				}
 				sumX_.addValue(sumXY[0][x]);
 			}
 			break;
 		}
-		for (int i = 0; i < sumXY[0].length; i++) {
-			sumY_.addValue(sumXY[1][i]);
-		}
 
-		normalization(sumXY[0],sumX_);
-		normalization(sumXY[1],sumY_);
+		normalization(sumXY[0], sumX_);
+		normalization(sumXY[1], sumY_);
+		sumXY[2][0] = sumGrayValue;
 		return sumXY;
 	}
-	private double [][] getXYSum(Object image, int roiX,int roiY,int CrossSize) {
-
-        int roiBorder = (int) (2*MMT.VariablesNUPD.beanRadiuPixel.value());
-        int centerX = roiX + roiBorder/2;
-        int centerY = roiY + roiBorder/2;
-        double sumGrayValue = 0;
-        double[][] sumXY = new double[3][roiBorder];
-        sumX_.clear();
-        sumY_.clear();
-        switch(image.getClass().getName()){
-        case "[D" :
-               //x
-               for (int x = roiX; x < roiX+roiBorder; x++) {
-                     for (int y = centerY-CrossSize/2; y < centerY+CrossSize/2; y++) {
-                            double gray = (double ) ((double[])image)[(y)*imageWidth +x];
-                           sumXY[0][x-roiX] += gray;
-                           sumGrayValue += gray;
-                    }
-                     sumX_.addValue(sumXY[0][x-roiX]);
-              }
-               //y
-               for (int y = roiY; y < roiY+roiBorder; y++) {
-                     for (int x = centerX-CrossSize/2; x < centerX+CrossSize/2; x++) {
-                            double gray = (double ) ((double[])image)[(y)*imageWidth +x];
-                           sumXY[1][y-roiY] += gray;
-                           sumGrayValue += gray;
-                    }
-                     sumY_.addValue(sumXY[1][y-roiY]);
-              }
-               break;
-        case "[F" :
-               //x
-               for (int x = roiX; x < roiX+roiBorder; x++) {
-                     for (int y = centerY-CrossSize/2; y < centerY+CrossSize/2; y++) {
-                            double gray = (double ) ((float[])image)[(y)*imageWidth +x];
-                           sumXY[0][x-roiX] += gray;
-                           sumGrayValue += gray;
-                    }
-                     sumX_.addValue(sumXY[0][x-roiX]);
-              }
-               //y
-               for (int y = roiY; y < roiY+roiBorder; y++) {
-                     for (int x = centerX-CrossSize/2; x < centerX+CrossSize/2; x++) {
-                            double gray = (double ) ((float[])image)[(y)*imageWidth +x];
-                           sumXY[1][y-roiY] += gray;
-                           sumGrayValue += gray;
-                    }
-                     sumY_.addValue(sumXY[1][y-roiY]);
-              }
-               break;
-        case "[S" :
-               //x
-               for (int x = roiX; x < roiX+roiBorder; x++) {
-                     for (int y = centerY-CrossSize/2; y < centerY+CrossSize/2; y++) {
-                            double gray = (double ) ((short[])image)[(y)*imageWidth +x];
-                           sumXY[0][x-roiX] += gray;
-                           sumGrayValue += gray;
-                    }
-                     sumX_.addValue(sumXY[0][x-roiX]);
-              }
-               //y
-               for (int y = roiY; y < roiY+roiBorder; y++) {
-                     for (int x = centerX-CrossSize/2; x < centerX+CrossSize/2; x++) {
-                            double gray = (double ) ((short[])image)[(y)*imageWidth +x];
-                           sumXY[1][y-roiY] += gray;
-                           sumGrayValue += gray;
-                    }
-                     sumY_.addValue(sumXY[1][y-roiY]);
-              }
-               break;
-        case "[B" :
-               //x
-               for (int x = roiX; x < roiX+roiBorder; x++) {
-                     for (int y = centerY-CrossSize/2; y < centerY+CrossSize/2; y++) {
-                            double gray = (double ) ((byte[])image)[(y)*imageWidth +x];
-                           sumXY[0][x-roiX] += gray;
-                           sumGrayValue += gray;
-                    }
-                     sumX_.addValue(sumXY[0][x-roiX]);
-              }
-               //y
-               for (int y = roiY; y < roiY+roiBorder; y++) {
-                     for (int x = centerX-CrossSize/2; x < centerX+CrossSize/2; x++) {
-                            double gray = (double ) ((byte[])image)[(y)*imageWidth +x];
-                           sumXY[1][y-roiY] += gray;
-                           sumGrayValue += gray;
-                    }
-                     sumY_.addValue(sumXY[1][y-roiY]);
-              }
-               break;
-       }
-
-       normalization(sumXY[0], sumX_);
-       normalization(sumXY[1], sumY_);
-       sumXY[2][0] = sumGrayValue;
-        return sumXY;
-}
 
 	private void normalization(double[] data,DescriptiveStatistics statis){
 		double mean = statis.getMean();

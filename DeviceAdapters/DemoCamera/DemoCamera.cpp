@@ -35,7 +35,7 @@
 #include "WriteCompactTiffRGB.h"
 #include <iostream>
 #include <fstream>
-
+#include <time.h>
 using namespace std;
 const double CDemoCamera::nominalPixelSizeUm_ = 1.0;
 double g_IntensityFactor_ = 1.0;
@@ -262,7 +262,7 @@ CDemoCamera::CDemoCamera() :
 	readoutStartTime_ = GetCurrentMMTime();
 	pDemoResourceLock_ = new MMThreadLock();
 	thd_ = new MySequenceThread(this);
-
+	intensity = 0;
 	// parent ID display
 	CreateHubIDProperty();
 				   }
@@ -1758,7 +1758,7 @@ void CDemoCamera::GenerateEmptyImage(ImgBuffer& img)
 void CDemoCamera::GetImageFromFile(double index,float* data,int dataSize){
 
 	char buffer[128];
-	snprintf(buffer, 32, "I:\\calimg\\img%g.txt", index);
+	snprintf(buffer, 32, "F:\\Development\\CalImages\\img%g.txt", index);
 	ifstream fileinput;
 	fileinput.open(buffer);
 	for (long i=0;i<dataSize;i++)
@@ -1777,7 +1777,11 @@ void CDemoCamera::GenerateSyntheticImage(ImgBuffer& img, double exp)
 	char buf[MM::MaxStrLength];
 	GetProperty(MM::g_Keyword_PixelType, buf);
 	std::string pixelType(buf);
+	int center = (int)((img.Height()/2)*img.Width()+img.Width()/2);
+	srand( (unsigned)time( NULL ) );
 
+	int background = rand()%50 + 1000;
+	double sinValue = sin((double)intensity++);
 	if (img.Height() == 0 || img.Width() == 0 || img.Depth() == 0)
 		return;
 
@@ -1785,22 +1789,25 @@ void CDemoCamera::GenerateSyntheticImage(ImgBuffer& img, double exp)
 	{
 		unsigned char* pBuf = const_cast<unsigned char*>(img.GetPixels());
 		memset(pBuf,0,img.Height()*img.Width()*img.Depth());
-		for(int i = 0;i<img.Height()*img.Width();i++)
-			pBuf[i] = imageFielData_[i];
+		pBuf[center] = 255*sinValue +  background;
+//		for(int i = 0;i<img.Height()*img.Width();i++)
+//			pBuf[i] = imageFielData_[i];
 	}
 	else if (pixelType.compare(g_PixelType_16bit) == 0)
 	{
 		unsigned short* pBuf = (unsigned short*) const_cast<unsigned char*>(img.GetPixels());
 		memset(pBuf,0,img.Height()*img.Width()*img.Depth());
-		for(int i = 0;i<img.Height()*img.Width();i++)
-					pBuf[i] = imageFielData_[i];
+		pBuf[center] =  512*sinValue +  background;
+		//	for(int i = 0;i<img.Height()*img.Width();i++)
+		//				pBuf[i] = imageFielData_[i];
 	}
 	else if (pixelType.compare(g_PixelType_32bit) == 0)
 	{
 		float* pBuf = (float*) const_cast<unsigned char*>(img.GetPixels());
 		memset(pBuf, 0, img.Height()*img.Width()*img.Depth());
-		for(int i = 0;i<img.Height()*img.Width();i++)
-					pBuf[i] = imageFielData_[i];
+		pBuf[center] =  255*sinValue +  background;
+		//for(int i = 0;i<img.Height()*img.Width();i++)
+		//			pBuf[i] = imageFielData_[i];
 
 	}
 

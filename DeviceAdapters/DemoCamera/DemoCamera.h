@@ -210,7 +210,7 @@ private:
    int ResizeImageBuffer();
 
    static const double nominalPixelSizeUm_;
-
+   int intensity;
    double xPostion_;
    double yPostion_;
    double zPostion_;
