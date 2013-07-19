@@ -81,14 +81,14 @@ public class OverlayRender {
 		return gui_;
 	}
 
-	public  void render(String acqName, Collection<RoiItem> itemList,
-			long frameNumber, boolean update) throws MMScriptException {
-		render(gui_.getAcquisition(acqName).getAcquisitionWindow()
-				.getHyperImage(), itemList, frameNumber, update);
+	public  void render(Collection<RoiItem> itemList,
+			 boolean update) throws MMScriptException {
+		render(gui_.getAcquisition(RoiItem.mdAcqName).getAcquisitionWindow()
+				.getHyperImage(), itemList, update);
 	}
 
 	public void render(final ImagePlus image, Collection<RoiItem> itemList,
-			long frameNumber, boolean update) {
+			 boolean update) {
 		if (image == null || itemList == null)
 			return;
 		if (itemList.size() == 0){
@@ -135,14 +135,6 @@ public class OverlayRender {
 		image.setOverlay(overlay);
 		if (update)
 			image.updateAndDraw();
-		else{
-			HashMap<Long, Overlay> overlayList = overlayMap_.get(image);
-			if (overlayList == null) {
-				overlayList = new HashMap<Long, Overlay>();
-				overlayMap_.put(image, overlayList);
-			}
-			overlayList.put(Long.valueOf(frameNumber), overlay);
-		}
 	}
 
 	private HashMap<ImagePlus, HashMap<Long, Overlay>> overlayMap_;

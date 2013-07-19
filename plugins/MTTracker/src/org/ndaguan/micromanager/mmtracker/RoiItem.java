@@ -15,6 +15,9 @@ import javax.swing.SwingUtilities;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.jfree.data.xy.XYSeries;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.micromanager.MMStudioMainFrame;
 
 /**
  * @author Administrator
@@ -22,6 +25,13 @@ import org.jfree.data.xy.XYSeries;
  */
 public  class RoiItem {
 	private static int counter = 0;
+	public static double mdElapsed_;
+	public static String mdAcqName;
+	public static boolean mdUpdate;
+	public static int imageWidth;
+	public static int imageHeight;
+	private static String mdNameComp;
+
 	private Color itemColor_;
 	private int index_ = 0;
 
@@ -194,7 +204,7 @@ public  class RoiItem {
 			stat.clear();
 	}
 
-	public boolean writeData(String acqName,long frameNum_,double elapsed) throws IOException{
+	public boolean writeData(long frameNum_) throws IOException{
 		if (dataFileWriter_ == null) {
 			Calendar cal = new GregorianCalendar();
 			DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -205,7 +215,7 @@ public  class RoiItem {
 
 			dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
 			File file = new File(dir, dateFormat.format(cal.getTime()) + "_"
-					+ acqName + "_bean_" + String.format("%d", index_) + "_" + ".txt");
+					+ mdAcqName + "_bean_" + String.format("%d", index_) + "_" + ".txt");
 			dataFileWriter_ = new BufferedWriter(new FileWriter(file));
 
 			dataFileWriter_
@@ -214,7 +224,7 @@ public  class RoiItem {
 		}
 		else{
 			dataFileWriter_
-			.write(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n",frameNum_,elapsed,x_,xPhy_,y_,yPhy_,zPhy_,l_,fx_,fy_,stdXdY_,skrewness_));
+			.write(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n",frameNum_,mdElapsed_,x_,xPhy_,y_,yPhy_,zPhy_,l_,fx_,fy_,stdXdY_,skrewness_));
 		}
 		return true;
 
@@ -399,6 +409,52 @@ public  class RoiItem {
 	public void clearFeedbackData() {
 		for(int i= 0;i<3;i++)
 			feedbackXYZStatis_[i].clear();		
+	}
+
+	public static void saveMetadata(JSONObject tags) throws JSONException {
+		//acqName
+		mdAcqName = (String) tags.get("AcqName");
+		mdUpdate = mdAcqName.equals(MMStudioMainFrame.SIMPLE_ACQ) ? true: false;
+		//imageWidth&height
+		if (mdAcqName.equals(MMStudioMainFrame.SIMPLE_ACQ)) {
+			imageHeight = Integer.parseInt(tags
+					.get("Height").toString());
+			imageWidth = Integer.parseInt(tags.get(
+					"Width").toString());
+		} else {
+			Object height = tags.get("Height");
+			Object width = tags.get("Width");
+			if (height instanceof Number)
+				imageHeight = ((Number) height).intValue();
+			else
+				imageHeight = Integer.parseInt(height
+						.toString());
+			if (width instanceof Number)
+				imageWidth = ((Number) width).intValue();
+			else
+				imageHeight = Integer
+				.parseInt(width.toString());
+		}
+		//nameComp
+		if (mdAcqName.equals(MMStudioMainFrame.SIMPLE_ACQ))
+			mdNameComp = "Live";
+		else
+			mdNameComp = mdAcqName;
+
+	}
+	public static void updateTimestamp(JSONObject tags) {
+		//elapsedTime
+		if (tags.has("ElapsedTime-ms"))
+		{
+			try {
+				mdElapsed_ =tags.getDouble("ElapsedTime-ms");
+			} catch (JSONException e) {
+			}
+
+		}
+		else{
+			mdElapsed_ = System.nanoTime()  / 1e6;
+		}		
 	}
 
 }

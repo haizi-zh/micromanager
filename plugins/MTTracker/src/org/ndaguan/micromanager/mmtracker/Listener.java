@@ -39,11 +39,11 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 			instance_ = new Listener(gui);		
 		return instance_;
 	}
-	public void start (String acqName) throws MMScriptException  {
+	public void start () throws MMScriptException  {
 		if (isRunning_)
 			return;
 
-		ImagePlus imageplus = gui_.getAcquisition(acqName).getAcquisitionWindow().getHyperImage();
+		ImagePlus imageplus = gui_.getAcquisition(RoiItem.mdAcqName).getAcquisitionWindow().getHyperImage();
 		if(imageplus != null){
 			attach (imageplus.getWindow());
 			isRunning_ = true;

@@ -264,7 +264,7 @@ public class Function {
 
 	}
 
-	public void reDraw(final String acqName, final long frameNum_, final boolean update,boolean forceRedraw) {
+	public void reDraw(final long frameNum_, final boolean update,boolean forceRedraw) {
 
 		if(frameNum_ %MMT.VariablesNUPD.frameToRefreshImage.value() !=0 && !forceRedraw)
 			return;
@@ -273,7 +273,7 @@ public class Function {
 			@Override
 			public void run() {
 				try {
-					OverlayRender.getInstance().render(acqName, roiList_, frameNum_, update);
+					OverlayRender.getInstance().render( roiList_, update);
 					reSetFocusRoi();
 				} catch (MMScriptException e) {
 					MMT.logError("Render error!");
@@ -1038,7 +1038,6 @@ public class Function {
 					updateChart(index);
 				}
 			});
-			reDraw(currentImage.getWindow().getName(), i,true,true);
 
 		}
 
