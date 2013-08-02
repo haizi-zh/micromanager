@@ -67,30 +67,6 @@ public class MagnetControlFrame extends javax.swing.JFrame {
 		myFrame_.setVisible(true);
 	}
 
-	private void moveMagnet(double z) throws InterruptedException {
-		if(deviceIsBusy)
-			return;
-		if(z<0){
-			serialPort.setRTS(true);//BLUE
-		}else{
-			serialPort.setRTS(false);//BLUE
-		}
-		TimeUnit.MILLISECONDS.sleep(50);
-		double distance = Math.abs(z);
-		int pulseToUm = 10;
-		int pluseToSend =  (int) (distance*pulseToUm);
-		int velosity = 1000;//(0~100)
-		long interval = 1000/velosity;
-		deviceIsBusy = true;
-		for (int i = 0; i < pluseToSend; i++) {
-			serialPort.setDTR(true);//yellow
-			TimeUnit.MILLISECONDS.sleep(interval);
-			serialPort.setDTR(false);
-			TimeUnit.MILLISECONDS.sleep(interval);
-		}
-		deviceIsBusy = false;
-
-	}
 
 	/** Creates new form StageControlFrame */
 	public MagnetControlFrame(ScriptInterface gui) {
@@ -143,7 +119,6 @@ public class MagnetControlFrame extends javax.swing.JFrame {
 		mediumMovementZ_ = prefs_.getDouble(MEDIUMMOVEMENTZ, mediumMovementZ_);
 
 		initComponents();
-		initComn("COM1");
 
 		setLocation(frameXPos_, frameYPos_);
 
@@ -154,21 +129,6 @@ public class MagnetControlFrame extends javax.swing.JFrame {
 		jTextField5.setText(nf_.format(mediumMovementZ_));
 	}
 
-	private void initComn(String comId) {
-		Enumeration portList = CommPortIdentifier.getPortIdentifiers();
-		while (portList.hasMoreElements()) {
-			CommPortIdentifier portId = (CommPortIdentifier) portList.nextElement();
-			if (portId.getPortType() == CommPortIdentifier.PORT_SERIAL) {
-				if (portId.getName().equals(comId)) {
-					try {
-						serialPort = (SerialPort)
-								portId.open("", 2000);
-					} catch (PortInUseException e) {}
-
-				}
-			}
-		}
-	}
 
 	/** This method is called from within the constructor to
 	 * initialize the form.
@@ -653,7 +613,7 @@ public class MagnetControlFrame extends javax.swing.JFrame {
 	private void setRelativeStagePosition(double z)
 	{
 		try {
-			moveMagnet(z);
+			MagnetControler.getInstance().moveMagnet(z);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
