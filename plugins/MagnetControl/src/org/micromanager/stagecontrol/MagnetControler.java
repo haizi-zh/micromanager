@@ -35,6 +35,7 @@ public class MagnetControler {
 	private int minInterval;
 	private int maxInterval;
 	private String comId;
+	private double pulseToUm;
 
 	public static MagnetControler getInstance(){
 		if(instance_ == null)
@@ -53,8 +54,9 @@ public class MagnetControler {
 			if(!dataFile.exists()){
 				comId = "COM1";
 				acceleration = 20;
-				minInterval = 1;
+				minInterval = 10;
 				maxInterval = 200; 
+				pulseToUm = 2.6;
 				saveUserData();
 				return;
 			}
@@ -63,12 +65,20 @@ public class MagnetControler {
 			String line;
 			if((line = in.readLine()) != null)
 			{
-				String[] temp = line.split(","); 
+				String[] var = line.split(";"); 
+				String[] value = new String[2];
 				int i = 0;
-				comId = temp[i++];
-				acceleration = Integer.parseInt(temp[i++]);
-				minInterval = Integer.parseInt(temp[i++]);
-				maxInterval = Integer.parseInt(temp[i++]);
+				
+				value = var[i++].split(":");
+				comId = value[1];
+				value = var[i++].split(":");
+				acceleration = Integer.parseInt(value[1]);
+				value = var[i++].split(":");
+				minInterval = Integer.parseInt(value[1]);
+				value = var[i++].split(":");
+				maxInterval = Integer.parseInt(value[1]);
+				value = var[i++].split(":");
+				pulseToUm = Double.parseDouble(value[1]);
 			}
 			in.close();
 		} catch (IOException e) {
@@ -86,10 +96,11 @@ public class MagnetControler {
 			File loginDataFile = new File(System.getProperty("user.home")+"/MagnetControl/userPreferences.txt");
 			FileWriter out = new FileWriter((loginDataFile)); 
 			String sData = "";
-			sData +=  comId+ " , ";
-			sData +=  Integer.toString(acceleration)+ " , ";
-			sData +=  Integer.toString(minInterval)+ " , ";
-			sData +=  Integer.toString(maxInterval);
+			sData += "comId:"+comId+";";
+			sData += "acceleration:"+Integer.toString(acceleration)+ ";";
+			sData += "maxInterval:"+Integer.toString(minInterval)+ ";";
+			sData += "maxInterval:"+Integer.toString(maxInterval)+ ";";
+			sData += "pulseToUm:"+Double.toString(pulseToUm);
 			out.write(sData);
 			out.close(); 
 		} catch (IOException e) {
@@ -125,21 +136,17 @@ public class MagnetControler {
 		}
 		TimeUnit.MILLISECONDS.sleep(50);
 		double distance = Math.abs(z);
-		int pulseToUm = 10;
 		int pluseToSend =  (int) (distance/pulseToUm);
-
-		maxInterval = 200;//ms
-		minInterval = 1;//ms
-		acceleration = 20;
 		long interval = 0;
-
+		int mInterval = maxInterval;
 		for (int i = 0; i < pluseToSend; i++) {
-			interval = Math.max(minInterval, maxInterval);
-			maxInterval -= acceleration;
+			interval = Math.max(minInterval, mInterval);
+			mInterval -= acceleration;
 			serialPort.setDTR(true);//yellow
-			TimeUnit.MILLISECONDS.sleep(interval);
+			TimeUnit.MICROSECONDS.sleep(interval);
 			serialPort.setDTR(false);
-			TimeUnit.MILLISECONDS.sleep(interval);
+			TimeUnit.MICROSECONDS.sleep(interval);
+			System.out.print(String.format("%d/%d\r\n", i,pluseToSend));
 		}
 
 		deviceIsBusy = false;
