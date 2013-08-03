@@ -17,6 +17,7 @@ import mmcorej.CMMCore;
 
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.utils.MMScriptException;
+import org.ndaguan.micromanager.stagecontrol.SigmaKoki;
 
 public class Function {
 
@@ -840,7 +841,8 @@ public class Function {
 				TCPClient.getInstance().setPosition(MMT.zStage_,zPos);
 			}
 			else{
-				core_.setPosition(MMT.zStage_, zPos);
+//				core_.setPosition(MMT.zStage_, zPos);
+				SigmaKoki.getInstance().setPosition(zPos);
 			}
 			TimeUnit.MILLISECONDS.sleep((long) MMT.VariablesNUPD.stageMoveSleepTime.value());
 		}
