@@ -318,15 +318,6 @@ public class MMTFrame extends JFrame {
 		toolBar.add(butHandTool);
 		toolBar.add(butFeedback);
 		toolBar.add(separator2);
-		
-		//disable
-		butSet.setEnabled(false);
-		butCalibration.setEnabled(false);
-		butLiveView.setEnabled(false);
-		butHandTool.setEnabled(false);
-		Magnet.setEnabled(false);
-		TCPIP.setEnabled(false);
-		runDebug.setEnabled(false);
 
 		getContentPane().add(toolBar);
 		final JSeparator separator3 = new JSeparator(SwingConstants.HORIZONTAL);

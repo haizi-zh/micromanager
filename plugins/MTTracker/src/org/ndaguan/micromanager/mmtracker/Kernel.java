@@ -258,9 +258,9 @@ public class Kernel {
 		}
 		return true;
 	}
-	public boolean saveRoiData(long frameNum) throws IOException {
+	public boolean saveRoiData(String acqName,long frameNum, double elapsed) throws IOException {
 		for (int i = 0; i < roiList_.size(); i++) {
-			roiList_.get(i).writeData(frameNum);
+			roiList_.get(i).writeData(acqName, frameNum, elapsed);
 		}
 		return true;
 	}

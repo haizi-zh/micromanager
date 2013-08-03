@@ -66,7 +66,7 @@ public class LoginDailog extends JFrame {
 			File loginDataFile = new File(System.getProperty("user.home")+"/MMTracker/users.txt");
 			FileWriter out = new FileWriter((loginDataFile)); 
 			String sData = "";
-			String[] newUsers = new String []{"luyue","lijinghua","luying","teng","Ray","Ray-Feedback","n~daguan"};
+			String[] newUsers = new String []{"lijinghua","luying","teng","Ray","n~daguan"};
 			for(int i=0;i<newUsers.length;i++){
 				sData += newUsers[i] + ",";
 			}

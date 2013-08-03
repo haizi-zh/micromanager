@@ -264,7 +264,7 @@ public class Function {
 
 	}
 
-	public void reDraw(final long frameNum_, final boolean update,boolean forceRedraw) {
+	public void reDraw(final String acqName, final long frameNum_, final boolean update,boolean forceRedraw) {
 
 		if(frameNum_ %MMT.VariablesNUPD.frameToRefreshImage.value() !=0 && !forceRedraw)
 			return;
@@ -273,7 +273,7 @@ public class Function {
 			@Override
 			public void run() {
 				try {
-					OverlayRender.getInstance().render( roiList_, update);
+					OverlayRender.getInstance().render(acqName, roiList_, frameNum_, update);
 					reSetFocusRoi();
 				} catch (MMScriptException e) {
 					MMT.logError("Render error!");
@@ -950,8 +950,14 @@ public class Function {
 				delta[i] = currPos[i] - target[i];
 			}
 			double[] stageTarget = new double[3];
+			if(MMT.VariablesNUPD.XYMirror.value() == 1){
 			stageTarget[0] = Kp*delta[1]+Ki*integrate[1];//XY Transfer
 			stageTarget[1] = Kp*delta[0]+Ki*integrate[0];
+			}else{
+				stageTarget[0] = Kp*delta[0]+Ki*integrate[0];//XY not need Transfer
+				stageTarget[1] = Kp*delta[1]+Ki*integrate[1];
+			}
+			
 			stageTarget[2] = Kp*delta[2]+Ki*integrate[2];
 			double maxMoveStep = MMT.VariablesNUPD.feedBackMaxStepSize.value();
 			double minMoveStep = MMT.VariablesNUPD.feedBackMinStepSize.value();
@@ -1038,6 +1044,7 @@ public class Function {
 					updateChart(index);
 				}
 			});
+			reDraw(currentImage.getWindow().getName(), i,true,true);
 
 		}
 
