@@ -1,4 +1,4 @@
-package org.ndaguan.micromanager.mmtracker;
+package org.ndaguan.micromanager.stagecontrol;
 /**
  * StageControlFrame.java
  *
@@ -24,10 +24,12 @@ import java.awt.Toolkit;
 import java.text.NumberFormat;
 import java.text.ParseException;
 
+import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
 
+import javax.swing.JLabel;
+
 import org.micromanager.api.ScriptInterface;
-import org.ndaguan.micromanager.stagecontrol.SigmaKoki;
 
 /**
  *
@@ -39,6 +41,7 @@ public class SigmaStageControlFrame extends javax.swing.JFrame {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	private static SigmaStageControlFrame instance;
 	private final ScriptInterface gui_;
 	private final CMMCore core_;
 	private Preferences prefs_;
@@ -52,6 +55,7 @@ public class SigmaStageControlFrame extends javax.swing.JFrame {
 
 	private int frameXPos_ = 100;
 	private int frameYPos_ = 100;
+	private JLabel currentPosition;
 
 	private static final String FRAMEXPOS = "FRAMEXPOS";
 	private static final String FRAMEYPOS = "FRAMEYPOS";
@@ -61,8 +65,18 @@ public class SigmaStageControlFrame extends javax.swing.JFrame {
 	private static final String SMALLMOVEMENTZ = "SMALLMOVEMENTZ";
 	private static final String MEDIUMMOVEMENTZ = "MEDIUMMOVEMENTZ";
 
-
-
+	public static void main(String[] str)
+	{
+		SigmaStageControlFrame scf = new SigmaStageControlFrame();
+		scf.setVisible(true);
+	}
+	
+	public static SigmaStageControlFrame getInstance()
+	{
+		if(instance == null)
+			instance = new SigmaStageControlFrame();
+		return instance;
+	}
 	/** Creates new form StageControlFrame */
 	public SigmaStageControlFrame(ScriptInterface gui) {
 		gui_ = gui;
@@ -94,6 +108,34 @@ public class SigmaStageControlFrame extends javax.swing.JFrame {
 		jTextField4.setText(nf_.format(smallMovementZ_));
 		jTextField5.setText(nf_.format(mediumMovementZ_));
 	}
+	public SigmaStageControlFrame() {
+		gui_ = null;
+		core_ = null;
+		nf_ = NumberFormat.getInstance();
+		prefs_ = Preferences.userNodeForPackage(this.getClass());
+
+		// Read values from PREFS
+		frameXPos_ = prefs_.getInt(FRAMEXPOS, frameXPos_);
+		frameYPos_ = prefs_.getInt(FRAMEYPOS, frameYPos_);
+		double pixelSize = 1;
+		long nrPixelsX = 512;
+		smallMovement_ = prefs_.getDouble(SMALLMOVEMENT, pixelSize);
+		mediumMovement_ = prefs_.getDouble(MEDIUMMOVEMENT, pixelSize * nrPixelsX * 0.1);
+		largeMovement_ = prefs_.getDouble(LARGEMOVEMENT, pixelSize * nrPixelsX);
+		smallMovementZ_ = prefs_.getDouble(SMALLMOVEMENTZ, smallMovementZ_);
+		mediumMovementZ_ = prefs_.getDouble(MEDIUMMOVEMENTZ, mediumMovementZ_);
+
+		initComponents();
+
+		setLocation(frameXPos_, frameYPos_);
+
+		jTextField1.setText(nf_.format(smallMovement_));
+		jTextField2.setText(nf_.format(mediumMovement_));
+		jTextField3.setText(nf_.format(largeMovement_));
+		jTextField4.setText(nf_.format(smallMovementZ_));
+		jTextField5.setText(nf_.format(mediumMovementZ_));
+	}
+	
 
 	/** This method is called from within the constructor to
 	 * initialize the form.
@@ -140,7 +182,7 @@ public class SigmaStageControlFrame extends javax.swing.JFrame {
 		jLabel9 = new javax.swing.JLabel();
 		jLabel10 = new javax.swing.JLabel();
 		Toolkit kit = Toolkit.getDefaultToolkit();
-		setTitle("MP285 !!! Stage Control");
+		setTitle("SigmaKoki Stage Control");
 		setLocationByPlatform(true);
 		setResizable(false);
 		addWindowListener(new java.awt.event.WindowAdapter() {
@@ -256,7 +298,9 @@ public class SigmaStageControlFrame extends javax.swing.JFrame {
 				jButton6ActionPerformed(evt);
 			}
 		});
-
+		currentPosition = new JLabel("ZPosition:");
+		currentPosition.setBounds(290, 75, 200, 200);
+		getContentPane().add(currentPosition);
 		org.jdesktop.layout.GroupLayout jPanel1Layout = new org.jdesktop.layout.GroupLayout(jPanel1);
 		jPanel1.setLayout(jPanel1Layout);
 		jPanel1Layout.setHorizontalGroup(
@@ -578,6 +622,16 @@ public class SigmaStageControlFrame extends javax.swing.JFrame {
 	private void setRelativeStagePosition(double z)
 	{
 		 SigmaKoki.getInstance().setRelativeStagePosition(z);
+		 try {
+			TimeUnit.MILLISECONDS.sleep(50);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		 double zpos = SigmaKoki.getInstance().getPosition();
+		 String str = "ZPosition: [" + Double.toString(zpos) + "]";
+		 currentPosition.setText(str);
+		 
 	}
 
 	private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed

@@ -18,6 +18,7 @@ import mmcorej.CMMCore;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.utils.MMScriptException;
 import org.ndaguan.micromanager.stagecontrol.SigmaKoki;
+import org.ndaguan.micromanager.stagecontrol.SigmaStageControlFrame;
 
 public class Function {
 
@@ -1051,6 +1052,9 @@ public class Function {
 
 		}
 
+	}
+	public void showStageControl() {
+		SigmaStageControlFrame.getInstance().setVisible(true);
 	}
 
 }

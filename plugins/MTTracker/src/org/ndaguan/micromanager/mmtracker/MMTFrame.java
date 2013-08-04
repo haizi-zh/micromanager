@@ -175,6 +175,7 @@ public class MMTFrame extends JFrame {
 		Magnet.addSeparator();
 		Magnet.add(MagnetManual);	
 		
+	
 		final JMenu TCPIP = new JMenu("TCPIP");
 		JRadioButtonMenuItem TCPIPClient = new JRadioButtonMenuItem("Client");		
 		JRadioButtonMenuItem TCPIPServer = new JRadioButtonMenuItem("Server");
@@ -186,6 +187,12 @@ public class MMTFrame extends JFrame {
 		TCPIP.add(TCPIPServer);	
 
 		final JMenu Other = new JMenu("Other");//Option		
+		
+		final JMenuItem sigmaStageControl = new JMenuItem("StageControl");
+		sigmaStageControl.setToolTipText("StageControl");	
+		sigmaStageControl.addActionListener(listener_);
+		Other.add(sigmaStageControl);
+		
 		final JMenuItem guiHide = new JMenuItem("guiHide/show");		
 		guiHide.setToolTipText("hide/show gui");	
 		guiHide.addActionListener(listener_);

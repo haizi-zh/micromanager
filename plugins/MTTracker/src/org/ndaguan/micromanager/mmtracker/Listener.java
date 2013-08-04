@@ -161,6 +161,10 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 		case "TCPIPServer":
 			TCPIPServer();
 			break;
+		case "StageControl":
+			showStageControl();
+			break;
+			
 		case "TCPIPClient":
 			TCPIPClient();
 			break;
@@ -235,6 +239,9 @@ public class Listener implements MouseListener, MouseMotionListener,KeyListener,
 
 	}
 
+	private void showStageControl() {
+		Function.getInstance().showStageControl();				
+	}
 	private void runDebug() {
 		Function.getInstance().runDebug();		
 	}
