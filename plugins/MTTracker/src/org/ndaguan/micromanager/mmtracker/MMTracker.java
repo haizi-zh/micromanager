@@ -11,6 +11,7 @@ import mmcorej.CMMCore;
 import org.micromanager.MMStudioMainFrame;
 import org.micromanager.api.MMPlugin;
 import org.micromanager.api.ScriptInterface;
+import org.ndaguan.micromanager.stagecontrol.SigmaKoki;
 
 public class MMTracker implements MMPlugin{
 
@@ -80,6 +81,7 @@ public class MMTracker implements MMPlugin{
 				&& (!app_.isLiveModeOn())) {
 			app_.enableLiveMode(true);
 		}
+		SigmaKoki.getInstance().setPosition(5);
 	}
 	public static MMTracker getInstance(){
 		return instance_;

@@ -16,7 +16,7 @@ public class SigmaKoki {
 	private SerialPort serialPort;
 	private OutputStream outputStream;
 	private int baudRate = 9600;
-	private String comId = "COM1";
+	private String comId = "COM4";
 	private InputStream inputStream;
 	private String lastError = "No error";
 	private boolean isDeviceReady;

@@ -399,7 +399,8 @@ public class Function {
 				pos[0] = xpos[0];
 				pos[1] = ypos[0];
 			}
-			pos[2] = core_.getPosition(MMT.zStage_);
+			pos[2] = SigmaKoki.getInstance().getPosition();
+//			pos[2] = core_.getPosition(MMT.zStage_);
 		}
 		return pos;
 	}
