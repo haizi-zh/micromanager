@@ -393,7 +393,7 @@ public  class RoiItem {
 	public double[] getFeedbackIntegrate() {
 		double[] integrate = new double[3];
 		for(int i= 0;i<3;i++)
-			integrate[i] = feedbackXYZStatis_[i].getSum();
+			integrate[i] = feedbackXYZStatis_[i].getSum()/feedbackXYZStatis_[i].getN();
 		return integrate;
 	}
 	public void clearFeedbackData() {

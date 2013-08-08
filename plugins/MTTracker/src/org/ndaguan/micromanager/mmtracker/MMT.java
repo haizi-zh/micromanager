@@ -110,7 +110,7 @@ public class MMT {
 		pTerm("",-0.2,0.0001,0,"比例系数",VariablesClassify.Feedback.name()),
 		needXYcalibrate("",1,0,0,"xy方向是否需要标定(用于确定一个像素对应多少nm)，1：是，0：否",VariablesClassify.Advance.name()),
 		crossSize("",20,0,0,"十字×宽度",VariablesClassify.Advance.name()),
-		iTerm("",-0.01,0.0001,0,"积分系数",VariablesClassify.Feedback.name()),
+		iTerm("",0.01,0.0001,0,"积分系数",VariablesClassify.Feedback.name()),
 		XYMirror("",1,0,0,"图像的XY方向是否需要互换，1：是，0：否，推荐使用默认值",VariablesClassify.Feedback.name());
 		private String unit;
 		private double value;

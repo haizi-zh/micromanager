@@ -951,16 +951,18 @@ public class Function {
 			}
 			double[] stageTarget = new double[3];
 			if(MMT.VariablesNUPD.XYMirror.value() == 1){
-			stageTarget[0] = Kp*delta[1]+Ki*integrate[1];//XY Transfer
-			stageTarget[1] = Kp*delta[0]+Ki*integrate[0];
+				stageTarget[0] = -Kp*delta[1]-Ki*integrate[1];//XY Transfer
+				stageTarget[1] = -Kp*delta[0]-Ki*integrate[0];
 			}else{
-				stageTarget[0] = Kp*delta[0]+Ki*integrate[0];//XY not need Transfer
-				stageTarget[1] = Kp*delta[1]+Ki*integrate[1];
+				stageTarget[0] = -Kp*delta[0]-Ki*integrate[0];//XY not need Transfer
+				stageTarget[1] = -Kp*delta[1]-Ki*integrate[1];
 			}
+
+			stageTarget[2] = -Kp*delta[2]-Ki*integrate[2];
 			
-			stageTarget[2] = Kp*delta[2]+Ki*integrate[2];
 			double maxMoveStep = MMT.VariablesNUPD.feedBackMaxStepSize.value();
 			double minMoveStep = MMT.VariablesNUPD.feedBackMinStepSize.value();
+			
 			for(int i=0;i<3;i++){
 				double absT = Math.abs(stageTarget[i]);
 				stageTarget[i] = absT>maxMoveStep?(maxMoveStep*(absT/stageTarget[i])):stageTarget[i];
