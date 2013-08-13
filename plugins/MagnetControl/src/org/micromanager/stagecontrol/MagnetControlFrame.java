@@ -22,6 +22,9 @@ package org.micromanager.stagecontrol;
 
 import mmcorej.CMMCore;
 
+
+import java.awt.Color;
+import java.awt.event.ActionListener;
 import java.text.NumberFormat;
 import java.text.ParseException;
 
@@ -30,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
 
 import javax.comm.*;
+import javax.swing.JButton;
+import javax.swing.JLabel;
 
 import org.micromanager.api.ScriptInterface;
 
@@ -53,7 +58,10 @@ public class MagnetControlFrame extends javax.swing.JFrame {
 	private int frameYPos_ = 100;
 	private SerialPort serialPort;
 	private boolean deviceIsBusy = false;
-
+	private JLabel currentPosition;
+	private double dCurrentPosition;
+	private boolean isSetZero= false;
+	private JLabel msg;
 	private static final String FRAMEXPOS = "FRAMEXPOS";
 	private static final String FRAMEYPOS = "FRAMEYPOS";
 	private static final String SMALLMOVEMENT = "SMALLMOVEMENT";
@@ -184,6 +192,25 @@ public class MagnetControlFrame extends javax.swing.JFrame {
 			}
 		});
 
+		JButton setZero = new JButton("SetZero");
+		setZero.setBounds(290, 55, 80,30);
+		getContentPane().add(setZero);
+		msg = new JLabel("Device OK");
+		msg.setBounds(290, 5, 160,30);
+		getContentPane().add(msg);
+		
+		setZero.addActionListener(new java.awt.event.ActionListener() {
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
+				dCurrentPosition = 0.0;
+				currentPosition.setText("ZPosition:[0]/um");
+				isSetZero = true;
+				logMsg("Device OK");
+			}
+		});
+		currentPosition = new JLabel("ZPosition:[unKnown]");
+		currentPosition.setBounds(290, 55, 200, 200);
+		getContentPane().add(currentPosition);
+		
 		jButton1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/org/micromanager/stagecontrol/icons/arrowhead-sl.png"))); // NOI18N
 		jButton1.setBorderPainted(false);
 		jButton1.setPressedIcon(new javax.swing.ImageIcon(getClass().getResource("/org/micromanager/stagecontrol/icons/arrowhead-slp.png"))); // NOI18N
@@ -612,14 +639,37 @@ public class MagnetControlFrame extends javax.swing.JFrame {
 
 	private void setRelativeStagePosition(double z)
 	{
+		if(!isSetZero){
+			logError("Not set zero is dangerous");
+		}else{
+		int maxTravel = -16000;
+		if(dCurrentPosition + z >0)
+			z = -dCurrentPosition;
+		if(dCurrentPosition + z< maxTravel)
+			z = -dCurrentPosition + maxTravel;
+		}
 		try {
 			MagnetControler.getInstance().moveMagnet(z);
+			dCurrentPosition += z;
+			currentPosition.setText("ZPosition:["+Double.toString(dCurrentPosition)+"]/um");
+			if(isSetZero)
+			logMsg("Device OK");
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
+
+	private void logMsg(String string) {
+		msg.setText(string);
+		msg.setForeground(new Color(0,255,0,255));		
+	}
+
+	private void logError(String string) {
+		msg.setText(string);
+		msg.setForeground(new Color(255,0,0,255));
+	}
 
 	private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
 		setRelativeXYStagePosition(-smallMovement_, 0.0);

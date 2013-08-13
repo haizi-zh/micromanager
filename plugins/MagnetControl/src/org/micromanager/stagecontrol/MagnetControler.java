@@ -98,7 +98,7 @@ public class MagnetControler {
 			String sData = "";
 			sData += "comId:"+comId+";";
 			sData += "acceleration:"+Integer.toString(acceleration)+ ";";
-			sData += "maxInterval:"+Integer.toString(minInterval)+ ";";
+			sData += "minInterval:"+Integer.toString(minInterval)+ ";";
 			sData += "maxInterval:"+Integer.toString(maxInterval)+ ";";
 			sData += "pulseToUm:"+Double.toString(pulseToUm);
 			out.write(sData);
