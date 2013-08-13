@@ -1,6 +1,14 @@
 package org.ndaguan.micromanager.mmtracker;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.WindowManager;
+
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+
+import javax.swing.SwingUtilities;
+
 import mmcorej.TaggedImage;
 import org.json.JSONException;
 import org.micromanager.MMStudioMainFrame;
@@ -21,8 +29,12 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 	public double imgheight_;
 	public  String acqName_;
 	private Kernel kernel_;
-	private long timeStart;	
-
+	private long timeStart;
+	private String acqName;
+	private boolean update;	
+	private HashMap<Long, Double> timeStamp;
+	private List<RoiItem> copyOfRoiList;
+	private String nameComp;
 
 	public static GetXYZPositionAnalyzer getInstance() {	
 		return instance_;
@@ -49,6 +61,10 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 			Function.getInstance().dataReset();
 			frameNum_ = 0;
 			elapsed = 0;
+			if(!update){
+				reCalculateXYZ();
+				timeStamp.clear();
+			}
 			return;
 		}
 
@@ -65,11 +81,19 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 		}
 
 		try {
-			String acqName = (String) taggedImage.tags.get("AcqName");
-			boolean update = acqName.equals(MMStudioMainFrame.SIMPLE_ACQ) ? true
-					: false;
-
 			if(!listener_.isRunning()){
+				timeStamp = new HashMap<Long, Double>();
+				for (int i = 0; i < kernel_.roiList_.size(); i++) {
+					copyOfRoiList.add(kernel_.roiList_.get(i));
+				}
+				
+				acqName = (String) taggedImage.tags.get("AcqName");
+				update = acqName.equals(MMStudioMainFrame.SIMPLE_ACQ) ? true
+						: false;
+				if (acqName.equals(MMStudioMainFrame.SIMPLE_ACQ))
+					nameComp = "Live";
+				else
+					nameComp = acqName;
 				Function.getInstance().dataReset();
 				listener_.start(acqName);
 				acqName_ = acqName;
@@ -93,6 +117,7 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 						kernel_.imageHeight = Integer
 						.parseInt(width.toString());
 				}
+				
 			}
 			if(!update){
 				frameNum_ = MDUtils.getFrameIndex(taggedImage.tags);
@@ -100,6 +125,16 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 			else{
 				frameNum_ ++;
 			}
+			
+			if(MMTFrame.getInstance().isMagnetAuto() && (frameNum_ % (int)(MMT.VariablesNUPD.frameToCalcForce.value()) == 0)){
+				Function.getInstance().PullMagnet();
+			}
+			//storage timestamp
+			timeStamp.put(frameNum_,elapsed);
+			if(frameNum_%MMT.VariablesNUPD.frameToRefreshChart.value() != 0){
+				return;
+			}
+			
 			synchronized(MMT.Acqlock){
 				if(kernel_.roiList_.size()<=0){
 					Function.getInstance().reDraw(acqName, frameNum_, update,true);
@@ -110,27 +145,46 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 					Function.getInstance().doFeedback();
 				}
 			}//lock
-			String nameComp;
-			if (acqName.equals(MMStudioMainFrame.SIMPLE_ACQ))
-				nameComp = "Live";
-			else
-				nameComp = acqName;
+			
 			if(MMT.VariablesNUPD.saveFile.value() == 1 && kernel_.isCalibrated_)
 				try {
-					kernel_.saveRoiData(nameComp,frameNum_,elapsed);
+					kernel_.saveRoiData("pre_"+nameComp,frameNum_,elapsed);
 				} catch (IOException e) {
 					MMT.logError("Save data error");
 				}
 			Function.getInstance().updateChart(frameNum_);
 			Function.getInstance().reDraw(acqName, frameNum_, update,false);
-			if(MMTFrame.getInstance().isMagnetAuto() && (frameNum_ % (int)(MMT.VariablesNUPD.frameToCalcForce.value()) == 0)){
-				Function.getInstance().PullMagnet();
-			}
 
 		} catch (JSONException e) {
 		} catch (MMScriptException e) {
 		}
 		System.out.print(String.format("\r\n%d:\tcostTime:\t%f\t\n", frameNum_,(System.nanoTime()-timeStart)/10e6));
 
+	}
+	private void reCalculateXYZ() {
+		final ImagePlus currentImage = WindowManager.getCurrentImage();
+		ImageStack images = currentImage.getImageStack();
+		kernel_.roiList_ = copyOfRoiList;
+		for(RoiItem it:kernel_.roiList_)
+			it.dataClean(false);
+		for (int i = 0; i < images.getSize(); i++) {
+			if(!kernel_.getXYZPosition(images.getPixels(i+1)))return;
+			final int index = i;
+			try {
+				kernel_.saveRoiData("full_"+nameComp,frameNum_,timeStamp.get(frameNum_));
+			} catch (IOException e) {
+				MMT.logError("Save data error");
+			}
+			SwingUtilities.invokeLater(new Runnable(){
+				@Override
+				public void run() {
+					currentImage.setSlice(index+2);
+					Function.getInstance().updateChart(frameNum_);
+					Function.getInstance().reDraw(acqName, frameNum_, update,false);
+				}
+			});
+			
+		}
+		
 	}
 }

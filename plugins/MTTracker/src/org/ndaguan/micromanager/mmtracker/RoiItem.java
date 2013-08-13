@@ -205,7 +205,7 @@ public  class RoiItem {
 
 			dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
 			File file = new File(dir, dateFormat.format(cal.getTime()) + "_"
-					+ acqName + "_bean_" + String.format("%d", index_) + "_" + ".csv");
+					+ acqName + "_bean_" + String.format("%d", index_) + "_" + ".txt");
 			dataFileWriter_ = new BufferedWriter(new FileWriter(file));
 
 			dataFileWriter_
