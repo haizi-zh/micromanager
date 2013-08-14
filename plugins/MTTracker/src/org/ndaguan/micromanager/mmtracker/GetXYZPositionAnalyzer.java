@@ -4,6 +4,8 @@ import ij.ImageStack;
 import ij.WindowManager;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -83,6 +85,7 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 		try {
 			if(!listener_.isRunning()){
 				timeStamp = new HashMap<Long, Double>();
+				copyOfRoiList = Collections.synchronizedList(new ArrayList<RoiItem>());
 				for (int i = 0; i < kernel_.roiList_.size(); i++) {
 					copyOfRoiList.add(kernel_.roiList_.get(i));
 				}
@@ -131,7 +134,7 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 			}
 			//storage timestamp
 			timeStamp.put(frameNum_,elapsed);
-			if(frameNum_%MMT.VariablesNUPD.frameToRefreshChart.value() != 0){
+			if(!update && (frameNum_%MMT.VariablesNUPD.frameToRefreshChart.value() != 0)){
 				return;
 			}
 			
@@ -148,7 +151,7 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 			
 			if(MMT.VariablesNUPD.saveFile.value() == 1 && kernel_.isCalibrated_)
 				try {
-					kernel_.saveRoiData("pre_"+nameComp,frameNum_,elapsed);
+					kernel_.saveRoiData(nameComp,frameNum_,elapsed);
 				} catch (IOException e) {
 					MMT.logError("Save data error");
 				}
@@ -165,26 +168,27 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 		final ImagePlus currentImage = WindowManager.getCurrentImage();
 		ImageStack images = currentImage.getImageStack();
 		kernel_.roiList_ = copyOfRoiList;
-		for(RoiItem it:kernel_.roiList_)
-			it.dataClean(false);
-		for (int i = 0; i < images.getSize(); i++) {
-			if(!kernel_.getXYZPosition(images.getPixels(i+1)))return;
-			final int index = i;
+		for (int i = 1; i < images.getSize(); i++) {
+			if(!timeStamp.containsKey((long)i))continue;
+			if(!kernel_.getXYZPosition(images.getPixels(i)))return;
+			final long index = i;
 			try {
-				kernel_.saveRoiData("full_"+nameComp,frameNum_,timeStamp.get(frameNum_));
+				kernel_.saveRoiData("full_"+nameComp,i-1,timeStamp.get((long)i));
 			} catch (IOException e) {
 				MMT.logError("Save data error");
 			}
 			SwingUtilities.invokeLater(new Runnable(){
 				@Override
 				public void run() {
-					currentImage.setSlice(index+2);
-					Function.getInstance().updateChart(frameNum_);
-					Function.getInstance().reDraw(acqName, frameNum_, update,false);
+					currentImage.setSlice((int) (index+1));
+					Function.getInstance().updateChart(index);
+					Function.getInstance().reDraw(acqName, index, update,false);
 				}
 			});
 			
 		}
+		for(RoiItem it:kernel_.roiList_)
+			it.dataClean(false);
 		
 	}
 }
