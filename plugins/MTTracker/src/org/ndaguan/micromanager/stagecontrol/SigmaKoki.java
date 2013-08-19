@@ -16,7 +16,7 @@ public class SigmaKoki {
 	private SerialPort serialPort;
 	private OutputStream outputStream;
 	private int baudRate = 9600;
-	private String comId = "COM4";
+	private String comId = "COM2";
 	private InputStream inputStream;
 	private String lastError = "No error";
 	private boolean isDeviceReady;
@@ -47,7 +47,7 @@ public class SigmaKoki {
 	}
 	public boolean setPosition(double step)//um
 	{
-		int stepnM = (int) (step*1000);
+		int stepnM = (int) ((10-step)*1000);
 		try {
 
 			String flag = "+";
@@ -90,7 +90,7 @@ public class SigmaKoki {
 			sendCommand("\r\nQ:\r\n");
 			String buf = readAnswer();
 			String[] temp = buf.split(",");
-			return (double) Integer.parseInt(temp[0])/1000;
+			return (double) ( 10 - Integer.parseInt(temp[0])/1000);
 		} catch (IOException e) {
 			lastError = e.toString();
 			return -1;
