@@ -74,7 +74,7 @@ public class Kernel {
 		if(roiList_.size() <= 0)return false;
 		double[][] ret = gosseCenter(image);
 		if(ret == null)return false;
-
+		MMT.currentframeIndex_++;
 		for (int i = 0; i < roiList_.size(); i++) {
 			//set value
 			roiList_.get(i).setXY(ret[i]);
@@ -105,7 +105,6 @@ public class Kernel {
 		}
 		double beanRadiuPixel = MMT.VariablesNUPD.beanRadiuPixel.value();
 		//get z
-		MMT.currentframeIndex_++;
 		double[] currProfiles = new double[(int) (beanRadiuPixel/MMT.VariablesNUPD.rInterStep.value())];
 		for (int k = 0; k < roiList_.size(); k++) {
 			double[] xy = roiList_.get(k).getXY();

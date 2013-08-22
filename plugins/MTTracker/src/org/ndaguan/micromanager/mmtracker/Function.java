@@ -711,7 +711,8 @@ public class Function {
 			}
 			gui_.enableLiveMode(true);
 		}else{
-			gui_.enableLiveMode(true);
+			if(!gui_.isAcquisitionRunning())
+				gui_.enableLiveMode(true);
 		}
 	}
 	public void updateTestingChart(final double currZpos) {
@@ -959,10 +960,10 @@ public class Function {
 			}
 
 			stageTarget[2] = -Kp*delta[2]-Ki*integrate[2];
-			
+
 			double maxMoveStep = MMT.VariablesNUPD.feedBackMaxStepSize.value();
 			double minMoveStep = MMT.VariablesNUPD.feedBackMinStepSize.value();
-			
+
 			for(int i=0;i<3;i++){
 				double absT = Math.abs(stageTarget[i]);
 				stageTarget[i] = absT>maxMoveStep?(maxMoveStep*(absT/stageTarget[i])):stageTarget[i];
