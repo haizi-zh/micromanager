@@ -37,11 +37,11 @@
 const char* PIGCSControllerComDevice::DeviceName_ = "PI_GCSController";
 const char* PIGCSControllerComDevice::UmToDefaultUnitName_ = "um in default unit";
 
-PIGCSControllerComDevice::PIGCSControllerComDevice()
-: port_(""),
+PIGCSControllerComDevice::PIGCSControllerComDevice() :
+umToDefaultUnit_(0.001),
+port_(""),
 initialized_(false),
 lastError_(DEVICE_OK),
-umToDefaultUnit_(0.001),
 bShowProperty_UmToDefaultUnit_(true),
 ctrl_(NULL)
 {
@@ -171,8 +171,7 @@ int PIGCSControllerComDevice::Initialize()
       {
          std::vector<int> outputChannels(nrOutputChannels);
          std::vector<int> values(nrOutputChannels, 1);
-         size_t i = 0;
-         for (; i<size_t(nrOutputChannels); i++)
+         for (int i = 0; i < nrOutputChannels; i++)
          {
             outputChannels[i] = i+1;
          }
@@ -257,7 +256,7 @@ bool PIGCSControllerComDevice::ReadGCSAnswer(std::vector<std::string>& answer, i
 	   }
 	   answer.push_back(line);
    } while( !line.empty() && line[line.length()-1] == ' ' );
-   if (nExpectedLines >=0 && answer.size() != nExpectedLines)
+   if ((unsigned) nExpectedLines >=0 && answer.size() != (unsigned ) nExpectedLines)
 	   return false;
 	return true;
 }
@@ -288,12 +287,12 @@ PIGCSControllerCom::PIGCSControllerCom(const std::string& label, PIGCSController
 PIController(label),
 deviceProxy_(proxy),
 hasCST_(true),
-hasINI_(true),
 hasSVO_(true),
+hasINI_(true),
 hasJON_(true),
 hasVEL_(true),
 has_qTPC_(true),
-hasONL_(true)
+hasONL_(false)
 {
 }
 
@@ -381,7 +380,10 @@ bool PIGCSControllerCom::SVO(const std::string& axis, BOOL svo)
 		return false;
 	}
 	std::ostringstream command;
-	command << "SVO " << axis<<" "<< (svo==TRUE)?"1":"0";
+   std:: string n = "0";
+   if (svo == TRUE)
+      n = "1";
+	command << "SVO " << axis<<" "<< n;
 	if (!deviceProxy_->SendGCSCommand( command.str() ))
 	{
 		return false;
