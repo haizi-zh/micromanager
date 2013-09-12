@@ -286,12 +286,12 @@ int PIGCSControllerComDevice::OnJoystick4(MM::PropertyBase* pProp, MM::ActionTyp
 PIGCSControllerCom::PIGCSControllerCom(const std::string& label, PIGCSControllerComDevice* proxy):
 PIController(label),
 deviceProxy_(proxy),
-hasCST_(true),
-hasSVO_(true),
-hasINI_(true),
-hasJON_(true),
-hasVEL_(true),
-has_qTPC_(true),
+hasCST_(false),
+hasSVO_(false),
+hasINI_(false),
+hasJON_(false),
+hasVEL_(false),
+has_qTPC_(false),
 hasONL_(false)
 {
 }
