@@ -47,11 +47,12 @@ const char* g_PI_ZStageControllerName = "Controller Name";
 PIZStage::PIZStage() :
    stepSizeUm_(0.1),
    initialized_(false),
-   axisLimitUm_(200.0),
-   axisName_("C"),
+    controllerName_(""),
+    axisLimitUm_(500.0),
+   axisName_("A"),
    stageType_("DEFAULT_STAGE"),
-   ctrl_(NULL),
-   controllerName_("")
+   ctrl_(NULL)
+   //homingMode_("REF")
 {
    InitializeDefaultErrorMessages();
 
@@ -96,13 +97,13 @@ PIZStage::PIZStage() :
    CreateProperty(MM::g_Keyword_Position, "0.0", MM::Float, false, pAct);
    SetPropertyLimits(MM::g_Keyword_Position, 0/*-axisLimitUm_*/, axisLimitUm_);
 
-}
+}  
 
 PIZStage::~PIZStage()
 {
    Shutdown();
 }
-
+ 
 void PIZStage::GetName(char* Name) const
 {
    CDeviceUtils::CopyLimitedString(Name, DeviceName_);
@@ -353,3 +354,4 @@ int PIZStage::OnVelocity(MM::PropertyBase* pProp, MM::ActionType eAct)
 
    return DEVICE_OK;
 }
+

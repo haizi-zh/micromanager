@@ -38,9 +38,9 @@ const char* g_msg_CNTR_AXIS_UNDER_JOYSTICK_CONTROL = "Selected axis is controlle
 std::map<std::string, PIController*> PIController::allControllersByLabel_;
 
 PIController::PIController(const std::string& label):
-umToDefaultUnit_(0.001),
 gcs2_(true),
 label_(label),
+umToDefaultUnit_(0.001),
 onlyIDSTAGEvalid_(false)
 {
 	allControllersByLabel_[label_] = this;
@@ -78,7 +78,7 @@ int PIController::InitStage(const std::string& axisName, const std::string& stag
          }
       }
       
-      if (!CST(axisName, stageType_local))
+      if (CST(axisName, stageType_local))
          return DEVICE_INVALID_PROPERTY_VALUE;
 	}
 	if (HasINI())

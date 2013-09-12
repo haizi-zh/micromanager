@@ -24,7 +24,7 @@
 
 #ifdef WIN32
    #include <windows.h>
-   #define snprintf _snprintf
+   #define snprintf _snprintf 
 #endif
 
 #include "PIXYStage_DLL.h"
@@ -61,11 +61,13 @@ PIXYStage::PIXYStage() :
    axisYHomingMode_("REF"),
    controllerName_(""),
    controllerNameYAxis_(""),
-   ctrl_(NULL),
    stepSize_um_(0.01),
-   originX_(50.0),
-   originY_(50.0),
-   initialized_(false)
+   initialized_(false),
+   originX_(0.0),
+   originY_(0.0),
+   ctrl_(NULL)
+   //answerTimeoutMs_(1000),
+   //axisLimitUm_(500.0)
 {
    InitializeDefaultErrorMessages();
 
@@ -91,23 +93,23 @@ PIXYStage::PIXYStage() :
    // Axis X name
    pAct = new CPropertyAction (this, &PIXYStage::OnAxisXName);
    CreateProperty(g_PI_XYStageAxisXName, axisXName_.c_str(), MM::String, false, pAct, true);
-
+   
    // Axis X stage type
    pAct = new CPropertyAction (this, &PIXYStage::OnAxisXStageType);
    CreateProperty(g_PI_XYStageAxisXStageType, axisXStageType_.c_str(), MM::String, false, pAct, true);
-
+   
    // Axis X homing mode
    pAct = new CPropertyAction (this, &PIXYStage::OnAxisXHoming);
    CreateProperty(g_PI_XYStageAxisXHoming, axisXHomingMode_.c_str(), MM::String, false, pAct, true);
-
+   
    // Axis Y name
    pAct = new CPropertyAction (this, &PIXYStage::OnAxisYName);
    CreateProperty(g_PI_XYStageAxisYName, axisYName_.c_str(), MM::String, false, pAct, true);
-
+   
    // Axis Y stage type
    pAct = new CPropertyAction (this, &PIXYStage::OnAxisYStageType);
    CreateProperty(g_PI_XYStageAxisYStageType, axisYStageType_.c_str(), MM::String, false, pAct, true);
-
+   
    // Axis Y homing mode
    pAct = new CPropertyAction (this, &PIXYStage::OnAxisYHoming);
    CreateProperty(g_PI_XYStageAxisYHoming, axisYHomingMode_.c_str(), MM::String, false, pAct, true);
@@ -184,14 +186,15 @@ int PIXYStage::Initialize()
    CPropertyAction* pAct = new CPropertyAction (this, &PIXYStage::OnXVelocity);
    CreateProperty("Axis X: Velocity", "", MM::Float, false, pAct);
 
+   pAct = new CPropertyAction (this, &PIXYStage::OnXPostion);
+   CreateProperty("Axis X: Postion", "", MM::Float, false, pAct);
+
    pAct = new CPropertyAction (this, &PIXYStage::OnYVelocity);
    CreateProperty("Axis Y: Velocity", "", MM::Float, false, pAct);
 
-   ret = SetPositionSteps(500,500);
-   if (ret != DEVICE_OK)
-     {
-  	   LogMessage("Cannot move xystage to target position");
-     }
+      pAct = new CPropertyAction (this, &PIXYStage::OnYPostion);
+   CreateProperty("Axis Y: Postion", "", MM::Float, false, pAct);
+
    initialized_ = true;
    return DEVICE_OK;
 }
@@ -234,7 +237,7 @@ int PIXYStage::SetPositionSteps(long x, long y)
 	double pos[2];
 	pos[0] = x * stepSize_um_ * ctrl_->umToDefaultUnit_;
 	pos[1] = y * stepSize_um_ * umToDefaultUnitYAxis;
-
+	
 	pos[0] += originX_;
 	pos[1] += originY_;
 	if (ctrlYAxis_ == NULL)
@@ -512,6 +515,46 @@ int PIXYStage::OnXVelocity(MM::PropertyBase* pProp, MM::ActionType eAct)
    return DEVICE_OK;
 }
 
+int PIXYStage::OnXPostion(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      double pos = 0.0;
+	  if (ctrl_->qPOS(axisXName_, &pos))
+	     pProp->Set(pos);
+	  else
+         pProp->Set(0.0);
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      double pos = 0.0;
+	  pProp->Get(pos);
+      if (!ctrl_->MOV( axisXName_, &pos ))
+         return ctrl_->TranslateError();
+   }
+
+   return DEVICE_OK;
+}
+int PIXYStage::OnYPostion(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+   if (eAct == MM::BeforeGet)
+   {
+      double pos = 0.0;
+	  if (ctrl_->qPOS(axisYName_, &pos))
+	     pProp->Set(pos);
+	  else
+         pProp->Set(0.0);
+   }
+   else if (eAct == MM::AfterSet)
+   {
+      double pos = 0.0;
+	  pProp->Get(pos);
+      if (!ctrl_->MOV( axisYName_, &pos ))
+         return ctrl_->TranslateError();
+   }
+
+   return DEVICE_OK;
+}
 
 int PIXYStage::OnYVelocity(MM::PropertyBase* pProp, MM::ActionType eAct)
 {

@@ -67,7 +67,9 @@ public:
    int OnAxisYStageType(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnAxisYHoming(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnXVelocity(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnXPostion(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnYVelocity(MM::PropertyBase* pProp, MM::ActionType eAct);
+   int OnYPostion(MM::PropertyBase* pProp, MM::ActionType eAct);
    int OnControllerNameYAxis(MM::PropertyBase* pProp, MM::ActionType eAct);
 
    int IsXYStageSequenceable(bool& isSequenceable) const {isSequenceable = false; return DEVICE_OK;}
@@ -89,7 +91,10 @@ private:
    double stepSize_um_;
    double originX_;
    double originY_;
+   //bool busy_;
    bool initialized_;
+   //double lowerLimit_;
+   //double upperLimit_;
 };
 
 

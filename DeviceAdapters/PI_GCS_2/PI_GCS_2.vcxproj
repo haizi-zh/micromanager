@@ -111,7 +111,7 @@
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(TargetPath)" ..\..\bin_$(Platform)</Command>
+      <Command>copy "$(TargetPath)" "C:\Program Files\Micro-Manager1.4.14\mmgr_dal_PI_GCS_2.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -218,7 +218,6 @@
     <ClCompile Include="..\..\MMDevice\ModuleInterface.cpp" />
     <ClCompile Include="PI_GCS_2.cpp" />
     <ClCompile Include="PIGCSControllerCom.cpp" />
-    <ClCompile Include="PIGCSControllerDLL.cpp" />
     <ClCompile Include="PIXYStage_DLL.cpp" />
     <ClCompile Include="PIZStage_DLL.cpp" />
     <ClCompile Include="..\..\MMDevice\Property.cpp" />
@@ -232,7 +231,6 @@
     <ClInclude Include="..\..\MMDevice\ModuleInterface.h" />
     <ClInclude Include="PI_GCS_2.h" />
     <ClInclude Include="PIGCSControllerCom.h" />
-    <ClInclude Include="PIGCSControllerDLL.h" />
     <ClInclude Include="PIXYStage_DLL.h" />
     <ClInclude Include="PIZStage_DLL.h" />
     <ClInclude Include="..\..\MMDevice\Property.h" />
