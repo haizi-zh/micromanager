@@ -6,6 +6,8 @@ class test {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		
+		if(true)return;
 		// TODO Auto-generated method stub
 		double[][] md1 = new double[512][512];
 		int kk = 3;

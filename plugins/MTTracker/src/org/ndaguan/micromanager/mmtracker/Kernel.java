@@ -77,7 +77,9 @@ public class Kernel {
 		MMT.currentframeIndex_++;
 		for (int i = 0; i < roiList_.size(); i++) {
 			//set value
-			roiList_.get(i).setXY(ret[i]);
+			if(MMT.VariablesNUPD.iTerm.value() != 123){
+				roiList_.get(i).setXY(ret[i]);
+			}
 			roiList_.get(i).setZ(ret[i][2]);
 			force = calcForces(roiList_.get(i).getStats());
 			skrewneww = calcSkrewness(roiList_.get(i).getStats(),roiList_.get(i).getStatCross());

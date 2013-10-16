@@ -4353,7 +4353,7 @@ int AndorCamera::GetListOfAvailableCameras()
             bytesPerPixel,
             md.Serialize().c_str());
 
-         if (!stopOnOverflow_ && DEVICE_BUFFER_OVERFLOW == retCode)
+         if (DEVICE_BUFFER_OVERFLOW == retCode)
          {
             // do not stop on overflow - just reset the buffer
             GetCoreCallback()->ClearImageBuffer(this);
