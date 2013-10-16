@@ -1519,7 +1519,6 @@ int AndorCamera::GetListOfAvailableCameras()
          if (sequenceRunning_)   // If we are in the middle of a SequenceAcquisition
             return ERR_BUSY_ACQUIRING;
 
-		 int ret;
          if(iCurrentTriggerMode_ == SOFTWARE) 
          {
             ret = SendSoftwareTrigger();
