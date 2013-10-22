@@ -127,9 +127,7 @@ public class GetXYPositionAnalyzer extends TaggedImageAnalyzer {
 			Function.getInstance().reDraw(acqName, frameNum_, false,true);
 			if( MMT.VariablesNUPD.responceXY.value() == 1){
 				Function.getInstance().updateChart(frameNum_);
-				if(MMTFrame.getInstance().isMagnetAuto() && (frameNum_ % (int)(MMT.VariablesNUPD.frameToCalcForce.value()) == 0)){
-					Function.getInstance().PullMagnet();
-				}
+				Function.getInstance().PullMagnet(frameNum_);
 			}
 
 		} catch (JSONException e) {

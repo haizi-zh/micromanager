@@ -59,6 +59,8 @@ public class MMT {
 	public static double currXP = 40;
 	public static boolean isFeedbackRunning_ = false;
 	protected static String currentUser;
+	public static boolean magnetCurrentStage= false;
+	protected static double magnetCurrentPosition = 0;
 	public static enum VariablesClassify{
 		General,
 		DataSheet,

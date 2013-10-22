@@ -75,7 +75,52 @@ public class Function {
 			it.dataClean(false);
 	}
 
-	public void PullMagnet() {
+	public void PullMagnet(long frameNum ) {
+
+		if(MMTFrame.getInstance().isMagnetAuto() && ( (int)( frameNum % MMT.VariablesNUPD.frameToCalcForce.value()) == 0)){
+			MagnetIncrease();
+		}
+		if(MMTFrame.getInstance().isMagnetCirculate() && ( (int)( frameNum % MMT.VariablesNUPD.frameToCalcForce.value()) == 0)){
+			try {
+				MagnetCirculate();
+			} catch (Exception e) {
+				MMT.logError("Set MP285 ZStage ERR" + e.toString());
+			}
+		}
+
+	}
+	private void MagnetCirculate() throws Exception {
+		double currMP285zpos = core_.getPosition(MMT.magnetZStage_);
+		double z = MMT.VariablesNUPD.magnetStepSize.value();
+		double target = currMP285zpos;
+		if(MMT.magnetCurrentStage){//up
+			MMT.magnetCurrentStage = false;
+			target =  currMP285zpos + z;
+		}else{//down
+			MMT.magnetCurrentStage = true;
+			target =  currMP285zpos - z;
+		}
+		if(target>0){
+			target = 0;
+		}
+		final double c = currMP285zpos;
+		final double t = target;
+		(new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					core_.setPosition(MMT.magnetZStage_,t);
+					MMT.magnetCurrentPosition = t;
+					MMT.logMessage(String.format("\tSet MP285 ZStage\t\t%f\t->\t%f",
+							c, core_.getPosition(MMT.magnetZStage_)));
+				} catch (Exception e) {
+					MMT.logError("Set MP285 ZStage ERR" + e.toString());
+				}
+			}
+		})).start();
+
+	}
+	public void MagnetIncrease(){
 		(new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -88,6 +133,7 @@ public class Function {
 						MMTFrame.getInstance().MagnetManual.setSelected(true);
 					}
 					core_.setPosition(MMT.magnetZStage_,target);
+					MMT.magnetCurrentPosition = target;
 					MMT.logMessage(String.format("\tSet MP285 ZStage\t\t%f\t->\t%f",
 							currMP285zpos , core_.getPosition(MMT.magnetZStage_)));
 				} catch (Exception e) {
@@ -96,7 +142,6 @@ public class Function {
 			}
 		})).start();
 	}
-
 	public int getFocusRoiIndex() {
 		int index =0;
 		for(RoiItem it:roiList_){			

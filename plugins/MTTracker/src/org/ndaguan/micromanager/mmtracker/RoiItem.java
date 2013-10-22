@@ -209,12 +209,12 @@ public  class RoiItem {
 			dataFileWriter_ = new BufferedWriter(new FileWriter(file));
 
 			dataFileWriter_
-			.write("Frame, Timestamp, XPos/pixel,XPos/um, YPos/pixel, YPos/um, ZPos/um,L/um,ForceX/pN,ForceY/pN,Std(x/y),skrewnessy\r\n");
+			.write("Frame, Timestamp, XPos/pixel,XPos/um, YPos/pixel, YPos/um, ZPos/um,MagnetZ/um,L/um,ForceX/pN,ForceY/pN,Std(x/y),skrewnessy\r\n");
 			dataFileWriter_.flush();
 		}
 		else{
 			dataFileWriter_
-			.write(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n",frameNum_,elapsed,x_,xPhy_,y_,yPhy_,zPhy_,l_,fx_,fy_,stdXdY_,skrewness_));
+			.write(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\r\n",frameNum_,elapsed,x_,xPhy_,y_,yPhy_,zPhy_,MMT.magnetCurrentPosition,l_,fx_,fy_,stdXdY_,skrewness_));
 		}
 		return true;
 

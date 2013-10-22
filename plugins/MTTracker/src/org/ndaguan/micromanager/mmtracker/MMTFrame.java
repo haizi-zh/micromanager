@@ -40,6 +40,7 @@ public class MMTFrame extends JFrame {
 	ActionListener menuListener = null;
 
 	public JRadioButtonMenuItem MagnetAuto;
+	public JRadioButtonMenuItem MagnetCirculate;
 	public  JRadioButtonMenuItem MagnetManual;
 	private static Listener listener_;
 	public PreferDailog preferDailog;
@@ -80,9 +81,6 @@ public class MMTFrame extends JFrame {
 
 
 	private JButton butFeedback;
-
-
-
 
 	public static MMTFrame getInstance(MMStudioMainFrame app, Listener listener) {
 		if(instance_ == null)
@@ -144,7 +142,7 @@ public class MMTFrame extends JFrame {
 		ShowChart.setToolTipText("Show Detail in Chart");
 		ShowChart.addActionListener(listener_);
 		ROI.add(ShowChart);
-		
+
 		final JMenuItem XYOrignal = new JMenuItem("SetX0Y0");
 		XYOrignal.setToolTipText("Set XY Orign");
 		XYOrignal.addActionListener(listener_);
@@ -166,15 +164,21 @@ public class MMTFrame extends JFrame {
 		Option = new JMenu("Option");//Option		
 		final JMenuItem Preferences = new JMenuItem("Preferences");		
 		final JMenu Magnet = new JMenu("Magnet");
-		MagnetAuto = new JRadioButtonMenuItem("Auto");		
+		MagnetAuto = new JRadioButtonMenuItem("Auto");	
+		MagnetAuto.setToolTipText("Magnet(MP285) increase by the stepsize");
+		MagnetCirculate = new JRadioButtonMenuItem("Circulate");		
+		MagnetCirculate.setToolTipText("Magnet(MP285) produce square wave");
 		MagnetManual = new JRadioButtonMenuItem("Manual");
 		buttonGroup_0.add(MagnetAuto);
+		buttonGroup_0.add(MagnetCirculate);
 		buttonGroup_0.add(MagnetManual);
 
 		Magnet.add(MagnetAuto);
 		Magnet.addSeparator();
+		Magnet.add(MagnetCirculate);
+		Magnet.addSeparator();
 		Magnet.add(MagnetManual);	
-		
+
 		final JMenu TCPIP = new JMenu("TCPIP");
 		JRadioButtonMenuItem TCPIPClient = new JRadioButtonMenuItem("Client");		
 		JRadioButtonMenuItem TCPIPServer = new JRadioButtonMenuItem("Server");
@@ -201,7 +205,7 @@ public class MMTFrame extends JFrame {
 		runDebug.setVisible(true);
 		Other.add(runDebug);
 
-		
+
 		Preferences.addActionListener(listener_);
 		MagnetManual.addActionListener(listener_);
 		TCPIPClient.addActionListener(listener_);
@@ -230,7 +234,7 @@ public class MMTFrame extends JFrame {
 		toolBar.setBounds(0,0, DEFAULT_WIDTH, toolbarheight);
 
 		Toolkit kit = Toolkit.getDefaultToolkit();
-		
+
 		imgSet = kit.getImage("icons/Set.gif");
 		imgC = kit.getImage("icons/C.gif");
 		imgL = kit.getImage("icons/L.gif");
@@ -283,7 +287,7 @@ public class MMTFrame extends JFrame {
 		butHandTool.setFocusable(false);
 		butHandTool.setBounds(offsetx,0, toolItemWidth, toolItemHeight);
 		offsetx += toolItemWidth;
-		
+
 		butSet.setIcon(new javax.swing.ImageIcon(imgSet)); // NOI18N
 		butSet.setToolTipText("Add ROI");
 		butSet.setFocusable(false);
@@ -296,7 +300,7 @@ public class MMTFrame extends JFrame {
 		butFeedback.setBounds(offsetx,0, toolItemWidth, toolItemHeight);
 		offsetx += toolItemWidth;
 
-		
+
 		final JSeparator separator2 = new JSeparator(SwingConstants.VERTICAL);
 		separator2.setBounds(offsetx+10,0,1, 10);
 
@@ -309,7 +313,7 @@ public class MMTFrame extends JFrame {
 		butAuto.addActionListener(listener_); 
 		butSet.addActionListener(listener_); 
 		butFeedback.addActionListener(listener_); 
-		
+
 		toolBar.add(butSet);
 		toolBar.add(butCalibration);
 		toolBar.add(butLiveView);
@@ -350,7 +354,7 @@ public class MMTFrame extends JFrame {
 	}
 	public void setEnableLiveIcon(boolean flag)
 	{
-		
+
 		butLiveView.setEnabled(flag);
 	}
 
@@ -378,10 +382,10 @@ public class MMTFrame extends JFrame {
 			butFeedback.setIcon(new javax.swing.ImageIcon(imgEnableF)); // NOI18N
 		}
 	}
-	
+
 	public void FeedbackEnable(boolean flag)
 	{
-		
+
 		butFeedback.setEnabled(flag);
 	}
 	public void MultCaptureEnable(boolean flag)
@@ -391,6 +395,10 @@ public class MMTFrame extends JFrame {
 	public boolean isMagnetAuto() {
 
 		return MagnetAuto.isSelected();
+	}
+	public boolean isMagnetCirculate() {
+
+		return MagnetCirculate.isSelected();
 	}
 	public void lockEveryThingButThis(boolean flag) {
 		ROI.setEnabled(flag);
