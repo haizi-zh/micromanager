@@ -207,18 +207,6 @@ int SigmaKokiCtrl::Initialize()
 
     if (ret != DEVICE_OK) return ret;
 
-    bool yCommError = CheckError(sResponse[0]);
-
-    char sCommStat[30];
-    if (yCommError)
-        sprintf((char*)sCommStat, "Error Code ==> <%2x>", sResponse[0]);
-    else
-        strcpy(sCommStat, "Success");
-    ret = CreateProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_CommStateLabel).c_str(), sCommStat, MM::String, true);
-
-
-    //SetPropertyLimits(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_MotionMode).c_str(), 0.0, 30000.0); // 0 : absolute , 1 : = relative    
-    //if (ret != DEVICE_OK) return ret;
 
     ret = UpdateStatus();
     if (ret != DEVICE_OK) return ret;
@@ -247,13 +235,14 @@ int SigmaKokiCtrl::Initialize()
 int SigmaKokiCtrl::CheckStatus(unsigned char* sResponse, unsigned int nLength)
 {
     std::ostringstream osMessage;
-    unsigned char sCommand[6] = { 0x73, SigmaKoki::SigmaKoki_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
+    unsigned char sCommand[8] ="\r\n?:N\r\n";
     int ret = WriteCommand(sCommand, 3);
 
     if (ret != DEVICE_OK) return ret;
 
     //unsigned int nBufLen = 256;
     //unsigned char sAnswer[256];
+
     memset(sResponse, 0, nLength);
     ret = ReadMessage(sResponse, 34);
 
@@ -871,21 +860,21 @@ int SigmaKokiCtrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 
         // concade new string
         lRead += lByteRead;
-
-        if (lRead > 2)
-        {
-            yRead = (sAnswer[0] == 0x30 || sAnswer[0] == 0x31 || sAnswer[0] == 0x32 || sAnswer[0] == 0x34 || sAnswer[0] == 0x38) &&
-                    (sAnswer[1] == 0x0D) &&
-                    (sAnswer[2] == 0x0D);
-        }
-        else if (lRead == 2)
-        {
-            yRead = (sAnswer[0] == 0x0D) && (sAnswer[1] == 0x0D);
-        }
-
-        yRead = yRead || (lRead >= (unsigned long)nBytesRead);
-
-        if (yRead) break;
+//
+//        if (lRead > 2)
+//        {
+//            yRead = (sAnswer[0] == 0x30 || sAnswer[0] == 0x31 || sAnswer[0] == 0x32 || sAnswer[0] == 0x34 || sAnswer[0] == 0x38) &&
+//                    (sAnswer[1] == 0x0D) &&
+//                    (sAnswer[2] == 0x0D);
+//        }
+//        else if (lRead == 2)
+//        {
+//            yRead = (sAnswer[0] == 0x0D) && (sAnswer[1] == 0x0D);
+//        }
+//
+//        yRead = yRead || (lRead >= (unsigned long)nBytesRead);
+//
+//        if (yRead) break;
         
         // check for timeout
         yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 10000. ) > (double) m_nAnswerTimeoutMs;
