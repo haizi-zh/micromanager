@@ -140,11 +140,11 @@ int ZStage::Initialize()
 	// Speed information started at the 27th byte and 2 bytes long
 	char sUm2Step[20];
 	memset(sUm2Step, 0, 20);
-	long lUm2Step =StepMotor::Instance()->GetUm2UStep();
-	sprintf(sUm2Step, "%ld", lUm2Step);
+	double lUm2Step =StepMotor::Instance()->GetUm2UStep();
+	sprintf(sUm2Step, "%f", lUm2Step);
 
 	CPropertyAction* pActOnUmToStep = new CPropertyAction(this, &ZStage::OnUmToStep);
-	ret = CreateProperty(StepMotor::Instance()->GetMPStr(StepMotor::SMSTR_Um2UStepLabel).c_str(), sUm2Step, MM::Integer,  false, pActOnUmToStep); // usteps/step
+	ret = CreateProperty(StepMotor::Instance()->GetMPStr(StepMotor::SMSTR_Um2UStepLabel).c_str(), sUm2Step, MM::Float,  false, pActOnUmToStep); // usteps/step
 	// SetOrigin
 	// -----------------
 	// Get current speed from the controller
@@ -821,7 +821,7 @@ int ZStage::OnUmToStep(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
 	std::ostringstream osMessage;
 	int ret = DEVICE_OK;
-	long Um2UStep = StepMotor::Instance()->GetUm2UStep();
+	double Um2UStep = StepMotor::Instance()->GetUm2UStep();
 
 	osMessage.str("");
 

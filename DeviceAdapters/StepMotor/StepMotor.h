@@ -114,8 +114,8 @@ public:
     static long GetVelocity() { return m_lVelocity; }                                       // get StepMotor device velocity
     static void SetResolution(int nResolution) { m_nResolution = nResolution; }             // set StepMotor device resolution
     static int  GetResolution() { return m_nResolution; }                                   // get StepMotor resolution
-    static void SetUm2UStep(int nUm2UStep) { m_nUm2UStep = nUm2UStep; }                     // set StepMotor Um to UStep conversion unit
-    static int  GetUm2UStep() { return m_nUm2UStep; }                                       // get StepMotor Um to UStep conversion unit
+    static void SetUm2UStep(float nUm2UStep) { m_nUm2UStep = nUm2UStep; }                     // set StepMotor Um to UStep conversion unit
+    static float  GetUm2UStep() { return m_nUm2UStep; }                                       // get StepMotor Um to UStep conversion unit
     static void SetUStep2Nm(int nUStep2Nm) { m_nUStep2Nm = nUStep2Nm; }                     // set StepMotor UStep to Nm conversion unit
     static int  GetUStep2Nm() { return m_nUStep2Nm; }                                       // get StepMotor UStep to NM conversion unit
     static void SetMotionMode(int nMotionMode) { m_nMotionMode = nMotionMode; }             // set Motor motion mode
@@ -155,8 +155,8 @@ private:
     static bool                 m_yDeviceAvailable;         // StepMotor availability
 	static int					m_nDebugLogFlag;			// StepMotor debug log flag
     static int                  m_nResolution;              // StepMotor resolution
-    static int                  m_nUm2UStep;                // unit to convert um to uStep
-    static int                  m_nUStep2Nm;                // unit to convert uStep to nm
+    static float                m_nUm2UStep;                // unit to convert um to uStep
+    static int                m_nUStep2Nm;                // unit to convert uStep to nm
     static int                  m_nTimeoutInterval;         // timeout interval
     static int                  m_nTimeoutTrys;             // timeout trys
     //static int                m_nNumberOfAxes;            // number of StepMotor axes
