@@ -66,6 +66,7 @@ class MP285Ctrl : public CGenericBase<MP285Ctrl>
         // ---------------
         int OnPort(MM::PropertyBase* pProp, MM::ActionType eAct);
 		int OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType eAct);
+		int OnSetOrigin(MM::PropertyBase* pProp, MM::ActionType eAct);
         int OnResolution(MM::PropertyBase* pProp, MM::ActionType eAct);
         int OnSpeed(MM::PropertyBase* pProp, MM::ActionType eAct);
         int OnMotionMode(MM::PropertyBase* pProp, MM::ActionType eAct);
