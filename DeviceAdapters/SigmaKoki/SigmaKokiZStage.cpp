@@ -255,7 +255,8 @@ int ZStage::GetPositionUm(double& dZPosUm)
 
 	if (ret != DEVICE_OK) return ret;
 
-
+	dZPosUm = std::atoi((char*)&sResponse);
+	dZPosUm /= 1000;
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage.str("");
