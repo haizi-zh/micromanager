@@ -29,8 +29,8 @@
 //
 
 #ifdef WIN32
-   #include <windows.h>
-   #define snprintf _snprintf 
+#include <windows.h>
+#define snprintf _snprintf
 #endif
 
 #include <stdio.h>
@@ -63,21 +63,21 @@ using namespace std;
 // Single axis stage constructor
 //
 ZStage::ZStage() :
-    m_yInitialized(false)
-    //m_nAnswerTimeoutMs(1000)
-    //, stepSizeUm_(1)
+    				m_yInitialized(false)
+//m_nAnswerTimeoutMs(1000)
+//, stepSizeUm_(1)
 {
-    InitializeDefaultErrorMessages();
+	InitializeDefaultErrorMessages();
 
-    // Name
-    char sZName[120];
+	// Name
+	char sZName[120];
 	sprintf(sZName, "%s%s", SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_ZDevNameLabel).c_str(), MM::g_Keyword_Name);
-    int ret = CreateProperty(sZName, SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_ZStageDevName).c_str(), MM::String, true);
+	int ret = CreateProperty(sZName, SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_ZStageDevName).c_str(), MM::String, true);
 
-    m_nAnswerTimeoutMs = SigmaKoki::Instance()->GetTimeoutInterval();
-    m_nAnswerTimeoutTrys = SigmaKoki::Instance()->GetTimeoutTrys();
+	m_nAnswerTimeoutMs = SigmaKoki::Instance()->GetTimeoutInterval();
+	m_nAnswerTimeoutTrys = SigmaKoki::Instance()->GetTimeoutTrys();
 
-    std::ostringstream osMessage;
+	std::ostringstream osMessage;
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 0)
 	{
@@ -86,12 +86,12 @@ ZStage::ZStage() :
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    // Description
-    char sZDesc[120];
+	// Description
+	char sZDesc[120];
 	sprintf(sZDesc, "%s%s", SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_ZDevDescLabel).c_str(), MM::g_Keyword_Description);
-    ret = CreateProperty(sZDesc, "MP-285 Z Stage Driver", MM::String, true);
+	ret = CreateProperty(sZDesc, "MP-285 Z Stage Driver", MM::String, true);
 
-    // osMessage.clear();
+	// osMessage.clear();
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 0)
 	{
 		osMessage.str("");
@@ -106,7 +106,7 @@ ZStage::ZStage() :
 //
 ZStage::~ZStage()
 {
-    Shutdown();
+	Shutdown();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -118,15 +118,15 @@ ZStage::~ZStage()
 //
 int ZStage::Initialize()
 {
-    std::ostringstream osMessage;
+	std::ostringstream osMessage;
 
-    if (!SigmaKoki::Instance()->GetDeviceAvailability()) return DEVICE_NOT_CONNECTED;
-    //if (SigmaKoki::Instance()->GetNumberOfAxes() < 3) return DEVICE_NOT_CONNECTED;
+	if (!SigmaKoki::Instance()->GetDeviceAvailability()) return DEVICE_NOT_CONNECTED;
+	//if (SigmaKoki::Instance()->GetNumberOfAxes() < 3) return DEVICE_NOT_CONNECTED;
 
-    //int ret = CreateProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_GetPositionZ).c_str(), "undefined", MM::String, true);  // get position Z 
-    CPropertyAction* pActOnGetPosZ = new CPropertyAction(this, &ZStage::OnGetPositionZ);
+	//int ret = CreateProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_GetPositionZ).c_str(), "undefined", MM::String, true);  // get position Z
+	CPropertyAction* pActOnGetPosZ = new CPropertyAction(this, &ZStage::OnGetPositionZ);
 	char sPosZ[20];
-    double dPosZ = SigmaKoki::Instance()->GetPositionZ();
+	double dPosZ = SigmaKoki::Instance()->GetPositionZ();
 	sprintf(sPosZ, "%ld", (long)(dPosZ * (double)SigmaKoki::Instance()->GetUm2UStep()));
 	int ret = CreateProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_GetPositionZ).c_str(), sPosZ, MM::Integer, false, pActOnGetPosZ);  // get position Z 
 
@@ -137,9 +137,9 @@ int ZStage::Initialize()
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    if (ret != DEVICE_OK)  return ret;
+	if (ret != DEVICE_OK)  return ret;
 
-    ret = GetPositionUm(dPosZ);
+	ret = GetPositionUm(dPosZ);
 	sprintf(sPosZ, "%ld", (long)(dPosZ * (double)SigmaKoki::Instance()->GetPositionZ()));
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 0)
@@ -149,12 +149,12 @@ int ZStage::Initialize()
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    if (ret != DEVICE_OK)  return ret;
+	if (ret != DEVICE_OK)  return ret;
 
-    CPropertyAction* pActOnSetPosZ = new CPropertyAction(this, &ZStage::OnSetPositionZ);
+	CPropertyAction* pActOnSetPosZ = new CPropertyAction(this, &ZStage::OnSetPositionZ);
 	sprintf(sPosZ, "%.2f", dPosZ);
-    ret = CreateProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_SetPositionZ).c_str(), sPosZ, MM::Float, false, pActOnSetPosZ);  // Absolute  vs Relative 
-    // ret = CreateProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_SetPositionZ).c_str(), "Undefined", MM::Integer, true);  // Absolute  vs Relative 
+	ret = CreateProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_SetPositionZ).c_str(), sPosZ, MM::Float, false, pActOnSetPosZ);  // Absolute  vs Relative
+	// ret = CreateProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_SetPositionZ).c_str(), "Undefined", MM::Integer, true);  // Absolute  vs Relative
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 0)
 	{
@@ -163,13 +163,13 @@ int ZStage::Initialize()
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    if (ret != DEVICE_OK)  return ret;
+	if (ret != DEVICE_OK)  return ret;
 
-    ret = UpdateStatus();
-    if (ret != DEVICE_OK) return ret;
+	ret = UpdateStatus();
+	if (ret != DEVICE_OK) return ret;
 
-    m_yInitialized = true;
-    return DEVICE_OK;
+	m_yInitialized = true;
+	return DEVICE_OK;
 }
 
 //
@@ -177,9 +177,9 @@ int ZStage::Initialize()
 //
 int ZStage::Shutdown()
 {
-    m_yInitialized = false;
-    SigmaKoki::Instance()->SetDeviceAvailable(false);
-    return DEVICE_OK;
+	m_yInitialized = false;
+	SigmaKoki::Instance()->SetDeviceAvailable(false);
+	return DEVICE_OK;
 }
 
 //
@@ -187,7 +187,7 @@ int ZStage::Shutdown()
 //
 void ZStage::GetName(char* Name) const
 {
-    CDeviceUtils::CopyLimitedString(Name, SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_ZStageDevName).c_str());
+	CDeviceUtils::CopyLimitedString(Name, SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_ZStageDevName).c_str());
 }
 
 //
@@ -195,34 +195,35 @@ void ZStage::GetName(char* Name) const
 //
 int ZStage::SetMotionMode(long lMotionMode)
 {
-    std::ostringstream osMessage;
-    unsigned char sCommand[6] = { 0x00, SigmaKoki::SigmaKoki_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
-    unsigned char sResponse[64];
-    int ret = DEVICE_OK;
-        
-    if (lMotionMode == 0)
-        sCommand[0] = 'a';
-    else
-        sCommand[0] = 'b';
+	return DEVICE_OK;
+	std::ostringstream osMessage;
+	unsigned char sCommand[6] = { 0x00, SigmaKoki::SigmaKoki_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
+	unsigned char sResponse[64];
+	int ret = DEVICE_OK;
 
-    ret = WriteCommand(sCommand, 3);
+	if (lMotionMode == 0)
+		sCommand[0] = 'a';
+	else
+		sCommand[0] = 'b';
 
-    if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
-    {
+	ret = WriteCommand(sCommand, 3);
+
+	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
+	{
 		osMessage.str("");
 		osMessage << "<ZStage::SetMotionMode> = [" << lMotionMode << "," << sCommand[0] << "], Returncode =" << ret;
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    if (ret != DEVICE_OK) return ret;
+	if (ret != DEVICE_OK) return ret;
 
-    ret = ReadMessage(sResponse, 2);
+	ret = ReadMessage(sResponse, 2);
 
-    if (ret != DEVICE_OK) return ret;
+	if (ret != DEVICE_OK) return ret;
 
-    SigmaKoki::Instance()->SetMotionMode(lMotionMode);
+	SigmaKoki::Instance()->SetMotionMode(lMotionMode);
 
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 //
@@ -230,14 +231,30 @@ int ZStage::SetMotionMode(long lMotionMode)
 //
 int ZStage::GetPositionUm(double& dZPosUm)
 {
-    long lZPosSteps = 0;
+	long lZPosSteps = 0;
 
-    int ret = GetPositionSteps(lZPosSteps);
-    if (ret != DEVICE_OK) return ret;
+	unsigned char sCommand[8] ="\r\nQ:\r\n";
+	int ret = WriteCommand(sCommand, 8);
 
-    dZPosUm = (double)lZPosSteps / (double)SigmaKoki::Instance()->GetUm2UStep();
+	if (ret != DEVICE_OK) return ret;
 
-    ostringstream osMessage;
+	//unsigned int nBufLen = 256;
+	//unsigned char sAnswer[256];
+	unsigned char sResponse[256];
+	memset(sResponse, 0, 256);
+	ret = ReadMessage(sResponse, 16);
+	//"         0,X,K,R"
+	//(     12000,X,K,R)
+	std::ostringstream osMessage;
+	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
+	{
+		osMessage.str("");
+		osMessage << "<SigmaKokiCtrl::CheckStatus::ReadMessage> (ReturnCode = " << ret << ")return msg=("<<sResponse<<")";
+		this->LogMessage(osMessage.str().c_str());
+	}
+
+	if (ret != DEVICE_OK) return ret;
+
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -246,11 +263,11 @@ int ZStage::GetPositionUm(double& dZPosUm)
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    SigmaKoki::Instance()->SetPositionZ(dZPosUm);
+	SigmaKoki::Instance()->SetPositionZ(dZPosUm);
 
-    //char sPosition[20];
-    //sprintf(sPosition, "%.2f", dZPosUm);
-    //ret = SetProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_GetPositionZ).c_str(), sPosition);
+	//char sPosition[20];
+	//sprintf(sPosition, "%.2f", dZPosUm);
+	//ret = SetProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_GetPositionZ).c_str(), sPosition);
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -259,12 +276,12 @@ int ZStage::GetPositionUm(double& dZPosUm)
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    //f (ret != DEVICE_OK) return ret;
+	//f (ret != DEVICE_OK) return ret;
 
-    //ret = UpdateStatus();
-    //if (ret != DEVICE_OK) return ret;
+	//ret = UpdateStatus();
+	//if (ret != DEVICE_OK) return ret;
 
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 //
@@ -273,46 +290,36 @@ int ZStage::GetPositionUm(double& dZPosUm)
 int ZStage::SetRelativePositionUm(double dZPosUm)
 {
 	int ret = DEVICE_OK;
-    ostringstream osMessage;
+	ostringstream osMessage;
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage << "<ZStage::SetRelativePositionUm> (z=" << dZPosUm << ")";
 		this->LogMessage(osMessage.str().c_str());
 	}
-
-	// set relative motion mode
-	if (SigmaKoki::Instance()->GetMotionMode() == 0)
-	{
-		ret = SetMotionMode(1);
-
-		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
+	int dZPosNm = dZPosUm*1000;
+	if(dZPosNm>0){
+		osMessage <<"\r\nM:1+P"<<dZPosNm<<"\r\nG:\r\n";
+	}else{
+		dZPosNm *= -1;
+		osMessage <<"\r\nM:1-P"<<dZPosNm<<"\r\nG:\r\n";
+	}
+	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
-			osMessage.str("");
-			osMessage << "<ZStage::SetRelativePositionUm> (" << SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_MotionMode).c_str() << " = <RELATIVE>), ReturnCode = " << ret;
 			this->LogMessage(osMessage.str().c_str());
 		}
+	ret = WriteCommand((unsigned char *)osMessage.str().c_str(),osMessage.str().length());
 
-	    if (ret != DEVICE_OK) return ret;
-	}
+	double currentZPosition =SigmaKoki::Instance()->GetPositionZ()+ dZPosUm;
+	SigmaKoki::Instance()->SetPositionZ(currentZPosition);
 
-    // convert um to steps 
-    long lZPosSteps = (long)(dZPosUm * (double)SigmaKoki::Instance()->GetUm2UStep());
+	double dPosZ = 0.;
 
-    // send move command to controller
-	ret = _SetPositionSteps(0L, 0L, lZPosSteps);
+	ret = GetPositionUm(dPosZ);
 
-    if (ret != DEVICE_OK) return ret;
+	if (ret != DEVICE_OK) return ret;
 
-    SigmaKoki::Instance()->SetPositionZ(dZPosUm);
-
-    double dPosZ = 0.;
-
-    ret = GetPositionUm(dPosZ);
-
-    if (ret != DEVICE_OK) return ret;
-
-    return ret;
+	return ret;
 }
 
 
@@ -322,48 +329,41 @@ int ZStage::SetRelativePositionUm(double dZPosUm)
 int ZStage::SetPositionUm(double dZPosUm)
 {
 	int ret = DEVICE_OK;
-    ostringstream osMessage;
+	ostringstream osMessage;
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage << "<ZStage::SetPositionUm> (z=" << dZPosUm << ")";
 		this->LogMessage(osMessage.str().c_str());
 	}
+	osMessage.str("");
 
-	// set absolute motion mode
-	if (SigmaKoki::Instance()->GetMotionMode() != 0)
-	{
-		ret = SetMotionMode(0);
-
-		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
+	int dZPosNm = dZPosUm*1000;
+	if(dZPosNm>0){
+		osMessage <<"\r\nA:1+P"<<dZPosNm<<"\r\nG:\r\n";
+	}else{
+		dZPosNm *= -1;
+		osMessage <<"\r\nA:1-P"<<dZPosNm<<"\r\nG:\r\n";
+	}
+	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
-			osMessage.str("");
-			osMessage << "<ZStage::SetPositionUm> (" << SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_MotionMode).c_str() << " = <ABSOLUTE>), ReturnCode = " << ret;
 			this->LogMessage(osMessage.str().c_str());
 		}
-		
-		if (ret != DEVICE_OK) return ret;
-	}
-
-    // convert um to steps 
-    long lZPosSteps = (long)(dZPosUm * (double)SigmaKoki::Instance()->GetUm2UStep());
-	long lXPosSteps = (long)SigmaKoki::Instance()->GetPositionX() * (long)SigmaKoki::Instance()->GetUm2UStep();
-	long lYPosSteps = (long)SigmaKoki::Instance()->GetPositionY() * (long)SigmaKoki::Instance()->GetUm2UStep();
-
-    // send move command to controller
-    ret = _SetPositionSteps(lXPosSteps, lYPosSteps, lZPosSteps);
-    if (ret != DEVICE_OK) return ret;
+	ret = WriteCommand((unsigned char *)osMessage.str().c_str(),osMessage.str().length());
 
 
-    SigmaKoki::Instance()->SetPositionZ(dZPosUm);
+	if (ret != DEVICE_OK) return ret;
 
-    double dPosZ = 0.;
 
-    ret = GetPositionUm(dPosZ);
+	SigmaKoki::Instance()->SetPositionZ(dZPosUm);
 
-    if (ret != DEVICE_OK) return ret;
+	double dPosZ = 0.;
 
-    return ret;
+	ret = GetPositionUm(dPosZ);
+
+	if (ret != DEVICE_OK) return ret;
+
+	return ret;
 }
 
 //
@@ -371,32 +371,32 @@ int ZStage::SetPositionUm(double dZPosUm)
 //
 int ZStage::GetPositionSteps(long& lZPosSteps)
 {
-    // get current position
-    unsigned char sCommand[6] = { 0x63, SigmaKoki::SigmaKoki_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
-    int ret = WriteCommand(sCommand, 3);
+	// get current position
+	unsigned char sCommand[6] = { 0x63, SigmaKoki::SigmaKoki_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
+	int ret = WriteCommand(sCommand, 3);
 
-    if (ret != DEVICE_OK)  return ret;
+	if (ret != DEVICE_OK)  return ret;
 
-    unsigned char sResponse[64];
-    memset(sResponse, 0, 64);
+	unsigned char sResponse[64];
+	memset(sResponse, 0, 64);
 
-    bool yCommError = false;
-    int nTrys = 0;
+	bool yCommError = false;
+	int nTrys = 0;
 
-    while (!yCommError && nTrys < SigmaKoki::Instance()->GetTimeoutTrys())
-    {
-        long lXPosSteps = (long) (SigmaKoki::Instance()->GetPositionX() * (double) SigmaKoki::Instance()->GetUm2UStep());
-        long lYPosSteps = (long) (SigmaKoki::Instance()->GetPositionY() * (double) SigmaKoki::Instance()->GetUm2UStep());
+	while (!yCommError && nTrys < SigmaKoki::Instance()->GetTimeoutTrys())
+	{
+		long lXPosSteps = (long) (SigmaKoki::Instance()->GetPositionX() * (double) SigmaKoki::Instance()->GetUm2UStep());
+		long lYPosSteps = (long) (SigmaKoki::Instance()->GetPositionY() * (double) SigmaKoki::Instance()->GetUm2UStep());
 
-        ret = ReadMessage(sResponse, 14);
+		ret = ReadMessage(sResponse, 14);
 
-        ostringstream osMessage;
-        char sCommStat[30];
-        int nError = CheckError(sResponse[0]);
-        yCommError = (sResponse[0] == 0) ? false : nError != 0;
-        if (yCommError)
-        {
-            if (nError == MPError::MPERR_SerialZeroReturn && nTrys < SigmaKoki::Instance()->GetTimeoutTrys()) { nTrys++; yCommError = false; }
+		ostringstream osMessage;
+		char sCommStat[30];
+		int nError = CheckError(sResponse[0]);
+		yCommError = (sResponse[0] == 0) ? false : nError != 0;
+		if (yCommError)
+		{
+			if (nError == MPError::MPERR_SerialZeroReturn && nTrys < SigmaKoki::Instance()->GetTimeoutTrys()) { nTrys++; yCommError = false; }
 
 			if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 			{
@@ -404,17 +404,17 @@ int ZStage::GetPositionSteps(long& lZPosSteps)
 				osMessage << "<XYStage::GetPositionSteps> Response = (" << nError << "," << nTrys << ")" ;
 			}
 
-            sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
-        }
-        else
-        {
-            lXPosSteps = *((long*)(&sResponse[0]));
-            lYPosSteps = *((long*)(&sResponse[4]));
-            lZPosSteps = *((long*)(&sResponse[8]));
-            //SigmaKoki::Instance()->SetPositionX(lXPosSteps);
-            //SigmaKoki::Instance()->SetPositionY(lYPosSteps);
-            //SigmaKoki::Instance()->SetPositionZ(lZPosSteps);
-            strcpy(sCommStat, "Success");
+			sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
+		}
+		else
+		{
+			lXPosSteps = *((long*)(&sResponse[0]));
+			lYPosSteps = *((long*)(&sResponse[4]));
+			lZPosSteps = *((long*)(&sResponse[8]));
+			//SigmaKoki::Instance()->SetPositionX(lXPosSteps);
+			//SigmaKoki::Instance()->SetPositionY(lYPosSteps);
+			//SigmaKoki::Instance()->SetPositionZ(lZPosSteps);
+			strcpy(sCommStat, "Success");
 
 			if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 			{
@@ -422,33 +422,33 @@ int ZStage::GetPositionSteps(long& lZPosSteps)
 				osMessage << "<ZStage::GetPositionSteps> Response(X = <" << lXPosSteps << ">, Y = <" << lYPosSteps << ">, Z = <"<< lZPosSteps << ">), ReturnCode=" << ret;
 			}
 
-            nTrys = SigmaKoki::Instance()->GetTimeoutTrys();
+			nTrys = SigmaKoki::Instance()->GetTimeoutTrys();
 
-        }
+		}
 
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
 			this->LogMessage(osMessage.str().c_str());
 		}
 
-        //ret = SetProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_CommStateLabel).c_str(), sCommStat);
+		//ret = SetProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_CommStateLabel).c_str(), sCommStat);
 
-    }
+	}
 
-    if (ret != DEVICE_OK) return ret;
+	if (ret != DEVICE_OK) return ret;
 
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 
-  
+
 //
 // Move x-y stage to a relative distance from current position in uSteps
 //
 int ZStage::SetRelativePositionSteps(long lZPosSteps)
 {
 	int ret = DEVICE_OK;
-    ostringstream osMessage;
+	ostringstream osMessage;
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -469,7 +469,7 @@ int ZStage::SetRelativePositionSteps(long lZPosSteps)
 			this->LogMessage(osMessage.str().c_str());
 		}
 
-	    if (ret != DEVICE_OK) return ret;
+		if (ret != DEVICE_OK) return ret;
 	}
 
 	ret = _SetPositionSteps(0L, 0L, lZPosSteps);
@@ -485,8 +485,8 @@ int ZStage::SetRelativePositionSteps(long lZPosSteps)
 int ZStage::SetPositionSteps(long lZPosSteps)
 {
 	int ret = DEVICE_OK;
-    ostringstream osMessage;
-    
+	ostringstream osMessage;
+
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
 		//osMessage.str("");
@@ -505,7 +505,7 @@ int ZStage::SetPositionSteps(long lZPosSteps)
 			osMessage << "<ZStage::SetPositionSteps> (" << SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_MotionMode).c_str() << " = <ABSOLUTE>), ReturnCode = " << ret;
 			this->LogMessage(osMessage.str().c_str());
 		}
-		
+
 		if (ret != DEVICE_OK) return ret;
 	}
 
@@ -516,7 +516,7 @@ int ZStage::SetPositionSteps(long lZPosSteps)
 
 	if (ret != DEVICE_OK) return ret;
 
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 //
@@ -525,25 +525,25 @@ int ZStage::SetPositionSteps(long lZPosSteps)
 int ZStage::_SetPositionSteps(long lXPosSteps, long lYPosSteps, long lZPosSteps)
 {
 	int ret = DEVICE_OK;
-    ostringstream osMessage;
+	ostringstream osMessage;
 
 	// get current position X-Y
-    unsigned char sCommand[16];
-    memset(sCommand, 0, 16);
-    sCommand[0]  = 0x6D;
-    sCommand[13] = SigmaKoki::SigmaKoki_TxTerm;
-    sCommand[14] = 0x0A;
+	unsigned char sCommand[16];
+	memset(sCommand, 0, 16);
+	sCommand[0]  = 0x6D;
+	sCommand[13] = SigmaKoki::SigmaKoki_TxTerm;
+	sCommand[14] = 0x0A;
 
-    long* plPositionX = (long*)(&sCommand[1]);
+	long* plPositionX = (long*)(&sCommand[1]);
 	*plPositionX = lXPosSteps;
 
-    long* plPositionY = (long*)(&sCommand[5]);
+	long* plPositionY = (long*)(&sCommand[5]);
 	*plPositionY = lYPosSteps;
 
-    long* plPositionZ = (long*)(&sCommand[9]);
-    *plPositionZ = lZPosSteps;
+	long* plPositionZ = (long*)(&sCommand[9]);
+	*plPositionZ = lZPosSteps;
 
-    ret = WriteCommand(sCommand, 15);
+	ret = WriteCommand(sCommand, 15);
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -552,7 +552,7 @@ int ZStage::_SetPositionSteps(long lXPosSteps, long lYPosSteps, long lZPosSteps)
 		LogMessage(osMessage.str().c_str());
 	}
 
-    if (ret != DEVICE_OK)  return ret;
+	if (ret != DEVICE_OK)  return ret;
 
 	double dVelocity = (double)SigmaKoki::Instance()->GetVelocity() * (double)SigmaKoki::Instance()->GetUm2UStep();
 	double dSec = 0.;
@@ -565,10 +565,10 @@ int ZStage::_SetPositionSteps(long lXPosSteps, long lYPosSteps, long lZPosSteps)
 	{
 		dSec = (double)labs(lZPosSteps) / dVelocity;
 	}
-    long lSleep = (long)(dSec * 120.);
+	long lSleep = (long)(dSec * 120.);
 
-    CDeviceUtils::SleepMs(lSleep);
-    
+	CDeviceUtils::SleepMs(lSleep);
+
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage.str("");
@@ -576,30 +576,30 @@ int ZStage::_SetPositionSteps(long lXPosSteps, long lYPosSteps, long lZPosSteps)
 		LogMessage(osMessage.str().c_str());
 	}
 
-    bool yCommError = true;
+	bool yCommError = true;
 
-    while (yCommError)
-    {
-        unsigned char sResponse[64];
-        memset(sResponse, 0, 64);
+	while (yCommError)
+	{
+		unsigned char sResponse[64];
+		memset(sResponse, 0, 64);
 
-        ret = ReadMessage(sResponse, 2);
+		ret = ReadMessage(sResponse, 2);
 
-        //char sCommStat[30];
+		//char sCommStat[30];
 		yCommError = CheckError(sResponse[0]) != MPError::MPERR_OK;
-        //if (yCommError)
-        //{
-        //    sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
-        //}
-        // else
-        //{
-        //     strcpy(sCommStat, "Success");
-        //}
+		//if (yCommError)
+		//{
+		//    sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
+		//}
+		// else
+		//{
+		//     strcpy(sCommStat, "Success");
+		//}
 
-        //ret = SetProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_CommStateLabel).c_str(), sCommStat);
-    }
+		//ret = SetProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_CommStateLabel).c_str(), sCommStat);
+	}
 
-    if (ret != DEVICE_OK) return ret;
+	if (ret != DEVICE_OK) return ret;
 
 	return DEVICE_OK;
 }
@@ -609,10 +609,10 @@ int ZStage::_SetPositionSteps(long lXPosSteps, long lYPosSteps, long lZPosSteps)
 //
 int ZStage::SetOrigin()
 {
-    unsigned char sCommand[6] = { 0x6F, SigmaKoki::SigmaKoki_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
-    int ret = WriteCommand(sCommand, 3);
+	unsigned char sCommand[6] = { 0x6F, SigmaKoki::SigmaKoki_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
+	int ret = WriteCommand(sCommand, 3);
 
-    std::ostringstream osMessage;
+	std::ostringstream osMessage;
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -621,12 +621,12 @@ int ZStage::SetOrigin()
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    if (ret!=DEVICE_OK) return ret;
+	if (ret!=DEVICE_OK) return ret;
 
-    unsigned char sResponse[64];
+	unsigned char sResponse[64];
 
-    memset(sResponse, 0, 64);
-    ret = ReadMessage(sResponse, 2);
+	memset(sResponse, 0, 64);
+	ret = ReadMessage(sResponse, 2);
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -635,21 +635,21 @@ int ZStage::SetOrigin()
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    if (ret != DEVICE_OK) return ret;
+	if (ret != DEVICE_OK) return ret;
 
-    bool yCommError = CheckError(sResponse[0]) != 0;
+	bool yCommError = CheckError(sResponse[0]) != 0;
 
-    char sCommStat[30];
-    if (yCommError)
-        sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
-    else
-        strcpy(sCommStat, "Success");
+	char sCommStat[30];
+	if (yCommError)
+		sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
+	else
+		strcpy(sCommStat, "Success");
 
-    //ret = SetProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_CommStateLabel).c_str(), sCommStat);
+	//ret = SetProperty(SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_CommStateLabel).c_str(), sCommStat);
 
-    if (ret != DEVICE_OK) return ret;
+	if (ret != DEVICE_OK) return ret;
 
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 //
@@ -657,11 +657,11 @@ int ZStage::SetOrigin()
 //
 int ZStage::Stop()
 {
-    unsigned char sCommand[6] = { 0x03, SigmaKoki::SigmaKoki_TxTerm, 0x00, 0x00, 0x00, 0x00 };
+	unsigned char sCommand[6] = { 0x03, SigmaKoki::SigmaKoki_TxTerm, 0x00, 0x00, 0x00, 0x00 };
 
-    int ret = WriteCommand(sCommand, 2);
+	int ret = WriteCommand(sCommand, 2);
 
-    ostringstream osMessage;
+	ostringstream osMessage;
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -670,7 +670,7 @@ int ZStage::Stop()
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    return ret;
+	return ret;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -682,82 +682,82 @@ int ZStage::Stop()
 //
 int ZStage::OnStepSize (MM::PropertyBase* /*pProp*/, MM::ActionType /*eAct*/) 
 {
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 int ZStage::OnSpeed(MM::PropertyBase* /*pProp*/, MM::ActionType /*eAct*/)
 {
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 int ZStage::OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
-    std::ostringstream osMessage;
-    int ret = DEVICE_OK;
-    double dPos = SigmaKoki::Instance()->GetPositionZ();
+	std::ostringstream osMessage;
+	int ret = DEVICE_OK;
+	double dPos = SigmaKoki::Instance()->GetPositionZ();
 
 	osMessage.str("");
 
-    //if (eAct == MM::BeforeGet)
-    //{
-    //    pProp->Set(dPos);
+	//if (eAct == MM::BeforeGet)
+	//{
+	//    pProp->Set(dPos);
 	//
 	//	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	//	{
 	//		osMessage << "<SigmaKokiCtrl::OnGetPositionZ> BeforeGet(" << SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_SetPositionX).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
 	//		//this->LogMessage(osMessage.str().c_str());
 	//	}
-    //}
-    //if (eAct == MM::AfterSet)
-    //{
-        // pProp->Get(dPos);  // not used
+	//}
+	//if (eAct == MM::AfterSet)
+	//{
+	// pProp->Get(dPos);  // not used
 
-        ret = GetPositionUm(dPos);
-		dPos *= (double)SigmaKoki::Instance()->GetUm2UStep();
-		char sPos[20];
-		sprintf(sPos, "%ld", (long)dPos);
+	ret = GetPositionUm(dPos);
+	dPos *= (double)SigmaKoki::Instance()->GetUm2UStep();
+	char sPos[20];
+	sprintf(sPos, "%ld", (long)dPos);
 
-        pProp->Set(dPos);
+	pProp->Set(dPos);
 
-		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<SigmaKokiCtrl::OnGetPositionZ> AfterSet(" << SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_SetPositionX).c_str() << " = [" << dPos << "," << sPos << "], ReturnCode = " << ret;
-			//this->LogMessage(osMessage.str().c_str());
-		}
+	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
+	{
+		osMessage << "<SigmaKokiCtrl::OnGetPositionZ> AfterSet(" << SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_SetPositionX).c_str() << " = [" << dPos << "," << sPos << "], ReturnCode = " << ret;
+		//this->LogMessage(osMessage.str().c_str());
+	}
 
-		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << ")";
-			this->LogMessage(osMessage.str().c_str());
-		}
+	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
+	{
+		osMessage << ")";
+		this->LogMessage(osMessage.str().c_str());
+	}
 
-		if (ret != DEVICE_OK) return ret;
-    //}
+	if (ret != DEVICE_OK) return ret;
+	//}
 
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
-    std::ostringstream osMessage;
-    int ret = DEVICE_OK;
-    double dPos = SigmaKoki::Instance()->GetPositionZ();;
+	std::ostringstream osMessage;
+	int ret = DEVICE_OK;
+	double dPos = SigmaKoki::Instance()->GetPositionZ();;
 
 	osMessage.str("");
 
-    if (eAct == MM::BeforeGet)
-    {
-        pProp->Set(dPos);
+	if (eAct == MM::BeforeGet)
+	{
+		pProp->Set(dPos);
 
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "<SigmaKokiCtrl::OnSetPositionZ> BeforeGet(" << SigmaKoki::Instance()->GetSKStr(SigmaKoki::SKSTR_SetPositionZ).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
 			//this->LogMessage(osMessage.str().c_str());
 		}
-    }
-    else if (eAct == MM::AfterSet)
-    {
-        pProp->Get(dPos);
+	}
+	else if (eAct == MM::AfterSet)
+	{
+		pProp->Get(dPos);
 
 		if (SigmaKoki::Instance()->GetMotionMode() == 0)
 			ret = SetPositionUm(dPos);
@@ -770,7 +770,7 @@ int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 			//this->LogMessage(osMessage.str().c_str());
 		}
 
-    }
+	}
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -778,10 +778,10 @@ int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    if (ret != DEVICE_OK) return ret;
+	if (ret != DEVICE_OK) return ret;
 
 
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 
@@ -794,8 +794,8 @@ int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 //
 int ZStage::WriteCommand(unsigned char* sCommand, int nLength)
 {
-    int ret = DEVICE_OK;
-    ostringstream osMessage;
+	int ret = DEVICE_OK;
+	ostringstream osMessage;
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -811,14 +811,14 @@ int ZStage::WriteCommand(unsigned char* sCommand, int nLength)
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    for (int nBytes = 0; nBytes < nLength && ret == DEVICE_OK; nBytes++)
-    {
-        ret = WriteToComPort(SigmaKoki::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
-        CDeviceUtils::SleepMs(1);
-    }
-    if (ret != DEVICE_OK) return ret;
+	for (int nBytes = 0; nBytes < nLength && ret == DEVICE_OK; nBytes++)
+	{
+		ret = WriteToComPort(SigmaKoki::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
+		CDeviceUtils::SleepMs(1);
+	}
+	if (ret != DEVICE_OK) return ret;
 
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 //
@@ -826,25 +826,25 @@ int ZStage::WriteCommand(unsigned char* sCommand, int nLength)
 //
 int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 {
-    // block/wait for acknowledge, or until we time out;
-    unsigned int nLength = 256;
-    unsigned char sAnswer[256];
-    memset(sAnswer, 0, nLength);
-    unsigned long lRead = 0;
-    unsigned long lStartTime = GetClockTicksUs();
+	// block/wait for acknowledge, or until we time out;
+	unsigned int nLength = 256;
+	unsigned char sAnswer[256];
+	memset(sAnswer, 0, nLength);
+	unsigned long lRead = 0;
+	unsigned long lStartTime = GetClockTicksUs();
 
-    ostringstream osMessage;
-    char sHex[4] = { NULL, NULL, NULL, NULL };
-    int ret = DEVICE_OK;
-    bool yRead = false;
-    bool yTimeout = false;
-    while (!yRead && !yTimeout && ret == DEVICE_OK )
-    {
-        unsigned long lByteRead;
+	ostringstream osMessage;
+	char sHex[4] = { NULL, NULL, NULL, NULL };
+	int ret = DEVICE_OK;
+	bool yRead = false;
+	bool yTimeout = false;
+	while (!yRead && !yTimeout && ret == DEVICE_OK )
+	{
+		unsigned long lByteRead;
 
-        const MM::Device* pDevice = this;
-        ret = (GetCoreCallback())->ReadFromSerial(pDevice, SigmaKoki::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nLength-lRead, lByteRead);
-       
+		const MM::Device* pDevice = this;
+		ret = (GetCoreCallback())->ReadFromSerial(pDevice, SigmaKoki::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nLength-lRead, lByteRead);
+
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 2)
 		{
 			osMessage.str("");
@@ -859,29 +859,29 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 			this->LogMessage(osMessage.str().c_str());
 		}
 
-        // concade new string
-        lRead += lByteRead;
+		// concade new string
+		lRead += lByteRead;
 
-        if (lRead > 2)
-        {
-            yRead = (sAnswer[0] == 0x30 || sAnswer[0] == 0x31 || sAnswer[0] == 0x32 || sAnswer[0] == 0x34 || sAnswer[0] == 0x38) &&
-                    (sAnswer[1] == 0x0D) &&
-                    (sAnswer[2] == 0x0D);
-        }
+		if (lRead > 2)
+		{
+			yRead = (sAnswer[0] == 0x30 || sAnswer[0] == 0x31 || sAnswer[0] == 0x32 || sAnswer[0] == 0x34 || sAnswer[0] == 0x38) &&
+					(sAnswer[1] == 0x0D) &&
+					(sAnswer[2] == 0x0D);
+		}
 
-        yRead = yRead || (lRead >= (unsigned long)nBytesRead);
+		yRead = yRead || (lRead >= (unsigned long)nBytesRead);
 
-        if (yRead) break;
-        
-        // check for timeout
-        yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 10000.) > (double) m_nAnswerTimeoutMs;
-        if (!yTimeout) CDeviceUtils::SleepMs(3);
-    }
+		if (yRead) break;
 
-    // block/wait for acknowledge, or until we time out
-    // if (!yRead || yTimeout) return DEVICE_SERIAL_TIMEOUT;
-    // SigmaKoki::Instance()->ByteCopy(sResponse, sAnswer, nBytesRead);
-    // if (checkError(sAnswer[0]) != 0) ret = DEVICE_SERIAL_COMMAND_FAILED;
+		// check for timeout
+		yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 10000.) > (double) m_nAnswerTimeoutMs;
+		if (!yTimeout) CDeviceUtils::SleepMs(3);
+	}
+
+	// block/wait for acknowledge, or until we time out
+	// if (!yRead || yTimeout) return DEVICE_SERIAL_TIMEOUT;
+	// SigmaKoki::Instance()->ByteCopy(sResponse, sAnswer, nBytesRead);
+	// if (checkError(sAnswer[0]) != 0) ret = DEVICE_SERIAL_COMMAND_FAILED;
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
@@ -907,7 +907,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    return DEVICE_OK;
+	return DEVICE_OK;
 }
 
 //
@@ -915,82 +915,82 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 //
 int ZStage::CheckError(unsigned char bErrorCode)
 {
-    // if the return message is 2 bytes message including CR
-    unsigned int nErrorCode = 0;
-    ostringstream osMessage;
+	// if the return message is 2 bytes message including CR
+	unsigned int nErrorCode = 0;
+	ostringstream osMessage;
 
 	osMessage.str("");
 
-    // check 4 error code
-    if (bErrorCode == SigmaKoki::SigmaKoki_SP_OVER_RUN)
-    {
-        // Serial command buffer over run
-        nErrorCode = MPError::MPERR_SerialOverRun;       
+	// check 4 error code
+	if (bErrorCode == SigmaKoki::SigmaKoki_SP_OVER_RUN)
+	{
+		// Serial command buffer over run
+		nErrorCode = MPError::MPERR_SerialOverRun;
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
 		}
-    }
-    else if (bErrorCode == SigmaKoki::SigmaKoki_FRAME_ERROR)
-    {
-        // Receiving serial command time out
-        nErrorCode = MPError::MPERR_SerialTimeout;       
+	}
+	else if (bErrorCode == SigmaKoki::SigmaKoki_FRAME_ERROR)
+	{
+		// Receiving serial command time out
+		nErrorCode = MPError::MPERR_SerialTimeout;
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
 		}
-    }
-    else if (bErrorCode == SigmaKoki::SigmaKoki_BUFFER_OVER_RUN)
-    {
-        // Serial command buffer full
-        nErrorCode = MPError::MPERR_SerialBufferFull;       
+	}
+	else if (bErrorCode == SigmaKoki::SigmaKoki_BUFFER_OVER_RUN)
+	{
+		// Serial command buffer full
+		nErrorCode = MPError::MPERR_SerialBufferFull;
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
 		}
-    }
-    else if (bErrorCode == SigmaKoki::SigmaKoki_BAD_COMMAND)
-    {
-        // Invalid serial command
-        nErrorCode = MPError::MPERR_SerialInpInvalid;       
+	}
+	else if (bErrorCode == SigmaKoki::SigmaKoki_BAD_COMMAND)
+	{
+		// Invalid serial command
+		nErrorCode = MPError::MPERR_SerialInpInvalid;
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
 		}
-    }
-    else if (bErrorCode == SigmaKoki::SigmaKoki_MOVE_INTERRUPTED)
-    {
-        // Serial command interrupt motion
-        nErrorCode = MPError::MPERR_SerialIntrupMove;       
+	}
+	else if (bErrorCode == SigmaKoki::SigmaKoki_MOVE_INTERRUPTED)
+	{
+		// Serial command interrupt motion
+		nErrorCode = MPError::MPERR_SerialIntrupMove;
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
 		}
-    }
-    else if (bErrorCode == 0x0D)
-    {
-        // read carriage return
-        nErrorCode = MPError::MPERR_OK;
+	}
+	else if (bErrorCode == 0x0D)
+	{
+		// read carriage return
+		nErrorCode = MPError::MPERR_OK;
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "<XYStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
 		}
-    }
-    else if (bErrorCode == 0x00)
-    {
-        // No response from serial port
-        nErrorCode = MPError::MPERR_SerialZeroReturn;
+	}
+	else if (bErrorCode == 0x00)
+	{
+		// No response from serial port
+		nErrorCode = MPError::MPERR_SerialZeroReturn;
 		if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
 		}
-    }
+	}
 
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
 	{
 		this->LogMessage(osMessage.str().c_str());
 	}
 
-    return (nErrorCode);
+	return (nErrorCode);
 }
 

@@ -163,7 +163,7 @@ int ClearPort(MM::Device& device, MM::Core& core, const char* sPort)
 
 bool            SigmaKoki::m_yInstanceFlag      = false;        // instance flag
 bool            SigmaKoki::m_yDeviceAvailable   = false;        // SigmaKoki devices availability
-int				SigmaKoki::m_nDebugLogFlag		= 0;			// SigmaKoki debug log flag
+int				SigmaKoki::m_nDebugLogFlag		= 2;			// SigmaKoki debug log flag
 SigmaKoki*          SigmaKoki::m_pSigmaKoki             = NULL;         // single copy SigmaKoki
 int             SigmaKoki::m_nResolution        = 10;           // SigmaKoki resolution
 int             SigmaKoki::m_nMotionMode        = 0;            // motor motion mode

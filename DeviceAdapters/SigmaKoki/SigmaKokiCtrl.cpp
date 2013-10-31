@@ -236,7 +236,7 @@ int SigmaKokiCtrl::CheckStatus(unsigned char* sResponse, unsigned int nLength)
 {
     std::ostringstream osMessage;
     unsigned char sCommand[8] ="\r\n?:N\r\n";
-    int ret = WriteCommand(sCommand, 3);
+    int ret = WriteCommand(sCommand, 8);
 
     if (ret != DEVICE_OK) return ret;
 
@@ -244,12 +244,12 @@ int SigmaKokiCtrl::CheckStatus(unsigned char* sResponse, unsigned int nLength)
     //unsigned char sAnswer[256];
 
     memset(sResponse, 0, nLength);
-    ret = ReadMessage(sResponse, 34);
-
+    ret = ReadMessage(sResponse, 8);
+//"FINE-01r"
 	if (SigmaKoki::Instance()->GetDebugLogFlag() > 1)
     {
 		osMessage.str("");
-		osMessage << "<SigmaKokiCtrl::CheckStatus::ReadMessage> (ReturnCode = " << ret << ")";
+		osMessage << "<SigmaKokiCtrl::CheckStatus::ReadMessage> (ReturnCode = " << ret << ")return msg=("<<sResponse<<")";
 		this->LogMessage(osMessage.str().c_str());
 	}
 
@@ -874,7 +874,8 @@ int SigmaKokiCtrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 //
 //        yRead = yRead || (lRead >= (unsigned long)nBytesRead);
 //
-//        if (yRead) break;
+         yRead =   (lRead >= (unsigned long)nBytesRead);
+        if (yRead) break;
         
         // check for timeout
         yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 10000. ) > (double) m_nAnswerTimeoutMs;
