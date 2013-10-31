@@ -520,7 +520,7 @@ int MP285Ctrl::OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType pAct)
 int MP285Ctrl::SetOrigin()
 {
 	unsigned char sCommand[6] = { 0x6F, MP285::MP285_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
-	int ret = WriteCommand(sCommand, 3);
+	int ret = WriteCommand(sCommand, 2);
 
 	std::ostringstream osMessage;
 
