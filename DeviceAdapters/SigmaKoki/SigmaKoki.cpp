@@ -208,7 +208,7 @@ SigmaKoki::SigmaKoki()
     SigmaKoki::m_sSKStr[SigmaKoki::SKSTR_GetPositionY]      = "M.20 Get Position Y (uStep)";		// SigmaKoki get POSITION Y label
 	SigmaKoki::m_sSKStr[SigmaKoki::SKSTR_ZDevNameLabel]     = "M.21 Z Stage ";						// SigmaKoki Z stage device name label
 	SigmaKoki::m_sSKStr[SigmaKoki::SKSTR_ZDevDescLabel]     = "M.22 Z Stage ";						// SigmaKoki Z stage device description label
-    SigmaKoki::m_sSKStr[SigmaKoki::SKSTR_SetPositionZ]      = "M.23 Set Position Z (um)";			// SigmaKoki set POSITION Z label
+    SigmaKoki::m_sSKStr[SigmaKoki::SKSTR_SetPositionZ]      = "PositionZ(um)";			// SigmaKoki set POSITION Z label
     SigmaKoki::m_sSKStr[SigmaKoki::SKSTR_GetPositionZ]      = "M.24 Get Position Z (uStep)";		// SigmaKoki get POSITION Z label
     SigmaKoki::m_sSKStr[SigmaKoki::SKSTR_PauseMode]         = "M.25 Pause (0=continue/1=pause)";    // property PAUSE label
     SigmaKoki::m_sSKStr[SigmaKoki::SKSTR_Reset]             = "M.26 Reset (1=reset)";               // property RESET label
