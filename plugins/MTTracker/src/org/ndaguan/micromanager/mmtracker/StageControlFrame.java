@@ -590,6 +590,7 @@ public class StageControlFrame extends javax.swing.JFrame {
 			double target = zpos - z;
 			if(target >0)
 				target = 0;
+			MMT.magnetCurrentPosition = target;
 			core_.setPosition(zStage,target);
 		} catch (Exception e) {
 			gui_.logError(e);

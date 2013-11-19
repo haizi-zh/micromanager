@@ -986,21 +986,23 @@ public class Function {
 	public void doFeedback() {
 		try {
 			int index = getReferenceRoiIndex();
+			if(!roiList_.get(index).isFeedbackReady())
+				return;
 			double[] target = roiList_.get(index).getFeedbackTarget();
-			double [] delta = new double[3];
 			double [] integrate = roiList_.get(index).getFeedbackIntegrate();
+			double [] meanPos = roiList_.get(index).getFeedbackmeanPos();
 			double pid[][] = MMT.Coefficients;
 			double[] stageTarget = new double[3];
-			
+
 			if(MMT.VariablesNUPD.XYMirror.value() == 1){
-				stageTarget[0] = -pid[1][0]*(integrate[1]-target[1])-pid[1][1]*integrate[1];//XY Transfer
-				stageTarget[1] = -pid[0][0]*(integrate[0]-target[0])-pid[0][1]*integrate[0];
+				stageTarget[0] = -pid[1][0]*(meanPos[1]-target[1])-pid[1][1]*integrate[1];//XY Transfer
+				stageTarget[1] = -pid[0][0]*(meanPos[0]-target[0])-pid[0][1]*integrate[0];
 			}else{
-				stageTarget[0] = -pid[0][0]*(integrate[0]-target[0])-pid[0][1]*integrate[0];//XY not need Transfer
-				stageTarget[1] = -pid[1][0]*(integrate[1]-target[1])-pid[1][1]*integrate[1];
+				stageTarget[0] = -pid[0][0]*(meanPos[0]-target[0])-pid[0][1]*integrate[0];//XY not need Transfer
+				stageTarget[1] = -pid[1][0]*(meanPos[1]-target[1])-pid[1][1]*integrate[1];
 			}
 
-			stageTarget[2] = -pid[2][0]*delta[2]-pid[2][1]*integrate[2];
+			stageTarget[2] = -pid[2][0]*(meanPos[2]-target[2])-pid[2][1]*integrate[2];
 
 			double maxMoveStep = MMT.VariablesNUPD.feedBackMaxStepSize.value();
 			double minMoveStep = MMT.VariablesNUPD.feedBackMinStepSize.value();
