@@ -114,12 +114,6 @@ public  class RoiItem {
 		for(DescriptiveStatistics stat: feedbackXYZStatis_)
 			stat.setWindowSize((int)size);
 	}
-	public void setFeedbackTarget(){
-		feedbackTarget_[0] = xPhy_;
-		feedbackTarget_[1] = yPhy_;
-		feedbackTarget_[2] = zPhy_;
-		clearFeedbackData();
-	}
 	public double[] getFeedbackTarget(){
 		return feedbackTarget_;
 	}
@@ -201,7 +195,12 @@ public  class RoiItem {
 			File dir = new File(new File(MMTFrame.getInstance().preferDailog.userDataDir_, "MTTracker"),
 					dateFormat.format(cal.getTime()));
 
-			dir.mkdirs();
+			if(!dir.mkdirs()){
+				MMTFrame.getInstance().preferDailog.userDataDir_ = System.getProperty("user.home");
+				dir = new File(new File(MMTFrame.getInstance().preferDailog.userDataDir_, "MTTracker"),
+						dateFormat.format(cal.getTime()));
+				dir.mkdirs();
+			}
 
 			dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
 			File file = new File(dir, dateFormat.format(cal.getTime()) + "_"
@@ -300,15 +299,26 @@ public  class RoiItem {
 		showChartXYZStatis_[1].addValue(yPhy_);
 		//uM:get mean&sum of the history data
 		if(MMT.isFeedbackRunning_){
-			feedbackXYZStatis_[0].addValue(xPhy_ - feedbackTarget_[0]);
-			feedbackXYZStatis_[1].addValue(yPhy_ - feedbackTarget_[1]);
+			feedbackXYZStatis_[0].addValue(xPhy_);
+			feedbackXYZStatis_[1].addValue(yPhy_);
+			if(feedbackXYZStatis_[0].getN() == MMT.VariablesNUPD.frameToFeedBack.value()){//set feedback target
+				feedbackTarget_[0] = feedbackXYZStatis_[0].getSum()/MMT.VariablesNUPD.frameToFeedBack.value();
+				feedbackTarget_[1] = feedbackXYZStatis_[1].getSum()/MMT.VariablesNUPD.frameToFeedBack.value();
+			}
 		}
+	}
+	public boolean isFeedbackReady()
+	{
+		return feedbackXYZStatis_[0].getN() > MMT.VariablesNUPD.frameToFeedBack.value();
 	}
 	public void setZ(double zpos) {
 		zPhy_ = zpos;
 		showChartXYZStatis_[2].addValue(zPhy_);
 		if(MMT.isFeedbackRunning_){
-			feedbackXYZStatis_[2].addValue(zPhy_ - feedbackTarget_[2]);
+			feedbackXYZStatis_[2].addValue(zPhy_);
+			if(feedbackXYZStatis_[2].getN() == MMT.VariablesNUPD.frameToFeedBack.value()){//set feedback target
+				feedbackTarget_[2] = feedbackXYZStatis_[2].getSum()/MMT.VariablesNUPD.frameToFeedBack.value();
+			}
 		}
 	}
 	public void setL() {

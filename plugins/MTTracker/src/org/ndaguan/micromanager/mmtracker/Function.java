@@ -985,26 +985,22 @@ public class Function {
 
 	public void doFeedback() {
 		try {
-			double Kp = MMT.VariablesNUPD.pTerm.value();
-			double Ki = MMT.VariablesNUPD.iTerm.value();
 			int index = getReferenceRoiIndex();
 			double[] target = roiList_.get(index).getFeedbackTarget();
-			double[] currPos = roiList_.get(index).getXYZPhy();
 			double [] delta = new double[3];
 			double [] integrate = roiList_.get(index).getFeedbackIntegrate();
-			for(int i=0;i<3;i++){
-				delta[i] = currPos[i] - target[i];
-			}
+			double pid[][] = MMT.Coefficients;
 			double[] stageTarget = new double[3];
+			
 			if(MMT.VariablesNUPD.XYMirror.value() == 1){
-				stageTarget[0] = -Kp*delta[1]-Ki*integrate[1];//XY Transfer
-				stageTarget[1] = -Kp*delta[0]-Ki*integrate[0];
+				stageTarget[0] = -pid[1][0]*(integrate[1]-target[1])-pid[1][1]*integrate[1];//XY Transfer
+				stageTarget[1] = -pid[0][0]*(integrate[0]-target[0])-pid[0][1]*integrate[0];
 			}else{
-				stageTarget[0] = -Kp*delta[0]-Ki*integrate[0];//XY not need Transfer
-				stageTarget[1] = -Kp*delta[1]-Ki*integrate[1];
+				stageTarget[0] = -pid[0][0]*(integrate[0]-target[0])-pid[0][1]*integrate[0];//XY not need Transfer
+				stageTarget[1] = -pid[1][0]*(integrate[1]-target[1])-pid[1][1]*integrate[1];
 			}
 
-			stageTarget[2] = -Kp*delta[2]-Ki*integrate[2];
+			stageTarget[2] = -pid[2][0]*delta[2]-pid[2][1]*integrate[2];
 
 			double maxMoveStep = MMT.VariablesNUPD.feedBackMaxStepSize.value();
 			double minMoveStep = MMT.VariablesNUPD.feedBackMinStepSize.value();
@@ -1027,7 +1023,6 @@ public class Function {
 		if(!MMT.isFeedbackRunning_){
 			int index = getReferenceRoiIndex();
 			if(index != -1){
-				roiList_.get(index).setFeedbackTarget();
 				MMTFrame.getInstance().setFeedbackIcon(true);
 				MMT.logMessage("Feedback mode is ON");
 				MMT.isFeedbackRunning_ = true;
@@ -1035,6 +1030,10 @@ public class Function {
 				MMT.logError("No reference ROI is selected! try ctrl+s");
 			}
 		}else{
+			int index = getReferenceRoiIndex();
+			if(index != -1){
+				roiList_.get(index).clearFeedbackData();
+			}
 			MMTFrame.getInstance().setFeedbackIcon(false);
 			MMT.logMessage("Feedback mode is OFF");
 			MMT.isFeedbackRunning_ = false;

@@ -77,7 +77,7 @@ public class Kernel {
 		MMT.currentframeIndex_++;
 		for (int i = 0; i < roiList_.size(); i++) {
 			//set value
-			if(MMT.VariablesNUPD.iTerm.value() != 123){
+			if(MMT.VariablesNUPD.iTerm_x.value() != 123){
 				roiList_.get(i).setXY(ret[i]);
 			}
 			roiList_.get(i).setZ(ret[i][2]);

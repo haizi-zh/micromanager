@@ -25,7 +25,9 @@ public class MMT {
 	public static int calibrateIndex_ = 0;
 	public static int testingIndex_ = 0;
 	public static int currentframeIndex_ = 0;
+	public static double[][] Coefficients = null;
 	public static String lastError_ = "No Error";
+	
 	
 	
 	public static String[] CHARTLIST = new String[]{
@@ -58,7 +60,7 @@ public class MMT {
 	public static int[] unEditAfterCalbration = new int[]{0,4,5,8};
 	public static double currXP = 40;
 	public static boolean isFeedbackRunning_ = false;
-	protected static String currentUser;
+	protected static String currentUser = "n~daguan";
 	public static boolean magnetCurrentStage= false;
 	protected static double magnetCurrentPosition = 0;
 	public static enum VariablesClassify{
@@ -109,10 +111,14 @@ public class MMT {
 		feedBackMaxStepSize("/uM",0.02,0.001,0,"反馈最大步长,每次反馈走的最大位移，太大了容易震荡，太小反馈慢",VariablesClassify.Feedback.name()),
 		feedBackMinStepSize("/uM",0.000,0.001,0,"反馈最小步长，当飘逸小于此值时不触发反馈",VariablesClassify.Feedback.name()),
 		feedBackWindowSize("",10,0,0,"反馈滑动窗口大小",VariablesClassify.Feedback.name()),
-		pTerm("",-0.2,0.0001,0,"比例系数",VariablesClassify.Feedback.name()),
+		pTerm_x("",-0.2,0.0001,0,"比例系数",VariablesClassify.Feedback.name()),
 		needXYcalibrate("",1,0,0,"xy方向是否需要标定(用于确定一个像素对应多少nm)，1：是，0：否",VariablesClassify.Advance.name()),
 		crossSize("",20,0,0,"十字×宽度",VariablesClassify.Advance.name()),
-		iTerm("",0.01,0.0001,0,"积分系数",VariablesClassify.Feedback.name()),
+		iTerm_x("",0.01,0.0001,0,"积分系数",VariablesClassify.Feedback.name()),
+		pTerm_y("",-0.2,0.0001,0,"比例系数",VariablesClassify.Feedback.name()),
+		iTerm_y("",0.01,0.0001,0,"积分系数",VariablesClassify.Feedback.name()),
+		pTerm_z("",-0.2,0.0001,0,"比例系数",VariablesClassify.Feedback.name()),
+		iTerm_z("",0.01,0.0001,0,"积分系数",VariablesClassify.Feedback.name()),
 		XYMirror("",1,0,0,"图像的XY方向是否需要互换，1：是，0：否，推荐使用默认值",VariablesClassify.Feedback.name());
 		private String unit;
 		private double value;

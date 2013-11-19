@@ -53,6 +53,7 @@ public class PreferDailog extends JFrame {
 		preferencesLen = MMT.VariablesNUPD.values().length;
 		jTextField = new JTextField[preferencesLen];
 		jLabel = new JLabel[preferencesLen];
+		MMT.Coefficients = new double[3][2];
 		instance_ = this;
 		initialize();
 		onDataChange(getUserData());
@@ -69,6 +70,14 @@ public class PreferDailog extends JFrame {
 			for (int i = 0; i < data.length; i++) {
 				MMT.VariablesNUPD.values()[i].value(data[i]);
 			}
+			//PID
+			MMT.Coefficients[0][0] = MMT.VariablesNUPD.pTerm_x.value();
+			MMT.Coefficients[0][1] = MMT.VariablesNUPD.iTerm_x.value();
+			MMT.Coefficients[1][0] = MMT.VariablesNUPD.pTerm_y.value();
+			MMT.Coefficients[1][1] = MMT.VariablesNUPD.iTerm_y.value();
+			MMT.Coefficients[2][0] = MMT.VariablesNUPD.pTerm_z.value();
+			MMT.Coefficients[2][1] = MMT.VariablesNUPD.iTerm_z.value();
+			
 			MMTracker mmt = MMTracker.getInstance();
 			if(mmt != null){
 				List<RoiItem> roilist = mmt.getRoiList();
@@ -97,19 +106,29 @@ public class PreferDailog extends JFrame {
 				return null;
 			}
 			String[] temp = line.split(","); 
+			
+			if((line = in.readLine()) != null)
+				userDataDir_ = line;
+			
 			double[] userDataSet = new double[MMT.VariablesNUPD.values().length];
-			if((temp.length-1) != MMT.VariablesNUPD.values().length){
-				for (int i = 0; i < MMT.VariablesNUPD.values().length; i++) {
+			if((temp.length-1) < MMT.VariablesNUPD.values().length){
+				
+				for (int i = 0; i < temp.length-1; i++) {//old var
+					userDataSet[i] = Double.parseDouble(temp[i]);				
+				}
+				
+				for (int i = temp.length-1; i < MMT.VariablesNUPD.values().length; i++) {//new var,user default
 					 userDataSet[i]  = MMT.VariablesNUPD.values()[i].value();
 				}
+				onDataChange(userDataSet);
+				saveUserData();
 			}
 			else{
 			for (int i = 0; i < userDataSet.length; i++) {
 				userDataSet[i] = Double.parseDouble(temp[i]);				
 			}
 			}
-			if((line = in.readLine()) != null)
-				userDataDir_ = line;
+			
 			in.close();
 			return userDataSet;
 		} catch (IOException e) {
