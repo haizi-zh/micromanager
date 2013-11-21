@@ -44,7 +44,8 @@ public  class RoiItem {
 
 	private DescriptiveStatistics[] calcForceXYZStatis_;
 	private DescriptiveStatistics[] showChartXYZStatis_;
-	private DescriptiveStatistics[][] feedbackXYZStatis_;
+	private DescriptiveStatistics[] feedbackXYZStatis_;
+	private DescriptiveStatistics[] feedbackIntergStatis_;
 
 	private double[] feedbackTarget_;//x y z position
 
@@ -85,7 +86,8 @@ public  class RoiItem {
 
 		calcForceXYZStatis_ = new DescriptiveStatistics[3];//x,y,cross
 		showChartXYZStatis_ = new DescriptiveStatistics[4];//z,x,y,l
-		feedbackXYZStatis_ = new DescriptiveStatistics[2][3];//x,y,z (physic)
+		feedbackXYZStatis_ = new DescriptiveStatistics[3];//x,y,z (physic)
+		feedbackIntergStatis_ = new DescriptiveStatistics[3];//x,y,z (physic)
 
 		for (int i = 0; i < calcForceXYZStatis_.length; i++) {
 			calcForceXYZStatis_[i] = new DescriptiveStatistics(calcForceWindowSize);
@@ -93,11 +95,9 @@ public  class RoiItem {
 		for (int i = 0; i < showChartXYZStatis_.length; i++) {
 			showChartXYZStatis_[i] = new DescriptiveStatistics(showChartWindowSize);
 		}
-		feedbackXYZStatis_[0] = new DescriptiveStatistics[3];
-		feedbackXYZStatis_[1] = new DescriptiveStatistics[3];
 		for (int i = 0; i < feedbackXYZStatis_.length; i++) {
-			feedbackXYZStatis_[0][i] = new DescriptiveStatistics(feedbackWindowSize);
-			feedbackXYZStatis_[1][i] = new DescriptiveStatistics(feedbackWindowSize);
+			feedbackXYZStatis_[i] = new DescriptiveStatistics(feedbackWindowSize);
+			feedbackIntergStatis_[i] = new DescriptiveStatistics(feedbackWindowSize);
 		}
 
 	}
@@ -114,9 +114,9 @@ public  class RoiItem {
 			stat.setWindowSize((int)size);
 	}
 	public void setFeedbackWidowSize(double size){
-		for(DescriptiveStatistics stat: feedbackXYZStatis_[0])
+		for(DescriptiveStatistics stat: feedbackXYZStatis_)
 			stat.setWindowSize((int)size);
-		for(DescriptiveStatistics stat: feedbackXYZStatis_[1])
+		for(DescriptiveStatistics stat: feedbackIntergStatis_)
 			stat.setWindowSize((int)size);
 	}
 	public double[] getFeedbackTarget(){
@@ -189,9 +189,9 @@ public  class RoiItem {
 			stat.clear();
 		for (DescriptiveStatistics stat : showChartXYZStatis_)
 			stat.clear();
-		for (DescriptiveStatistics stat : feedbackXYZStatis_[0])
+		for (DescriptiveStatistics stat : feedbackXYZStatis_)
 			stat.clear();
-		for (DescriptiveStatistics stat : feedbackXYZStatis_[1])
+		for (DescriptiveStatistics stat : feedbackIntergStatis_)
 			stat.clear();
 	}
 
@@ -306,32 +306,32 @@ public  class RoiItem {
 		showChartXYZStatis_[1].addValue(yPhy_);
 		//uM:get mean&sum of the history data
 		if(MMT.isFeedbackRunning_){
-			feedbackXYZStatis_[0][0].addValue(xPhy_);
-			feedbackXYZStatis_[0][1].addValue(yPhy_);
-			if(feedbackXYZStatis_[0][0].getN() == MMT.VariablesNUPD.frameToFeedBack.value()){//set feedback target
-				feedbackTarget_[0] = feedbackXYZStatis_[0][0].getMean();
-				feedbackTarget_[1] = feedbackXYZStatis_[0][1].getMean();
+			feedbackXYZStatis_[0].addValue(xPhy_);
+			feedbackXYZStatis_[1].addValue(yPhy_);
+			if(feedbackXYZStatis_[0].getN() == MMT.VariablesNUPD.frameToFeedBack.value()){//set feedback target
+				feedbackTarget_[0] = feedbackXYZStatis_[0].getMean();
+				feedbackTarget_[1] = feedbackXYZStatis_[1].getMean();
 			}
 			if(isFeedbackReady()){
-				feedbackXYZStatis_[1][0].addValue(feedbackXYZStatis_[0][0].getMean() - feedbackTarget_[0]);
-				feedbackXYZStatis_[1][1].addValue(feedbackXYZStatis_[0][1].getMean() - feedbackTarget_[1]);
+				feedbackIntergStatis_[0].addValue(feedbackXYZStatis_[0].getMean() - feedbackTarget_[0]);
+				feedbackIntergStatis_[1].addValue(feedbackXYZStatis_[1].getMean() - feedbackTarget_[1]);
 			}
 		}
 	}
 	public boolean isFeedbackReady()
 	{
-		return feedbackXYZStatis_[0][0].getN() > MMT.VariablesNUPD.frameToFeedBack.value();
+		return feedbackXYZStatis_[0].getN() > MMT.VariablesNUPD.frameToFeedBack.value();
 	}
 	public void setZ(double zpos) {
 		zPhy_ = zpos;
 		showChartXYZStatis_[2].addValue(zPhy_);
 		if(MMT.isFeedbackRunning_){
-			feedbackXYZStatis_[0][2].addValue(zPhy_);
-			if(feedbackXYZStatis_[0][2].getN() == MMT.VariablesNUPD.frameToFeedBack.value()){//set feedback target
-				feedbackTarget_[2] = feedbackXYZStatis_[0][2].getMean();
+			feedbackXYZStatis_[2].addValue(zPhy_);
+			if(feedbackXYZStatis_[2].getN() == MMT.VariablesNUPD.frameToFeedBack.value()){//set feedback target
+				feedbackTarget_[2] = feedbackXYZStatis_[2].getMean();
 			}
 			if(isFeedbackReady()){
-				feedbackXYZStatis_[1][2].addValue(feedbackXYZStatis_[0][2].getMean() - feedbackTarget_[2]);
+				feedbackIntergStatis_[2].addValue(feedbackXYZStatis_[2].getMean() - feedbackTarget_[2]);
 			}
 		}
 	}
@@ -417,19 +417,19 @@ public  class RoiItem {
 	public double[] getFeedbackIntegrate() {
 		double[] integrate = new double[3];
 		for(int i= 0;i<3;i++)
-			integrate[i] = feedbackXYZStatis_[1][i].getMean();
+			integrate[i] = feedbackIntergStatis_[i].getMean();
 		return integrate;
 	}
 	public double[] getFeedbackmeanPos() {
 		double[] meanPos = new double[3];
 		for(int i= 0;i<3;i++)
-			 meanPos[i] = feedbackXYZStatis_[0][i].getMean();
+			meanPos[i] = feedbackXYZStatis_[i].getMean();
 		return  meanPos;
 	}
 	public void clearFeedbackData() {
 		for(int i= 0;i<3;i++){
-			feedbackXYZStatis_[0][i].clear();		
-			feedbackXYZStatis_[1][i].clear();		
+			feedbackXYZStatis_[i].clear();		
+			feedbackIntergStatis_[i].clear();		
 		}
 	}
 
