@@ -56,6 +56,7 @@ bin/
 *.props
 *.xslt
 *.old
+*.stackdump
 *.gitignore
 
 micromanager/MMCoreJ_wrap/mmcorej/*.java

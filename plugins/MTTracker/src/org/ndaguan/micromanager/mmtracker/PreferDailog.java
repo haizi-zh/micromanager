@@ -55,6 +55,7 @@ public class PreferDailog extends JFrame {
 		jLabel = new JLabel[preferencesLen];
 		MMT.Coefficients = new double[3][2];
 		instance_ = this;
+		userDataDir_ = System.getProperty("user.home");
 		initialize();
 		onDataChange(getUserData());
 		SwingUtilities.invokeLater(new Runnable() {

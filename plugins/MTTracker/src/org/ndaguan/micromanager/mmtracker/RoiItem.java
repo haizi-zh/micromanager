@@ -201,14 +201,7 @@ public  class RoiItem {
 			DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
 			File dir = new File(new File(MMTFrame.getInstance().preferDailog.userDataDir_, "MTTracker"),
 					dateFormat.format(cal.getTime()));
-
-			if(!dir.mkdirs()){
-				MMTFrame.getInstance().preferDailog.userDataDir_ = System.getProperty("user.home");
-				dir = new File(new File(MMTFrame.getInstance().preferDailog.userDataDir_, "MTTracker"),
-						dateFormat.format(cal.getTime()));
-				dir.mkdirs();
-			}
-
+			dir.mkdirs();
 			dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
 			File file = new File(dir, dateFormat.format(cal.getTime()) + "_"
 					+ acqName + "_bean_" + String.format("%d", index_) + "_" + ".txt");
