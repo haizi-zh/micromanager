@@ -73,7 +73,6 @@ class XMTE517Ctrl : public CGenericBase<XMTE517Ctrl>
 
         // montoring controller status
         // ---------------------------
-        bool CheckError(unsigned char bErrorCode);
         int CheckStatus(unsigned char* sResponse, unsigned int nLength);
 
         std::string   m_sCommand;             // Command exchange with MMCore

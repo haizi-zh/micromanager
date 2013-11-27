@@ -71,33 +71,18 @@ ZStage::ZStage() :
 
 	// Name
 	char sZName[120];
-	sprintf(sZName, "%s%s", XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_ZDevNameLabel).c_str(), MM::g_Keyword_Name);
-	int ret = CreateProperty(sZName, XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_ZStageDevName).c_str(), MM::String, true);
+	sprintf(sZName, "%s%s", XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_ZDevNameLabel).c_str(), MM::g_Keyword_Name);
+	int ret = CreateProperty(sZName, XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_ZStageDevName).c_str(), MM::String, true);
 
 	m_nAnswerTimeoutMs = XMTE517::Instance()->GetTimeoutInterval();
 	m_nAnswerTimeoutTrys = XMTE517::Instance()->GetTimeoutTrys();
 
 	std::ostringstream osMessage;
 
-	if (XMTE517::Instance()->GetDebugLogFlag() > 0)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::class-constructor> CreateProperty(" << sZName << "=" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_ZStageDevName).c_str() << "), ReturnCode=" << ret << endl;
-		this->LogMessage(osMessage.str().c_str());
-	}
-
 	// Description
 	char sZDesc[120];
-	sprintf(sZDesc, "%s%s", XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_ZDevDescLabel).c_str(), MM::g_Keyword_Description);
+	sprintf(sZDesc, "%s%s", XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_ZDevDescLabel).c_str(), MM::g_Keyword_Description);
 	ret = CreateProperty(sZDesc, "MP-285 Z Stage Driver", MM::String, true);
-
-	// osMessage.clear();
-	if (XMTE517::Instance()->GetDebugLogFlag() > 0)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::class-constructor> CreateProperty(" << sZDesc << " = MP-285 Z Stage Driver), ReturnCode=" << ret << endl;
-		this->LogMessage(osMessage.str().c_str());
-	}
 }
 
 
@@ -121,48 +106,20 @@ int ZStage::Initialize()
 	std::ostringstream osMessage;
 
 	if (!XMTE517::Instance()->GetDeviceAvailability()) return DEVICE_NOT_CONNECTED;
-	//if (XMTE517::Instance()->GetNumberOfAxes() < 3) return DEVICE_NOT_CONNECTED;
-
-	//int ret = CreateProperty(XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_GetPositionZ).c_str(), "undefined", MM::String, true);  // get position Z
 	CPropertyAction* pActOnGetPosZ = new CPropertyAction(this, &ZStage::OnGetPositionZ);
 	char sPosZ[20];
 	double dPosZ = XMTE517::Instance()->GetPositionZ();
-	sprintf(sPosZ, "%ld", (long)(dPosZ * (double)XMTE517::Instance()->GetUm2UStep()));
-	int ret = CreateProperty(XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_GetPositionZ).c_str(), sPosZ, MM::Integer, false, pActOnGetPosZ);  // get position Z 
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 0)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::Initialize> CreateProperty(" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_GetPositionZ).c_str() << " = " << sPosZ << "), ReturnCode = " << ret;
-		this->LogMessage(osMessage.str().c_str());
-	}
-
+	sprintf(sPosZ, "%ld", (long)(dPosZ));
+	int ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_GetPositionZ).c_str(), sPosZ, MM::Integer, false, pActOnGetPosZ);  // get position Z 
 	if (ret != DEVICE_OK)  return ret;
 
 	ret = GetPositionUm(dPosZ);
 	sprintf(sPosZ, "%ld", (long)(dPosZ * (double)XMTE517::Instance()->GetPositionZ()));
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 0)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::Initialize> GetPosSteps(" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_GetPositionZ).c_str() << " = " << sPosZ << "), ReturnCode = " << ret;
-		this->LogMessage(osMessage.str().c_str());
-	}
-
 	if (ret != DEVICE_OK)  return ret;
 
 	CPropertyAction* pActOnSetPosZ = new CPropertyAction(this, &ZStage::OnSetPositionZ);
 	sprintf(sPosZ, "%.2f", dPosZ);
-	ret = CreateProperty(XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_SetPositionZ).c_str(), sPosZ, MM::Float, false, pActOnSetPosZ);  // Absolute  vs Relative
-	// ret = CreateProperty(XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_SetPositionZ).c_str(), "Undefined", MM::Integer, true);  // Absolute  vs Relative
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 0)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::Initialize> CreateProperty(" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_SetPositionZ).c_str() << " = " << sPosZ << "), ReturnCode = " << ret;
-		this->LogMessage(osMessage.str().c_str());
-	}
-
+	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionZ).c_str(), sPosZ, MM::Float, false, pActOnSetPosZ);  // Absolute  vs Relative
 	if (ret != DEVICE_OK)  return ret;
 
 	SetMotionMode(0);
@@ -189,41 +146,7 @@ int ZStage::Shutdown()
 //
 void ZStage::GetName(char* Name) const
 {
-	CDeviceUtils::CopyLimitedString(Name, XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_ZStageDevName).c_str());
-}
- 
-//
-// Set Motion Mode (1: relatice, 0: absolute)
-//
-int ZStage::SetMotionMode(long lMotionMode)
-{
-	return 0;
-	std::ostringstream osMessage;
-	 
-	unsigned char sResponse[64];
-	int ret = DEVICE_OK;
-	 
-	unsigned char buf[9];
-	lMotionMode = 0;
-	if (lMotionMode == 0)
-		XMTE517::Instance()->PackageCommand("TQH",NULL,buf);
-	else
-		XMTE517::Instance()->PackageCommand("TQL",NULL,buf);
-
-	ret = WriteCommand(buf, 9);
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::SetMotionMode> = [" << lMotionMode << "," << lMotionMode << "], Returncode =" << ret;
-		this->LogMessage(osMessage.str().c_str());
-	}
-
-	if (ret != DEVICE_OK) return ret;
-
-	XMTE517::Instance()->SetMotionMode(lMotionMode);
-
-	return DEVICE_OK;
+	CDeviceUtils::CopyLimitedString(Name, XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_ZStageDevName).c_str());
 }
 
 //
@@ -257,12 +180,6 @@ int ZStage::GetPositionUm(double& dZPosUm)
 		{
 			if (nError == MPError::MPERR_SerialZeroReturn && nTrys < XMTE517::Instance()->GetTimeoutTrys()) { nTrys++; yCommError = false; }
 
-			if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-			{
-				osMessage.str("");
-				osMessage << "<XYStage::GetPositionSteps> Response = (" << nError << "," << nTrys << ")" ;
-			}
-
 			sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
 		}
 		else
@@ -270,23 +187,9 @@ int ZStage::GetPositionUm(double& dZPosUm)
 
 			lZPosSteps  =  XMTE517::Instance()->RawToFloat((byte *)sResponse,2);
 			strcpy(sCommStat, "Success");
-
-			if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-			{
-				osMessage.str("");
-				osMessage << "<ZStage::GetPositionSteps> Response( Z = <"<< lZPosSteps << ">), ReturnCode=" << ret;
-			}
-
 			nTrys = XMTE517::Instance()->GetTimeoutTrys();
 
 		}
-
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			this->LogMessage(osMessage.str().c_str());
-		}
-
-		//ret = SetProperty(XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_CommStateLabel).c_str(), sCommStat);
 
 	}
 
@@ -296,31 +199,9 @@ int ZStage::GetPositionUm(double& dZPosUm)
 	dZPosUm = (double)lZPosSteps / (double)XMTE517::Instance()->GetUm2UStep();
 
 	ostringstream osMessage;
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::GetPositionUm> (z=" << dZPosUm << ")";
-		this->LogMessage(osMessage.str().c_str());
-	}
-
 	XMTE517::Instance()->SetPositionZ(dZPosUm);
-
-	//char sPosition[20];
-	//sprintf(sPosition, "%.2f", dZPosUm);
-	//ret = SetProperty(XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_GetPositionZ).c_str(), sPosition);
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::GetPositionUm> Z=[" << dZPosUm << /*"," << sPosition <<*/ "], Returncode=" << ret ;
-		this->LogMessage(osMessage.str().c_str());
-	}
-
-	//f (ret != DEVICE_OK) return ret;
-
-	//ret = UpdateStatus();
-	//if (ret != DEVICE_OK) return ret;
+	ret = UpdateStatus();
+	if (ret != DEVICE_OK) return ret;
 
 	return DEVICE_OK;
 }
@@ -347,7 +228,7 @@ int ZStage::SetRelativePositionUm(double dZPosUm)
 		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage.str("");
-			osMessage << "<ZStage::SetRelativePositionUm> (" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <RELATIVE>), ReturnCode = " << ret;
+			osMessage << "<ZStage::SetRelativePositionUm> (" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <RELATIVE>), ReturnCode = " << ret;
 			this->LogMessage(osMessage.str().c_str());
 		}
 
@@ -398,7 +279,7 @@ int ZStage::SetPositionUm(double dZPosUm)
 		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage.str("");
-			osMessage << "<ZStage::SetPositionUm> (" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <ABSOLUTE>), ReturnCode = " << ret;
+			osMessage << "<ZStage::SetPositionUm> (" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <ABSOLUTE>), ReturnCode = " << ret;
 			this->LogMessage(osMessage.str().c_str());
 		}
 
@@ -562,7 +443,7 @@ int ZStage::GetPositionSteps(long& steps)
 //		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 //		{
 //			osMessage.str("");
-//			osMessage << "<ZStage::SetRelativePositionSteps> (" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <RELATIVE>), ReturnCode = " << ret;
+//			osMessage << "<ZStage::SetRelativePositionSteps> (" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <RELATIVE>), ReturnCode = " << ret;
 //			this->LogMessage(osMessage.str().c_str());
 //		}
 //
@@ -598,7 +479,7 @@ int ZStage::GetPositionSteps(long& steps)
 //		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 //		{
 //			osMessage.str("");
-//			osMessage << "<ZStage::SetPositionSteps> (" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <ABSOLUTE>), ReturnCode = " << ret;
+//			osMessage << "<ZStage::SetPositionSteps> (" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <ABSOLUTE>), ReturnCode = " << ret;
 //			this->LogMessage(osMessage.str().c_str());
 //		}
 //
@@ -776,7 +657,7 @@ int ZStage::OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 	//
 	//	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 	//	{
-	//		osMessage << "<XMTE517Ctrl::OnGetPositionZ> BeforeGet(" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_SetPositionX).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
+	//		osMessage << "<XMTE517Ctrl::OnGetPositionZ> BeforeGet(" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionX).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
 	//		//this->LogMessage(osMessage.str().c_str());
 	//	}
 	//}
@@ -793,7 +674,7 @@ int ZStage::OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 	{
-		osMessage << "<XMTE517Ctrl::OnGetPositionZ> AfterSet(" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_SetPositionX).c_str() << " = [" << dPos << "," << sPos << "], ReturnCode = " << ret;
+		osMessage << "<XMTE517Ctrl::OnGetPositionZ> AfterSet(" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionX).c_str() << " = [" << dPos << "," << sPos << "], ReturnCode = " << ret;
 		//this->LogMessage(osMessage.str().c_str());
 	}
 
@@ -823,7 +704,7 @@ int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 		{
-			osMessage << "<XMTE517Ctrl::OnSetPositionZ> BeforeGet(" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_SetPositionZ).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
+			osMessage << "<XMTE517Ctrl::OnSetPositionZ> BeforeGet(" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionZ).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
 			//this->LogMessage(osMessage.str().c_str());
 		}
 	}
@@ -838,7 +719,7 @@ int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 		{
-			osMessage << "<XMTE517Ctrl::OnSetPositionZ> AfterSet(" << XMTE517::Instance()->GetMPStr(XMTE517::XMTSTR_SetPositionZ).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
+			osMessage << "<XMTE517Ctrl::OnSetPositionZ> AfterSet(" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionZ).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
 			//this->LogMessage(osMessage.str().c_str());
 		}
 

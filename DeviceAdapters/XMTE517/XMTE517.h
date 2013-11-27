@@ -43,8 +43,8 @@ class XMTE517
 public:
     ~XMTE517();   // Destructor
 
-    typedef int MPStr;
-    enum _MPStr
+    typedef int XMTStr;
+    enum _XMTStr
     {
         XMTSTR_CtrlDevName       = 0,            // XMTE517 controller device name
         XMTSTR_XYStgaeDevName    = 1,            // XMTE517 XY stage device name
@@ -98,31 +98,17 @@ public:
     };
 
     static XMTE517* Instance();                                                               // only interface for singleton
-    std::string GetMPStr(int nMPStrCode) const;                                             // access prdefined strings
+    std::string GetXMTStr(int nXMTStrCode) const;                                             // access prdefined strings
     static void SetDeviceAvailable(bool yFlag) { m_yDeviceAvailable = yFlag; }              // set XMTE517 device availability
     static bool GetDeviceAvailability() { return m_yDeviceAvailable; }                      // get XMTE517 device availability
 	static int  GetDebugLogFlag() { return m_nDebugLogFlag; }								// get XMTE517 debug log flag
 	static void SetDebugLogFlag(int nDebugLogFlag) { m_nDebugLogFlag = nDebugLogFlag; }		// set XMTE517 debug log flag
-    static void SetVelocity(long lVelocity) { m_lVelocity = lVelocity; }                    // set XMTE517 device velocity
-    static long GetVelocity() { return m_lVelocity; }                                       // get XMTE517 device velocity
-    static void SetResolution(int nResolution) { m_nResolution = nResolution; }             // set XMTE517 device resolution
-    static int  GetResolution() { return m_nResolution; }                                   // get XMTE517 resolution
-    static void SetUm2UStep(int nUm2UStep) { m_nUm2UStep = nUm2UStep; }                     // set XMTE517 Um to UStep conversion unit
-    static int  GetUm2UStep() { return m_nUm2UStep; }                                       // get XMTE517 Um to UStep conversion unit
-    static void SetUStep2Nm(int nUStep2Nm) { m_nUStep2Nm = nUStep2Nm; }                     // set XMTE517 UStep to Nm conversion unit
-    static int  GetUStep2Nm() { return m_nUStep2Nm; }                                       // get XMTE517 UStep to NM conversion unit
     static void SetMotionMode(int nMotionMode) { m_nMotionMode = nMotionMode; }             // set Motor motion mode
     static int  GetMotionMode() { return m_nMotionMode; }                                   // get Motor motion mode
     static void SetTimeoutInterval(int nInterval) { m_nTimeoutInterval = nInterval; }       // set Timwout Interval
     static int  GetTimeoutInterval() { return m_nTimeoutInterval; }                         // get Timeout Interval
     static void SetTimeoutTrys(int nTrys) { m_nTimeoutTrys = nTrys; }                       // set Timeout Trys
     static int  GetTimeoutTrys() { return m_nTimeoutTrys; }                                 // get Timeout Trys
-    //static void SetNumberOfAxes(int nNumberOfAxes) { m_nNumberOfAxes = nNumberOfAxes; }   // set number of axes controlled by XMTE517
-    //static int  GetNumberOfAxes() { return m_nNumberOfAxes; }                             // get numebr of axes controlled by XMTE517
-    static void SetPositionX(double dPosition) { m_dPositionX = dPosition; }                // set position x
-    static double GetPositionX() { return m_dPositionX; }                                   // get position x
-    static void SetPositionY(double dPosition) { m_dPositionY = dPosition; }                // set position y
-    static double GetPositionY() { return m_dPositionY; }                                   // get position y
     static void SetPositionZ(double dPosition) { m_dPositionZ = dPosition; }                // set position z
     static double GetPositionZ() { return m_dPositionZ; }                                   // get position z
     static std::string& GetSerialPort() { return m_sPort; }                                 // get serial port symbol
@@ -153,7 +139,7 @@ private:
     static double               m_dPositionZ;               // position Z
     static long                 m_lVelocity;                // XMTE517 velocity
     static std::string          m_sPort;                    // serial port symbols
-    std::map<int, std::string>  m_sMPStr;                   // constant strings
+    std::map<int, std::string>  m_sXMTStr;                   // constant strings
 };
 
 #endif  //_XMTE517_H_
