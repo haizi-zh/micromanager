@@ -163,20 +163,14 @@ int ZStage::GetPositionUm(double& dZPosUm)
 	unsigned char sResponse[64];
 	memset(sResponse, 0, 64);
 
-	bool yCommError = false;
 	ret = ReadMessage(sResponse, 7);
 	if (ret != DEVICE_OK) return ret;
 
 	ostringstream osMessage;
 	char sCommStat[30];
 	dZPosUm  =  XMTE517::Instance()->RawToFloat((byte *)sResponse,2);
-	strcpy(sCommStat, "Success");
-
 
 	XMTE517::Instance()->SetPositionZ(dZPosUm);
-	ret = UpdateStatus();
-	if (ret != DEVICE_OK) return ret;
-
 	return DEVICE_OK;
 }
 
@@ -369,7 +363,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		if (yRead) break;
 
 		// check for timeout
-		yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 10000. ) > (double) m_nAnswerTimeoutMs;
+		yTimeout = ((double)(GetClockTicksUs() - lStartTime)) > (double) m_nAnswerTimeoutMs;
 		if (!yTimeout) CDeviceUtils::SleepMs(3);
 
 	}

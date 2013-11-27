@@ -112,10 +112,10 @@ int ClearPort(MM::Device& device, MM::Core& core, const char* sPort)
 
 bool            XMTE517::m_yInstanceFlag      = false;        // instance flag
 bool            XMTE517::m_yDeviceAvailable   = false;        // XMTE517 devices availability
-int				XMTE517::m_nDebugLogFlag		= 0;			// XMTE517 debug log flag
+int				XMTE517::m_nDebugLogFlag		= 2;			// XMTE517 debug log flag
 XMTE517*        XMTE517::m_pXMTE517             = NULL;         // single copy XMTE517
 int             XMTE517::m_nMotionMode        = 0;            // motor motion mode
-int             XMTE517::m_nTimeoutInterval   = 10000;        // timeout interval
+int             XMTE517::m_nTimeoutInterval   = 5000;        // timeout interval
 int             XMTE517::m_nTimeoutTrys       = 5;            // timeout trys
 double          XMTE517::m_dPositionZ         = 0.00;         // Z Position
 std::string XMTE517::m_sPort;                                 // serial port symbols

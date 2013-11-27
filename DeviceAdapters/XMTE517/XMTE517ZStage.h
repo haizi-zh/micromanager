@@ -65,6 +65,9 @@ public:
     // Get Z stage position in um
     int GetPositionUm(double& dZPosUm);
 
+    int GetPositionSteps(long& dZPosUm){return DEVICE_OK;};
+    int SetPositionSteps(long dZPosUm){return DEVICE_OK;};
+
     // Set Z stage origin
     int SetOrigin(){return DEVICE_OK;};
 

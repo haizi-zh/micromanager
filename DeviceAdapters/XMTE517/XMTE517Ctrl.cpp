@@ -148,18 +148,18 @@ int XMTE517Ctrl::CheckStatus(unsigned char* sResponse, unsigned int nLength)
 	XMTE517::Instance()->PackageCommand("ABC",NULL,buf);
 	int ret = WriteCommand(buf, 9);
 	if (ret != DEVICE_OK) return ret;
-//
-//	XMTE517::Instance()->PackageCommand("WEA",NULL,buf);
-//	ret = WriteCommand(buf, 9);
-//	if (ret != DEVICE_OK) return ret;
-//
-//	XMTE517::Instance()->PackageCommand("TQL",NULL,buf);
-//	ret = WriteCommand(buf, 9);
-//	if (ret != DEVICE_OK) return ret;
-//
-//	XMTE517::Instance()->PackageCommand("RAA",NULL,buf);
-//	ret = WriteCommand(buf, 9);
-//	if (ret != DEVICE_OK) return ret;
+
+	XMTE517::Instance()->PackageCommand("WEA",NULL,buf);
+	ret = WriteCommand(buf, 9);
+	if (ret != DEVICE_OK) return ret;
+
+	XMTE517::Instance()->PackageCommand("TQL",NULL,buf);
+	ret = WriteCommand(buf, 9);
+	if (ret != DEVICE_OK) return ret;
+
+	XMTE517::Instance()->PackageCommand("RAA",NULL,buf);
+	ret = WriteCommand(buf, 9);
+	if (ret != DEVICE_OK) return ret;
 
 
 
@@ -234,7 +234,7 @@ int XMTE517Ctrl::OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType pAct)
 //
 // Set Motion Mode
 //
-int XMTE517Ctrl::SetMotionMode(long lMotionMode)//0 high else low
+int XMTE517Ctrl::SetMotionMode(long lMotionMode)//1 high else low
 {
 	 
 	std::ostringstream osMessage;
@@ -428,15 +428,11 @@ int XMTE517Ctrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		if (yRead) break;
 
 		// check for timeout
-		yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 10000. ) > (double) m_nAnswerTimeoutMs;
+		yTimeout = ((double)(GetClockTicksUs() - lStartTime)) > (double) m_nAnswerTimeoutMs;
 		if (!yTimeout) CDeviceUtils::SleepMs(3);
 
 	}
 
-	// block/wait for acknowledge, or until we time out
-	// if (!yRead || yTimeout) return DEVICE_SERIAL_TIMEOUT;
-	// XMTE517::Instance()->ByteCopy(sResponse, sAnswer, nBytesRead);
-	// if (checkError(sAnswer[0])) ret = DEVICE_SERIAL_COMMAND_FAILED;
 
 	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
 	{
