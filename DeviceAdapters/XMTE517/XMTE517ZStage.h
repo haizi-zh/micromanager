@@ -65,14 +65,6 @@ public:
     // Get Z stage position in um
     int GetPositionUm(double& dZPosUm);
 
-    // Move Z stage to positiion in uSteps
-    int SetPositionSteps(long lZPosSteps);
-//	int SetRelativePositionSteps(long lZPosSteps);
-//	int _SetPositionSteps(long lZPosSteps);
-
-    // Get Z stage position in uSteps
-    int GetPositionSteps(long& lZPosSteps);
-
     // Set Z stage origin
     int SetOrigin(){return DEVICE_OK;};
 
@@ -87,8 +79,6 @@ public:
 
     // action interface
     // ----------------
-    int OnStepSize (MM::PropertyBase* /*pProp*/, MM::ActionType /*eAct*/);
-    int OnSpeed(MM::PropertyBase* /*pPro*/, MM::ActionType /*eAct*/);
     int OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct);
 
@@ -107,7 +97,6 @@ private:
 
     int WriteCommand(unsigned char* sCommand, int nLength);
     int ReadMessage(unsigned char* sResponse, int nBytesRead);
-    int CheckError(unsigned char bErrorCode);
     //int GetCommand(const std::string& cmd, std::string& response);
 
     //std::string m_sPort;              // serial port

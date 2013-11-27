@@ -85,6 +85,8 @@ clean:
 	@echo Cleaning project...
 	@-rm -rf Debug Release
 	$(if $(wildcard *.o),-@rm -f *.o,)
+	$(if $(wildcard *.d),-@rm -f *.d,)
+	$(if $(wildcard *.ipch),-@rm -f *.ipch,)
 	$(if $(wildcard *.pdb),-@rm -f *.pdb,)
 	$(if $(wildcard *.idb),-@rm -f *.idb,)
 	@echo

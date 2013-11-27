@@ -63,7 +63,7 @@ using namespace std;
 // Single axis stage constructor
 //
 ZStage::ZStage() :
-    						m_yInitialized(false)
+    												m_yInitialized(false)
 //m_nAnswerTimeoutMs(1000)
 //, stepSizeUm_(1)
 {
@@ -122,8 +122,6 @@ int ZStage::Initialize()
 	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionZ).c_str(), sPosZ, MM::Float, false, pActOnSetPosZ);  // Absolute  vs Relative
 	if (ret != DEVICE_OK)  return ret;
 
-	SetMotionMode(0);
-
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK) return ret;
 
@@ -166,39 +164,15 @@ int ZStage::GetPositionUm(double& dZPosUm)
 	memset(sResponse, 0, 64);
 
 	bool yCommError = false;
-	int nTrys = 0;
-
-	while (!yCommError && nTrys < XMTE517::Instance()->GetTimeoutTrys())
-	{
-		ret = ReadMessage(sResponse, 7);
-
-		ostringstream osMessage;
-		char sCommStat[30];
-		int nError = CheckError(sResponse[0]);
-		yCommError = (sResponse[0] == 0) ? false : nError != 0;
-		if (yCommError)
-		{
-			if (nError == MPError::MPERR_SerialZeroReturn && nTrys < XMTE517::Instance()->GetTimeoutTrys()) { nTrys++; yCommError = false; }
-
-			sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
-		}
-		else
-		{
-
-			lZPosSteps  =  XMTE517::Instance()->RawToFloat((byte *)sResponse,2);
-			strcpy(sCommStat, "Success");
-			nTrys = XMTE517::Instance()->GetTimeoutTrys();
-
-		}
-
-	}
-
+	ret = ReadMessage(sResponse, 7);
 	if (ret != DEVICE_OK) return ret;
 
-
-	dZPosUm = (double)lZPosSteps / (double)XMTE517::Instance()->GetUm2UStep();
-
 	ostringstream osMessage;
+	char sCommStat[30];
+	dZPosUm  =  XMTE517::Instance()->RawToFloat((byte *)sResponse,2);
+	strcpy(sCommStat, "Success");
+
+
 	XMTE517::Instance()->SetPositionZ(dZPosUm);
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK) return ret;
@@ -214,46 +188,16 @@ int ZStage::SetRelativePositionUm(double dZPosUm)
 	int ret = DEVICE_OK;
 	ostringstream osMessage;
 
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << "<ZStage::SetRelativePositionUm> (z=" << dZPosUm << ")";
-		this->LogMessage(osMessage.str().c_str());
-	}
-
-	// set relative motion mode
-	if (XMTE517::Instance()->GetMotionMode() != 0)
-	{
-		ret = SetMotionMode(0);
-
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage.str("");
-			osMessage << "<ZStage::SetRelativePositionUm> (" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <RELATIVE>), ReturnCode = " << ret;
-			this->LogMessage(osMessage.str().c_str());
-		}
-
-		if (ret != DEVICE_OK) return ret;
-	}
-
 	// convert um to steps
 	double currPos =0;
 	GetPositionUm(currPos);
-	float lZPosSteps = (float)(dZPosUm + currPos);
+	float target = (float)(dZPosUm + currPos);
 
 	// send move command to controller
-	ret = SetPositionUm(lZPosSteps);
+	ret = SetPositionUm(target);
 
 	if (ret != DEVICE_OK) return ret;
-
-	XMTE517::Instance()->SetPositionZ(dZPosUm);
-
-	double dPosZ = 0.;
-
-	ret = GetPositionUm(dPosZ);
-
-	if (ret != DEVICE_OK) return ret;
-
-	return ret;
+	return DEVICE_OK;
 }
 
 
@@ -265,383 +209,33 @@ int ZStage::SetPositionUm(double dZPosUm)
 	int ret = DEVICE_OK;
 	ostringstream osMessage;
 
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << "<ZStage::SetPositionUm> (z=" << dZPosUm << ")";
-		this->LogMessage(osMessage.str().c_str());
-	}
-
-	// set absolute motion mode
-	if (XMTE517::Instance()->GetMotionMode() != 0)
-	{
-		ret = SetMotionMode(0);
-
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage.str("");
-			osMessage << "<ZStage::SetPositionUm> (" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <ABSOLUTE>), ReturnCode = " << ret;
-			this->LogMessage(osMessage.str().c_str());
-		}
-
-		if (ret != DEVICE_OK) return ret;
-	}
-
-	// convert um to steps
-	float lZPosSteps = (float)(dZPosUm * (double)XMTE517::Instance()->GetUm2UStep());
-
-
 	// send move command to controller
-	  ret = DEVICE_OK;
-		byte rawData[4];
-		byte buf[10];
-		XMTE517::Instance()->FloatToRaw(lZPosSteps,rawData);
-		byte cmd[3];
-		cmd[0] = 'T';
-		cmd[1] = (char)0;
-		cmd[2] = 'S';
-		XMTE517::Instance()->PackageCommand((const char*)cmd,rawData,buf);
-		ret = WriteCommand(buf, 9);
+	ret = DEVICE_OK;
+	byte rawData[4];
+	byte buf[10];
+	XMTE517::Instance()->FloatToRaw((float)dZPosUm,rawData);
+	byte cmd[3];
+	cmd[0] = 'T';
+	cmd[1] = (char)0;
+	cmd[2] = 'S';
+	XMTE517::Instance()->PackageCommand((const char*)cmd,rawData,buf);
+	ret = WriteCommand(buf, 9);
+	if (ret != DEVICE_OK)  return ret;
 
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			//osMessage.str("");
-			osMessage << "<ZStage::_SetPositionSteps> Command(<0x6D>,<" <<lZPosSteps << ">), ReturnCode=" << ret;
-			LogMessage(osMessage.str().c_str());
-		}
-
-		if (ret != DEVICE_OK)  return ret;
-
-		 
-
-		CDeviceUtils::SleepMs(30);
-
+	CDeviceUtils::SleepMs(30);
 
 	double dPosZ = 0.;
-	Sleep(50);
 	ret = GetPositionUm(dPosZ);
- 
-	bool ready = abs(dPosZ - lZPosSteps)<0.05;
-	while(!ready){
-		ret = WriteCommand(buf, 9);
-		CDeviceUtils::SleepMs(500);
-		ret = GetPositionUm(dPosZ);
-		if (ret != DEVICE_OK)  return ret;
-		ready = abs(dPosZ - lZPosSteps)<0.05;
-	} 
 
 	if (ret != DEVICE_OK) return ret;
-		XMTE517::Instance()->SetPositionZ(dPosZ);
+	XMTE517::Instance()->SetPositionZ(dPosZ);
 
 	return ret;
 }
 
-int ZStage::SetPositionSteps(long steps)
-{
-	double pos = steps * XMTE517::Instance()->GetUm2UStep();
-	return SetPositionUm(pos);
-}
-
-int ZStage::GetPositionSteps(long& steps)
-{
-	return DEVICE_OK;
-	double pos;
-	int ret = GetPositionUm(pos);
-	if (ret != DEVICE_OK)
-		return ret;
-	steps = (long) ((pos / XMTE517::Instance()->GetUm2UStep()));
-	return DEVICE_OK;
-}
-
-//
-// Get Z stage position in steps
-//
-//
-//int ZStage::GetPositionSteps(float& lZPosSteps)
-//{
-//	// get current position
-//	unsigned char buf[9];
-//	XMTE517::Instance()->PackageCommand("RB1",NULL,buf);
-//	int ret = WriteCommand(buf, 9);
-//	if (ret != DEVICE_OK) return ret;
-//
-//	unsigned char sResponse[64];
-//	memset(sResponse, 0, 64);
-//
-//	bool yCommError = false;
-//	int nTrys = 0;
-//
-//	while (!yCommError && nTrys < XMTE517::Instance()->GetTimeoutTrys())
-//	{
-//		ret = ReadMessage(sResponse, 7);
-//
-//		ostringstream osMessage;
-//		char sCommStat[30];
-//		int nError = CheckError(sResponse[0]);
-//		yCommError = (sResponse[0] == 0) ? false : nError != 0;
-//		if (yCommError)
-//		{
-//			if (nError == MPError::MPERR_SerialZeroReturn && nTrys < XMTE517::Instance()->GetTimeoutTrys()) { nTrys++; yCommError = false; }
-//
-//			if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//			{
-//				osMessage.str("");
-//				osMessage << "<XYStage::GetPositionSteps> Response = (" << nError << "," << nTrys << ")" ;
-//			}
-//
-//			sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
-//		}
-//		else
-//		{
-//
-//			lZPosSteps  =  XMTE517::Instance()->RawToFloat((byte *)sResponse,2);
-//			strcpy(sCommStat, "Success");
-//
-//			if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//			{
-//				osMessage.str("");
-//				osMessage << "<ZStage::GetPositionSteps> Response( Z = <"<< lZPosSteps << ">), ReturnCode=" << ret;
-//			}
-//
-//			nTrys = XMTE517::Instance()->GetTimeoutTrys();
-//
-//		}
-//
-//		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//		{
-//			this->LogMessage(osMessage.str().c_str());
-//		}
-//
-//
-//	}
-//
-//	if (ret != DEVICE_OK) return ret;
-//
-//	return DEVICE_OK;
-//}
-
-
-
-//
-// Move x-y stage to a relative distance from current position in uSteps
-//
-//
-//int ZStage::SetRelativePositionSteps(float lZPosSteps)
-//{
-//	int ret = DEVICE_OK;
-//	ostringstream osMessage;
-//
-//	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//	{
-//		osMessage << "<ZStage::SetRelativePositionSteps> (z=" << lZPosSteps << ")";
-//		this->LogMessage(osMessage.str().c_str());
-//	}
-//
-//	if (XMTE517::Instance()->GetMotionMode() == 0)
-//	{
-//		ret = SetMotionMode(1);
-//
-//		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//		{
-//			osMessage.str("");
-//			osMessage << "<ZStage::SetRelativePositionSteps> (" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <RELATIVE>), ReturnCode = " << ret;
-//			this->LogMessage(osMessage.str().c_str());
-//		}
-//
-//		if (ret != DEVICE_OK) return ret;
-//	}
-//
-//	ret = _SetPositionSteps(lZPosSteps);
-//
-//	if (ret != DEVICE_OK) return ret;
-//
-//	return DEVICE_OK;
-//}
-
-//
-// move z stage to absolute position in uSsteps
-//
-//
-//int ZStage::SetPositionSteps(float lZPosSteps)
-//{
-//	int ret = DEVICE_OK;
-//	ostringstream osMessage;
-//
-//	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//	{
-//		osMessage << "<ZStage::SetPositionSteps> (z=" << lZPosSteps << ")";
-//		this->LogMessage(osMessage.str().c_str());
-//	}
-//
-//	if (XMTE517::Instance()->GetMotionMode() != 0)
-//	{
-//		ret = SetMotionMode(0);
-//
-//		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//		{
-//			osMessage.str("");
-//			osMessage << "<ZStage::SetPositionSteps> (" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str() << " = <ABSOLUTE>), ReturnCode = " << ret;
-//			this->LogMessage(osMessage.str().c_str());
-//		}
-//
-//		if (ret != DEVICE_OK) return ret;
-//	}
-//
-//	ret = _SetPositionSteps( lZPosSteps);
-//
-//	if (ret != DEVICE_OK) return ret;
-//
-//	return DEVICE_OK;
-//}
-
-//
-// move x-y-z stage in uSsteps
-//
-//int ZStage::_SetPositionSteps(float lZPosSteps)
-//{
-//	int ret = DEVICE_OK;
-//	ostringstream osMessage;
-//
-//	byte rawData[4];
-//	byte buf[10];
-//	XMTE517::Instance()->FloatToRaw(lZPosSteps,rawData);
-//	byte cmd[3];
-//	cmd[0] = 'T';
-//	cmd[1] = (char)0;
-//	cmd[2] = 'S';
-//	XMTE517::Instance()->PackageCommand((const char*)cmd,rawData,buf);
-//	ret = WriteCommand(buf, 9);
-//
-//	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//	{
-//		osMessage << "<ZStage::_SetPositionSteps> Command(<0x6D>,<" <<lZPosSteps << ">), ReturnCode=" << ret;
-//		LogMessage(osMessage.str().c_str());
-//	}
-//
-//	if (ret != DEVICE_OK)  return ret;
-//
-//	double dVelocity = (double)XMTE517::Instance()->GetVelocity() * (double)XMTE517::Instance()->GetUm2UStep();
-//	double dSec = 0.;
-//	if (XMTE517::GetMotionMode == 0)
-//	{
-//		long lOldZPosSteps = (long)XMTE517::Instance()->GetPositionZ();
-//		dSec = (double)labs(lZPosSteps-lOldZPosSteps) / dVelocity;
-//	}
-//	else
-//	{
-//		dSec = (double)labs(lZPosSteps) / dVelocity;
-//	}
-//	long lSleep = (long)(dSec * 120.);
-//
-//	CDeviceUtils::SleepMs(lSleep);
-//
-//	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//	{
-//		osMessage.str("");
-//		osMessage << "<ZStage::_SetPositionSteps> Sleep..." << lSleep << " millisec...";
-//		LogMessage(osMessage.str().c_str());
-//	}
-//
-//	bool yCommError = true;
-//
-//	while (yCommError)
-//	{
-//		unsigned char sResponse[64];
-//		memset(sResponse, 0, 64);
-//
-//		ret = ReadMessage(sResponse, 2);
-//
-//		yCommError = CheckError(sResponse[0]) != MPError::MPERR_OK;
-//	}
-//
-//	if (ret != DEVICE_OK) return ret;
-//
-//	return DEVICE_OK;
-//}
- 
-//
-// Set current position as origin
-//
-//int ZStage::SetOrigin()
-//{
-//	unsigned char sCommand[6] = { 0x6F, XMTE517::XMTE517_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
-//	int ret = WriteCommand(sCommand, 3);
-//
-//	std::ostringstream osMessage;
-//
-//	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//	{
-//		osMessage.str("");
-//		osMessage << "<ZStage::SetOrigin> (ReturnCode=" << ret << ")";
-//		this->LogMessage(osMessage.str().c_str());
-//	}
-//
-//	if (ret!=DEVICE_OK) return ret;
-//
-//	unsigned char sResponse[64];
-//
-//	memset(sResponse, 0, 64);
-//	ret = ReadMessage(sResponse, 2);
-//
-//	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//	{
-//		osMessage.str("");
-//		osMessage << "<ZStage::CheckStatus::SetOrigin> (ReturnCode = " << ret << ")";
-//		this->LogMessage(osMessage.str().c_str());
-//	}
-//
-//	if (ret != DEVICE_OK) return ret;
-//
-//	bool yCommError = CheckError(sResponse[0]) != 0;
-//
-//	char sCommStat[30];
-//	if (yCommError)
-//		sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
-//	else
-//		strcpy(sCommStat, "Success");
-//
-//
-//	if (ret != DEVICE_OK) return ret;
-//
-//	return DEVICE_OK;
-//}
-
-//
-// stop and interrupt Z stage motion
-//
-//int ZStage::Stop()
-//{
-//	unsigned char sCommand[6] = { 0x03, XMTE517::XMTE517_TxTerm, 0x00, 0x00, 0x00, 0x00 };
-//
-//	int ret = WriteCommand(sCommand, 2);
-//
-//	ostringstream osMessage;
-//
-//	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-//	{
-//		osMessage.str("");
-//		osMessage << "<ZStage::Stop> (ReturnCode = " << ret << ")";
-//		this->LogMessage(osMessage.str().c_str());
-//	}
-//
-//	return ret;
-//}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Action handlers
 ///////////////////////////////////////////////////////////////////////////////
-
-//
-// Unsupported command from XMTE517
-//
-int ZStage::OnStepSize (MM::PropertyBase* /*pProp*/, MM::ActionType /*eAct*/) 
-{
-	return DEVICE_OK;
-}
-
-int ZStage::OnSpeed(MM::PropertyBase* /*pProp*/, MM::ActionType /*eAct*/)
-{
-	return DEVICE_OK;
-}
 
 int ZStage::OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
@@ -651,42 +245,13 @@ int ZStage::OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 
 	osMessage.str("");
 
-	//if (eAct == MM::BeforeGet)
-	//{
-	//    pProp->Set(dPos);
-	//
-	//	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	//	{
-	//		osMessage << "<XMTE517Ctrl::OnGetPositionZ> BeforeGet(" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionX).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
-	//		//this->LogMessage(osMessage.str().c_str());
-	//	}
-	//}
-	//if (eAct == MM::AfterSet)
-	//{
-	// pProp->Get(dPos);  // not used
-
 	ret = GetPositionUm(dPos);
-	dPos *= (double)XMTE517::Instance()->GetUm2UStep();
 	char sPos[20];
 	sprintf(sPos, "%ld", (long)dPos);
 
 	pProp->Set(dPos);
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << "<XMTE517Ctrl::OnGetPositionZ> AfterSet(" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionX).c_str() << " = [" << dPos << "," << sPos << "], ReturnCode = " << ret;
-		//this->LogMessage(osMessage.str().c_str());
-	}
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << ")";
-		this->LogMessage(osMessage.str().c_str());
-	}
-
+	XMTE517::Instance()->SetPositionZ(dPos);
 	if (ret != DEVICE_OK) return ret;
-	//}
-
 	return DEVICE_OK;
 }
 
@@ -701,38 +266,13 @@ int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 	if (eAct == MM::BeforeGet)
 	{
 		pProp->Set(dPos);
-
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<XMTE517Ctrl::OnSetPositionZ> BeforeGet(" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionZ).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
-			//this->LogMessage(osMessage.str().c_str());
-		}
 	}
 	else if (eAct == MM::AfterSet)
 	{
 		pProp->Get(dPos);
-
-		if (XMTE517::Instance()->GetMotionMode() == 0)
-			ret = SetPositionUm(dPos);
-		else
-			ret = SetRelativePositionUm(dPos);
-
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<XMTE517Ctrl::OnSetPositionZ> AfterSet(" << XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionZ).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
-			//this->LogMessage(osMessage.str().c_str());
-		}
-
+		ret = SetPositionUm(dPos);
 	}
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << ")";
-		this->LogMessage(osMessage.str().c_str());
-	}
-
 	if (ret != DEVICE_OK) return ret;
-
 
 	return DEVICE_OK;
 }
@@ -834,129 +374,11 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 
 	}
 
-	// block/wait for acknowledge, or until we time out
-	// if (!yRead || yTimeout) return DEVICE_SERIAL_TIMEOUT;
-	// XMTE517::Instance()->ByteCopy(sResponse, sAnswer, nBytesRead);
-	// if (checkError(sAnswer[0])) ret = DEVICE_SERIAL_COMMAND_FAILED;
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::ReadMessage> (ReadFromSerial = <";
-	}
-
 	for (unsigned long lIndx=0; lIndx < (unsigned long)nBytesRead; lIndx++)
 	{
 		sResponse[lIndx] = sAnswer[lIndx];
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			XMTE517::Instance()->Byte2Hex(sResponse[lIndx], sHex);
-			osMessage << "[" << sHex  << ",";
-			XMTE517::Instance()->Byte2Hex(sAnswer[lIndx], sHex);
-			osMessage << sHex  << "]";
-		}
-	}
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << ">";
-		this->LogMessage(osMessage.str().c_str());
 	}
 
 	return DEVICE_OK;
-}
-
-//
-// check the error code for the message returned from serial communivation
-//
-int ZStage::CheckError(unsigned char bErrorCode)
-{
-	// if the return message is 2 bytes message including CR
-	unsigned int nErrorCode = 0;
-	ostringstream osMessage;
-
-	osMessage.str("");
-
-	// check 4 error code
-	if (bErrorCode == XMTE517::XMTE517_SP_OVER_RUN)
-	{
-		// Serial command buffer over run
-		nErrorCode = MPError::MPERR_SerialOverRun;
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
-		}
-	}
-	else if (bErrorCode == XMTE517::XMTE517_FRAME_ERROR)
-	{
-		// Receiving serial command time out
-		nErrorCode = MPError::MPERR_SerialTimeout;
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
-		}
-	}
-	else if (bErrorCode == XMTE517::XMTE517_BUFFER_OVER_RUN)
-	{
-		// Serial command buffer full
-		nErrorCode = MPError::MPERR_SerialBufferFull;
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
-		}
-	}
-	else if (bErrorCode == XMTE517::XMTE517_BAD_COMMAND)
-	{
-		// Invalid serial command
-		nErrorCode = MPError::MPERR_SerialInpInvalid;
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
-		}
-	}
-	else if (bErrorCode == XMTE517::XMTE517_MOVE_INTERRUPTED)
-	{
-		// Serial command interrupt motion
-		nErrorCode = MPError::MPERR_SerialIntrupMove;
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
-		}
-	}
-	else if (bErrorCode == 0x0D)
-	{
-		// read carriage return
-		nErrorCode = MPError::MPERR_OK;
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<XYStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
-		}
-	}
-	else if (bErrorCode == 0x00)
-	{
-		// No response from serial port
-		nErrorCode = MPError::MPERR_SerialZeroReturn;
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
-		}
-	}
-
-	else if (bErrorCode != '@')
-	{
-		// No response from serial port
-		nErrorCode = MPError::MPERR_SerialInpInvalid;
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<ZStage::checkError> ErrorCode=[" << MPError::Instance()->GetErrorText(nErrorCode).c_str() << "])";
-		}
-	}
-
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
-	{
-		this->LogMessage(osMessage.str().c_str());
-	}
-
-	return (nErrorCode);
 }
 
