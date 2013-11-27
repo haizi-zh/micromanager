@@ -132,7 +132,7 @@ int XMTE517Ctrl::Initialize()
 	int nDebugLogFlag = XMTE517::Instance()->GetDebugLogFlag();
 	CPropertyAction* pActDebugLogFlag = new CPropertyAction (this, &XMTE517Ctrl::OnDebugLogFlag);
 	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_DebugLogFlagLabel).c_str(), CDeviceUtils::ConvertToString(nDebugLogFlag), MM::Integer, true, pActDebugLogFlag);
-
+	SetMotionMode(1);
 	m_yInitialized = true;
 	XMTE517::Instance()->SetDeviceAvailable(true);
 	return DEVICE_OK;
@@ -255,10 +255,6 @@ int XMTE517Ctrl::SetMotionMode(long lMotionMode)//1 high else low
 	if (ret != DEVICE_OK) return ret;
 
 	XMTE517::Instance()->SetMotionMode(lMotionMode);
-	strcpy((char*)sCommStat, "Success");
-	ret = SetProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_CommStateLabel).c_str(), (const char*)sCommStat);
-
-	if (ret != DEVICE_OK) return ret;
 	return DEVICE_OK;
 }
 

@@ -216,13 +216,12 @@ int ZStage::SetPositionUm(double dZPosUm)
 	ret = WriteCommand(buf, 9);
 	if (ret != DEVICE_OK)  return ret;
 
-	CDeviceUtils::SleepMs(30);
+	XMTE517::Instance()->SetPositionZ(dZPosUm);
 
 	double dPosZ = 0.;
 	ret = GetPositionUm(dPosZ);
 
 	if (ret != DEVICE_OK) return ret;
-	XMTE517::Instance()->SetPositionZ(dPosZ);
 
 	return ret;
 }
