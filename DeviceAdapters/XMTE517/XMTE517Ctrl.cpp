@@ -121,10 +121,6 @@ int XMTE517Ctrl::Initialize()
 	ret = CheckStatus(sResponse, nLength);
 	if (ret != DEVICE_OK) return ret;
 
-	XMTE517::Instance()->SetMotionMode(0);//Fast
-	CPropertyAction* pActOnMotionMode = new CPropertyAction(this, &XMTE517Ctrl::OnMotionMode);
-	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str(), "Undefined", MM::Integer, false, pActOnMotionMode);  // Absolute  vs Relative
-
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK) return ret;
 
@@ -132,7 +128,6 @@ int XMTE517Ctrl::Initialize()
 	int nDebugLogFlag = XMTE517::Instance()->GetDebugLogFlag();
 	CPropertyAction* pActDebugLogFlag = new CPropertyAction (this, &XMTE517Ctrl::OnDebugLogFlag);
 	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_DebugLogFlagLabel).c_str(), CDeviceUtils::ConvertToString(nDebugLogFlag), MM::Integer, true, pActDebugLogFlag);
-	SetMotionMode(1);
 	m_yInitialized = true;
 	XMTE517::Instance()->SetDeviceAvailable(true);
 	return DEVICE_OK;
@@ -231,60 +226,6 @@ int XMTE517Ctrl::OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType pAct)
 }
 
 
-//
-// Set Motion Mode
-//
-int XMTE517Ctrl::SetMotionMode(long lMotionMode)//1 high else low
-{
-	 
-	std::ostringstream osMessage;
-	 
-	unsigned char sResponse[64];
-	int ret = DEVICE_OK;
-	return ret;
-	char sCommStat[30];
-	bool yCommError = false;
-
-	unsigned char buf[9];
-	if (lMotionMode == 1)
-		XMTE517::Instance()->PackageCommand("QHH",NULL,buf);
-	else
-		XMTE517::Instance()->PackageCommand("QHL",NULL,buf);
-
-	ret = WriteCommand(buf, 9);
-	if (ret != DEVICE_OK) return ret;
-
-	XMTE517::Instance()->SetMotionMode(lMotionMode);
-	return DEVICE_OK;
-}
-
-/*
- * Speed as returned by device is in um/s
- */
-int XMTE517Ctrl::OnMotionMode(MM::PropertyBase* pProp, MM::ActionType eAct)
-{
-	std::string sMotionMode;
-	std::ostringstream osMessage;
-	long lMotionMode = (long)XMTE517::Instance()->GetMotionMode();
-	int ret = DEVICE_OK;
-
-	osMessage.str("");
-
-	if (eAct == MM::BeforeGet)
-	{
-		pProp->Set(lMotionMode);
-
-	}
-	else if (eAct == MM::AfterSet)
-	{
-		pProp->Get(lMotionMode);
-		ret = SetMotionMode(lMotionMode);
-	}
-
-	if (ret != DEVICE_OK) return ret;
-	return DEVICE_OK;
-}
-
 /*
  * Set/Get Timeout Interval
  */
@@ -351,11 +292,9 @@ int XMTE517Ctrl::WriteCommand(unsigned char* sCommand, int nLength)
 	{
 		osMessage.str("");
 		osMessage << "<XMTE517Ctrl::WriteCommand> (Command=";
-		char sHex[4] = { NULL, NULL, NULL, NULL };
 		for (int n=0; n < nLength; n++)
 		{
-			XMTE517::Instance()->Byte2Hex((const unsigned char)sCommand[n], sHex);
-			osMessage << "[" << n << "]=<" << sHex << ">";
+			osMessage << "[" << (char)sCommand[n] << "|" << (byte)sCommand[n] << "]";
 		}
 		osMessage << ")";
 		this->LogMessage(osMessage.str().c_str());
@@ -366,7 +305,7 @@ int XMTE517Ctrl::WriteCommand(unsigned char* sCommand, int nLength)
 		ret = WriteToComPort(XMTE517::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
 		CDeviceUtils::SleepMs(1);
 	}
-
+	Sleep(90);
 	if (ret != DEVICE_OK) return ret;
 
 	return DEVICE_OK;
@@ -403,9 +342,7 @@ int XMTE517Ctrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 
 			for (unsigned long lIndx=0; lIndx < lByteRead; lIndx++)
 			{
-				// convert to hext format
-				XMTE517::Instance()->Byte2Hex(sAnswer[lRead+lIndx], sHex);
-				osMessage << "[" << sHex  << "]";
+				osMessage << "[" <<(char)sAnswer[lRead+lIndx]<<"|"<< (byte)sAnswer[lRead+lIndx] << "]";
 			}
 			osMessage << ">";
 			this->LogMessage(osMessage.str().c_str());
@@ -414,9 +351,9 @@ int XMTE517Ctrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		// concade new string
 		lRead += lByteRead;
 
-		if (lRead >= 1)
+		if (lRead >= 2)
 		{
-			yRead = (sAnswer[0] != '@') ;
+			yRead = (sAnswer[0] == '@') ;
 		}
 
 		yRead = yRead || (lRead >= (unsigned long)nBytesRead);
@@ -453,6 +390,13 @@ int XMTE517Ctrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		osMessage << ">";
 		this->LogMessage(osMessage.str().c_str());
 	}
-
+	if(yTimeout){
+		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+		{
+			osMessage << "Timeout ok";
+			this->LogMessage(osMessage.str().c_str());
+		}
+		return 3;
+	}
 	return DEVICE_OK;
 }

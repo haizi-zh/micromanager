@@ -55,14 +55,10 @@ class XMTE517Ctrl : public CGenericBase<XMTE517Ctrl>
 
         int DeInitialize() { m_yInitialized = false; return DEVICE_OK; };
         bool Initialized() { return m_yInitialized; };
-
-        int SetMotionMode(long lMotionMode);
-
         // action interface
         // ---------------
         int OnPort(MM::PropertyBase* pProp, MM::ActionType eAct);
 		int OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType eAct);
-        int OnMotionMode(MM::PropertyBase* pProp, MM::ActionType eAct);
         int OnTimeoutInterval(MM::PropertyBase* pProp, MM::ActionType eAct);
         int OnTimeoutTrys(MM::PropertyBase* pProp, MM::ActionType eAct);
 

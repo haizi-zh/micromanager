@@ -84,7 +84,7 @@ public:
     // ----------------
     int OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct);
-
+    int OnMotionMode(MM::PropertyBase* pProp, MM::ActionType eAct);
     // Sequence functions
     int IsStageSequenceable(bool& isSequenceable) const { isSequenceable = false; return DEVICE_OK;}
     int GetStageSequenceMaxLength(long& /*nrEvents*/) const  {return DEVICE_OK;}
