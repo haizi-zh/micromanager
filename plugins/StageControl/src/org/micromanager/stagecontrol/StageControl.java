@@ -21,6 +21,8 @@
 
 package org.micromanager.stagecontrol;
 
+import java.awt.Color;
+
 import mmcorej.CMMCore;
 import org.micromanager.api.MMPlugin;
 import org.micromanager.api.ScriptInterface;
@@ -37,8 +39,10 @@ public class StageControl implements MMPlugin {
    public void setApp(ScriptInterface app) {
       gui_ = app;                                        
       core_ = app.getMMCore();
+      String focusDeviceLabel = core_.getFocusDevice();
       if (myFrame_ == null)
          myFrame_ = new StageControlFrame(gui_);
+      myFrame_.setTitle(String.format("[--%s--]", focusDeviceLabel));
       myFrame_.setVisible(true);
    }
 
