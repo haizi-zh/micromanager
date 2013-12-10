@@ -280,6 +280,8 @@ public class Kernel {
 		double S00 = 0, S01 =0, S10 = 0, S11 =0;				 
 		double beanRadiuPixel = MMT.VariablesNUPD.beanRadiuPixel.value();
 		double rInterStep = MMT.VariablesNUPD.rInterStep.value();
+		double skipRadius = MMT.VariablesNUPD.skipRadius.value();
+		int skipStart  = (int) (skipRadius/rInterStep);
 		double xFactor = MMT.VariablesNUPD.xFactor.value();
 		double yFactor = MMT.VariablesNUPD.yFactor.value();
 		double[] profile = new double[(int) (beanRadiuPixel/rInterStep)];
@@ -287,7 +289,7 @@ public class Kernel {
 		switch(image.getClass().getName()){
 		case "[D":
 			profile[0] = ((double[]) image)[(int)xpos + ((int)ypos)* imageWidth];
-			for(int i = 1;i< beanRadiuPixel/rInterStep ;i++)
+			for(int i = skipStart;i< beanRadiuPixel/rInterStep ;i++)
 			{
 				double sumr = 0;
 				double r =i* rInterStep;
@@ -318,7 +320,7 @@ public class Kernel {
 			break;
 		case "[F":
 			profile[0] = ((float[]) image)[(int)xpos + ((int)ypos)* imageWidth];
-			for(int i = 1;i< beanRadiuPixel/rInterStep ;i++)
+			for(int i = skipStart;i< beanRadiuPixel/rInterStep ;i++)
 			{
 				double sumr = 0;
 				double r =i*rInterStep;
@@ -349,7 +351,7 @@ public class Kernel {
 			break;
 		case "[S":
 			profile[0] = ((short[]) image)[(int)xpos + ((int)ypos)* imageWidth];
-			for(int i = 1;i< beanRadiuPixel/rInterStep ;i++)
+			for(int i = skipStart;i< beanRadiuPixel/rInterStep ;i++)
 			{
 				double sumr = 0;
 				double r =i*rInterStep;
@@ -380,7 +382,7 @@ public class Kernel {
 			break;
 		case "[B":
 			profile[0] = ((byte[]) image)[(int)xpos + ((int)ypos)* imageWidth];
-			for(int i = 1;i< beanRadiuPixel/rInterStep ;i++)
+			for(int i = skipStart;i< beanRadiuPixel/rInterStep ;i++)
 			{
 				double sumr = 0;
 				double r =i*rInterStep;
@@ -729,7 +731,12 @@ public class Kernel {
 			}
 			break;
 		}
-
+		int radius = (int) MMT.VariablesNUPD.beanRadiuPixel.value();
+		int skipRadius = (int) MMT.VariablesNUPD.skipRadius.value();
+		for(int i=radius-skipRadius;i<radius+skipRadius;i++){
+			sumXY[0][i] = 0;
+			sumXY[1][i] = 0;
+		}
 		normalization(sumXY[0], sumX_);
 		normalization(sumXY[1], sumY_);
 		sumXY[2][0] = sumGrayValue;

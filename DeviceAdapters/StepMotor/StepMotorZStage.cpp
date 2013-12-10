@@ -63,7 +63,7 @@ using namespace std;
 // Single axis stage constructor
 //
 ZStage::ZStage() :
-    																																						m_yInitialized(false)
+    																																																				m_yInitialized(false)
 {
 	InitializeDefaultErrorMessages();
 
@@ -256,18 +256,21 @@ int ZStage::SetRelativePositionUm(double dZPosUm)
 {
 
 	double currentPos = StepMotor::Instance()->GetPositionZ();
+
 	if(StepMotor::Instance()->GetIsSetOrigin()){
 		if( dZPosUm + currentPos<0){
 			dZPosUm = -1*currentPos;
 			StepMotor::Instance()->SetPositionZ(currentPos + dZPosUm);
 		}
-		StepMotor::Instance()->SetPositionZ(currentPos + dZPosUm);
 	}
-
 	// convert um to steps
 	long lZPosSteps = (long)(dZPosUm * (double)StepMotor::Instance()->GetUm2UStep());
 	// send move command to controller
 	int ret = SetPositionSteps(lZPosSteps);
+
+	if(StepMotor::Instance()->GetIsSetOrigin()){
+		StepMotor::Instance()->SetPositionZ(currentPos + dZPosUm);
+	}
 	if (ret != DEVICE_OK) return ret;
 	return DEVICE_OK;
 }
@@ -281,16 +284,12 @@ int ZStage::SetPositionUm(double dZPosUm)
 	if( !StepMotor::Instance()->GetIsSetOrigin())
 		return DEVICE_OK;
 
-	int ret = DEVICE_OK;
-	ostringstream osMessage;
 	double currentPos = StepMotor::Instance()->GetPositionZ();
-	dZPosUm = dZPosUm - currentPos;
-	SetRelativePositionUm(dZPosUm);
-	double dPosZ = 0.;
-	ret = GetPositionUm(dPosZ);
-	if (ret != DEVICE_OK) return ret;
 
-	return ret;
+	dZPosUm = dZPosUm - currentPos;
+
+	SetRelativePositionUm(dZPosUm);
+	return DEVICE_OK;
 }
 
 //
@@ -317,8 +316,6 @@ int ZStage::SetRelativePositionSteps(long lZPosSteps)
 //
 int ZStage::SetPositionSteps(long lZPosSteps)
 {
-	int ret = DEVICE_OK;
-	ostringstream osMessage;
 	if(lZPosSteps >0)//up
 	{
 		if(StepMotor::Instance()->GetStageMirrorZ())
@@ -337,8 +334,6 @@ int ZStage::SetPositionSteps(long lZPosSteps)
 		SetDTR();
 		ClrDTR();
 	}
-	if (ret != DEVICE_OK) return ret;
-
 	return DEVICE_OK;
 }
 void ZStage::SetDTR()
@@ -370,46 +365,6 @@ void ZStage::ClrRTS()
 //
 int ZStage::SetOrigin()
 {
-	unsigned char sCommand[6] = { 0x6F, StepMotor::StepMotor_TxTerm, 0x0A, 0x00, 0x00, 0x00 };
-	int ret = WriteCommand(sCommand, 3);
-
-	std::ostringstream osMessage;
-
-	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::SetOrigin> (ReturnCode=" << ret << ")";
-		this->LogMessage(osMessage.str().c_str());
-	}
-
-	if (ret!=DEVICE_OK) return ret;
-
-	unsigned char sResponse[64];
-
-	memset(sResponse, 0, 64);
-	ret = ReadMessage(sResponse, 2);
-
-	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::CheckStatus::SetOrigin> (ReturnCode = " << ret << ")";
-		this->LogMessage(osMessage.str().c_str());
-	}
-
-	if (ret != DEVICE_OK) return ret;
-
-	bool yCommError = CheckError(sResponse[0]) != 0;
-
-	char sCommStat[30];
-	if (yCommError)
-		sprintf(sCommStat, "Error Code ==> <%2x>", sResponse[0]);
-	else
-		strcpy(sCommStat, "Success");
-
-	//ret = SetProperty(StepMotor::Instance()->GetMPStr(StepMotor::SMSTR_CommStateLabel).c_str(), sCommStat);
-
-	if (ret != DEVICE_OK) return ret;
-
 	return DEVICE_OK;
 }
 
@@ -418,20 +373,7 @@ int ZStage::SetOrigin()
 //
 int ZStage::Stop()
 {
-	unsigned char sCommand[6] = { 0x03, StepMotor::StepMotor_TxTerm, 0x00, 0x00, 0x00, 0x00 };
-
-	int ret = WriteCommand(sCommand, 2);
-
-	ostringstream osMessage;
-
-	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::Stop> (ReturnCode = " << ret << ")";
-		this->LogMessage(osMessage.str().c_str());
-	}
-
-	return ret;
+	return DEVICE_OK;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -448,11 +390,7 @@ int ZStage::OnStepSize (MM::PropertyBase* /*pProp*/, MM::ActionType /*eAct*/)
 
 int ZStage::OnSpeed(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
-	std::ostringstream osMessage;
-	int ret = DEVICE_OK;
 	long lVelocity = StepMotor::Instance()->GetVelocity();
-
-	osMessage.str("");
 
 	if (eAct == MM::BeforeGet)
 	{
@@ -465,63 +403,20 @@ int ZStage::OnSpeed(MM::PropertyBase* pProp, MM::ActionType eAct)
 		StepMotor::Instance()->SetPluseInterval(1000/lVelocity);
 	}
 
-	if (ret != DEVICE_OK) return ret;
-
 	return DEVICE_OK;
 }
 
 int ZStage::OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
-
-	std::ostringstream osMessage;
-	int ret = DEVICE_OK;
-	double dPos = StepMotor::Instance()->GetPositionZ();
-
-	osMessage.str("");
-
-	//if (eAct == MM::BeforeGet)
-	//{
-	//    pProp->Set(dPos);
-	//
-	//	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	//	{
-	//		osMessage << "<StepMotorCtrl::OnGetPositionZ> BeforeGet(" << StepMotor::Instance()->GetMPStr(StepMotor::SMSTR_SetPositionX).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
-	//		//this->LogMessage(osMessage.str().c_str());
-	//	}
-	//}
-	//if (eAct == MM::AfterSet)
-	//{
-	// pProp->Get(dPos);  // not used
-
-	ret = GetPositionUm(dPos);
-	dPos *= (double)StepMotor::Instance()->GetUm2UStep();
-	char sPos[20];
-	sprintf(sPos, "%ld", (long)dPos);
-
-	pProp->Set(dPos);
-
-	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << "<StepMotorCtrl::OnGetPositionZ> AfterSet(" << StepMotor::Instance()->GetMPStr(StepMotor::SMSTR_SetPositionX).c_str() << " = [" << dPos << "," << sPos << "], ReturnCode = " << ret;
-		//this->LogMessage(osMessage.str().c_str());
-	}
-
-	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << ")";
-		this->LogMessage(osMessage.str().c_str());
-	}
-
-	if (ret != DEVICE_OK) return ret;
-	//}
-
 	return DEVICE_OK;
 }
 
 int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
+	return DEVICE_OK;
 	std::ostringstream osMessage;
 	int ret = DEVICE_OK;
+
 	double dPos = StepMotor::Instance()->GetPositionZ();;
 
 	osMessage.str("");
@@ -529,34 +424,11 @@ int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 	if (eAct == MM::BeforeGet)
 	{
 		pProp->Set(dPos);
-
-		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<StepMotorCtrl::OnSetPositionZ> BeforeGet(" << StepMotor::Instance()->GetMPStr(StepMotor::SMSTR_SetPositionZ).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
-			//this->LogMessage(osMessage.str().c_str());
-		}
 	}
 	else if (eAct == MM::AfterSet)
 	{
 		pProp->Get(dPos);
-
-		if (StepMotor::Instance()->GetMotionMode() == 0)
-			ret = SetPositionUm(dPos);
-		else
-			ret = SetRelativePositionUm(dPos);
-
-		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "<StepMotorCtrl::OnSetPositionZ> AfterSet(" << StepMotor::Instance()->GetMPStr(StepMotor::SMSTR_SetPositionZ).c_str() << " = [" << dPos << "], ReturnCode = " << ret;
-			//this->LogMessage(osMessage.str().c_str());
-		}
-
-	}
-
-	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << ")";
-		this->LogMessage(osMessage.str().c_str());
+		ret = SetPositionUm(dPos);
 	}
 
 	if (ret != DEVICE_OK) return ret;

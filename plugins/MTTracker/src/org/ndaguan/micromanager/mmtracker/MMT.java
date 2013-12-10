@@ -119,7 +119,8 @@ public class MMT {
 		iTerm_y("",0.01,0.0001,0,"积分系数",VariablesClassify.Feedback.name()),
 		pTerm_z("",-0.2,0.0001,0,"比例系数",VariablesClassify.Feedback.name()),
 		iTerm_z("",0.01,0.0001,0,"积分系数",VariablesClassify.Feedback.name()),
-		XYMirror("",1,0,0,"图像的XY方向是否需要互换，1：是，0：否，推荐使用默认值",VariablesClassify.Feedback.name());
+		XYMirror("",1,0,0,"图像的XY方向是否需要互换，1：是，0：否，推荐使用默认值",VariablesClassify.Feedback.name()),
+		skipRadius("Pixel",0,0,0,"计算时忽略掉的中心环半径",VariablesClassify.Debug.name());
 		private String unit;
 		private double value;
 		private double presicion;
