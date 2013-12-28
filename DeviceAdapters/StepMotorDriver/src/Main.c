@@ -4,7 +4,6 @@
 
 main()
 {	
- 			
 	TCON =0x08; 
 	EX1 =  1;
 	LCD_Initial();

@@ -13,7 +13,7 @@ uchar	runningdelay = 0;
 float   currPosition = 0;//nm
 float	step2nm = 0.09969;//50 XIFEN
 bit	    isSetZero = 0;	
-char str[20];
+uchar str[20];
 uchar ret;
 
 
@@ -23,42 +23,62 @@ uchar ret;
 void parseCMD(uchar rec[])
 {	
 	ulong step = 0;
-	ret = 99;	
-	if(rec[1] == 'M' && rec[2] == 'U'){
-		step = *((ulong *)(rec+3));
+	ret = 99;
+	rec++;//skip @	
+	if( 0 == memcmp(rec,"QP",2) ){
+		LCD_Printf1("--Rec 'QP'");
+		ltoa(currPosition,str);
+		SendStr(str);
+		ret = DEVICE_OK;
+	}
+	if( 0 == memcmp(rec,"SZ",2) ){
+		LCD_Printf1("--Rec 'SZ'");
+	    currPosition = 0;
+		ret = DEVICE_OK;
+	}
+	if( 0 == memcmp(rec,"MU",2) ){
+		rec += 2;
+		step = *(ulong *)rec;
 		ltoa(step,str);
-		LCD_Printf1("Rec 'MU'");
+		LCD_Printf1(strcat(str,"--Rec 'MU'"));
 		ret = Move(step,0);
 	}
-	if(rec[1] == 'M' && rec[2] == 'D'){
-		step =  *((ulong *)(rec+3));
+	if(0 == memcmp(rec,"MD",2)){
+		rec += 2;
+		step = *(ulong *)rec;
 		ltoa(step,str);
 		LCD_Printf1("Rec 'MD'");
 		ret = Move(step,1);
 	}
-	if(rec[1] == 'S' && rec[2] == 'R'){
-		runningdelay =  *((ulong *)(rec+3));
+	if(0 == memcmp(rec,"SR",2)){
+	rec += 2;
+		runningdelay = *(ulong *)rec;
 		ltoa(runningdelay,str);
 			LCD_Printf1("Rec 'SR'");
 		ret = DEVICE_OK;
 	}
-	if(rec[1] == 'S' && rec[2] == 'S'){
-		startdelay =  *((ulong *)(rec+3));
+	if(0 == memcmp(rec,"SS",2)){
+		
+		rec += 2;
+		startdelay = *(ulong *)rec;
 		ltoa(startdelay,str);
 			LCD_Printf1("Rec 'SS'");
 			ret = DEVICE_OK;
 	}
-	if(rec[1] == 'F' && rec[2] == 'L'){
-		step =  *((ulong *)(rec+3));
-		FindUpLimit(step);
+	if(0 == memcmp(rec,"FL",2)){
+			rec += 2;
+		step = *(ulong *)rec;
 		ltoa(step,str);
 		LCD_Printf1("Rec 'FL'");
 		LCD_Printf2(str);
+		FindUpLimit(step);
+		
 		ret = DEVICE_OK;
 	}
 	 
-	if(rec[1] == 'R' && rec[2] == 'E'){
-		step =  *((ulong *)(rec+3));
+	if(0 == memcmp(rec,"RE",2)){
+		rec += 2;
+		step = *(ulong *)rec;
 		if(step == 1)
 			_releasePort = 1;
 		else
@@ -68,25 +88,25 @@ void parseCMD(uchar rec[])
 		LCD_Printf2(str);
 		ret = DEVICE_OK;
 	}
-	if(ret == DEVICE_OK){
-		SendStr("DEVICE_OK");
-		LCD_Printf2(str);
-	}
+//	if(ret == DEVICE_OK){
+	//	SendStr("DEVICE_OK");
+	//	LCD_Printf2(str);
+//	}
 	if(ret == 99){
 		SendStr("BAD_COMMAND");
-		LCD_Printf1("ERROR!BAD_COMMAND");
+		LCD_Printf1("ERR!BAD_COMMAND");
 	}
 	if(ret == DEVICE_BUSY){
 		SendStr("DEVICE_BUSY");
-		LCD_Printf1("ERROR!DEVICE_BUSY");
+		LCD_Printf1("ERR!DEVICE_BUSY");
 	}
 	if(ret == OUT_OF_LOW_LIMIT){
 		SendStr("OUT_OF_LOW_LIMIT");
-		LCD_Printf1("ERROR!OUT_OF_LOW_LIMIT");
+		LCD_Printf1("ERR!OUT_LOW_LIMIT");
 	}
 	if(ret == OUT_OF_HIGH_LIMIT){
 		SendStr("OUT_OF_HIGH_LIMIT");
-		LCD_Printf1("ERROR!OUT_OF_HIGH_LIMIT");
+		LCD_Printf1("ERR!OUT_HIGH_LIMIT");
 	}
 	refLCD();
 }
@@ -180,14 +200,14 @@ uchar SendPluse(ulong step)
 		middle = step/2;
 		rest = step - middle;
 
-		for(i=0;i<middle && ((_directionPort  ==  0 &&_lowLimitPort == 1) || (_directionPort  ==  1 &&_highLimitPort== 1));i++){
+		for(i=0;i<middle && checkBoundary();i++){
 			_plusePort = 1;
 			delay(startdelay-i);
 			_plusePort = 0;
 			delay(startdelay-i);//加速
 			acturalStep ++;
 		}
-		for(i=0;i<rest && ((_directionPort  ==  0 &&_lowLimitPort == 1) || (_directionPort  ==  1 &&_highLimitPort== 1));i++){
+		for(i=0;i<rest && checkBoundary();i++){
 			_plusePort = 1;
 			delay(startdelay-middle+i);
 			_plusePort = 0;
@@ -198,7 +218,7 @@ uchar SendPluse(ulong step)
 	}
 	if(step>20){
 
-		for(i=startdelay;i>runningdelay  &&((_directionPort  ==  0 &&_lowLimitPort == 1) || (_directionPort  ==  1 &&_highLimitPort== 1));i--){
+		for(i=startdelay;i>runningdelay  && checkBoundary();i--){
 			_plusePort = 1;
 			delay(i);
 			_plusePort = 0;
@@ -207,7 +227,7 @@ uchar SendPluse(ulong step)
 		}
 		rest = step - 2*(startdelay - runningdelay);
 
-		for(i=0;i<rest &&((_directionPort  ==  0 &&_lowLimitPort == 1) || (_directionPort  ==  1 &&_highLimitPort== 1));i++){
+		for(i=0;i<rest && checkBoundary();i++){
 			_plusePort = 1;
 			delay(runningdelay);
 			_plusePort = 0;
@@ -215,7 +235,7 @@ uchar SendPluse(ulong step)
 			acturalStep ++;
 		}
 
-		for(i=runningdelay;i<startdelay  &&((_directionPort  ==  0 &&_lowLimitPort == 1) || (_directionPort  ==  1 &&_highLimitPort== 1));i++){
+		for(i=runningdelay;i<startdelay  && checkBoundary();i++){
 			_plusePort = 1;
 			delay(i);
 			_plusePort = 0;
@@ -237,6 +257,10 @@ uchar SendPluse(ulong step)
 		return OUT_OF_HIGH_LIMIT;
 	return DEVICE_OK;
 }
+bool checkBoundary()
+{
+	return (_directionPort  ==  1 &&_lowLimitPort == 1) || (_directionPort  ==  0 &&_highLimitPort== 1);
+}
 
 /************************************************************
 
@@ -250,324 +274,48 @@ void delay(uchar _interval)
 /************************************************************
 
  ************************************************************/
-void delay_ms(unsigned int xms) //ms级延时子程序
-{ unsigned int x,y; 
-for(x=xms;x>0;x--)
+void delay_ms(uchar xms) //ms级延时子程序
+{ 
+	uchar x,y; 
+	for(x=xms;x>0;x--)
 	for(y=130;y>0;y--);
 }
 
 void refLCD(  )
 { 
- 
- 
 	ltoa(currPosition,str);
 	LCD_Printf2(str);
- 
-
 }
+
 /************************************************************
 
  ************************************************************/
 void ltoa(ulong step,char* str)
 {
- 
- 	if(step ==0){
-		*str  = '0';
-		str++;
-		*str  = '\0';
-		return;
+   
+    uchar i,j=1;
+	if(step ==0){*str = '0';str++;*str = '\0';return;}
+	if(step > 0){str++;*str = ',';}
+	if(step >9){str++;*str = ',';}
+	if(step >99){str++;*str = ',';}
+	if(step >999){str++;*str = ',';str++;*str = ',';}
+	if(step >9999){str++;*str = ',';}
+	if(step >99999){str++;*str = ',';}
+	if(step >999999){str++;*str = ',';str++;*str = ',';}
+	if(step >9999999){str++;*str = ',';}
+	if(step >99999999){str++;*str = ',';}
+	if(step >999999999){str++;*str = ',';str++;*str = ',';}
+	if(step >9999999999){str++;*str = ',';}
+	if(step >99999999999){str++;*str = ',';}
+	*str = '\0';
+
+	while (step >0 )
+	{	
+		str--;
+		i = step % 10;
+		step /= 10;
+		*str = i+'0';
+		if(j % 3 == 0)str--;
+		j++;
 	}
-/*	if(step >N9){
-		*str = step/T10; // 取第十位
-		*str += '0';
-		str++;
-		*str  = ',';
-		str++;
-		
-		step   %= T10;
-		*str = step/T9;
-		*str += '0';
-		str++;
-		step   %= T9;
-		*str = step/T8;
-		*str += '0';
-		str++;
-		step   %= T8;
-		*str = step/T7;
-		*str += '0';
-		str++;
-		step   %= T7;
-
-		*str  = ',';
-		str++;
-		*str = step/T6;
-		*str += '0';
-		str++;
-		step   %= T6;
-		*str = step/T5;
-		*str += '0';
-		str++;
-		step   %= T5;
-		*str = step/T4;
-		*str += '0';
-		str++;
-		step   %= T4;
-
-		*str  = ',';
-		str++;
-
-		*str = step/T3;
-		*str += '0';
-		str++;
-		step   %= T3;
-		*str = step/T2;
-		*str += '0';
-		str++;
-		step   %= T2;
-		*str = step/T1;
-		*str += '0';
-		str++;
-		*str = '\0';
-		return; 
-	}
-	if(step >N8){
-		*str = step/T9;
-		*str += '0';
-		str++;
-		step   %= T9;
-		*str = step/T8;
-		*str += '0';
-		str++;
-		step   %= T8;
-		*str = step/T7;
-		*str += '0';
-		str++;
-		step   %= T7;
-
-		*str  = ',';
-		str++;
-		*str = step/T6;
-		*str += '0';
-		str++;
-		step   %= T6;
-		*str = step/T5;
-		*str += '0';
-		str++;
-		step   %= T5;
-		*str = step/T4;
-		*str += '0';
-		str++;
-		step   %= T4;
-
-		*str  = ',';
-		str++;
-
-		*str = step/T3;
-		*str += '0';
-		str++;
-		step   %= T3;
-		*str = step/T2;
-		*str += '0';
-		str++;
-		step   %= T2;
-		*str = step/T1;
-		*str += '0';
-		str++;
-		*str = '\0';
-		return; 
-	}
-	if(step >N7){
-		*str = step/T8;
-		*str += '0';
-		str++;
-		step   %= T8;
-		*str = step/T7;
-		*str += '0';
-		str++;
-		step   %= T7;
-
-		*str  = ',';
-		str++;
-		*str = step/T6;
-		*str += '0';
-		str++;
-		step   %= T6;
-		*str = step/T5;
-		*str += '0';
-		str++;
-		step   %= T5;
-		*str = step/T4;
-		*str += '0';
-		str++;
-		step   %= T4;
-
-		*str  = ',';
-		str++;
-
-		*str = step/T3;
-		*str += '0';
-		str++;
-		step   %= T3;
-		*str = step/T2;
-		*str += '0';
-		str++;
-		step   %= T2;
-		*str = step/T1;
-		*str += '0';
-		str++;
-		*str = '\0';
-		return; 
-	}
-	if(step >N6){
-		*str = step/T7;
-		*str += '0';
-		str++;
-		step   %= T7;
-
-		*str  = ',';
-		str++;
-		*str = step/T6;
-		*str += '0';
-		str++;
-		step   %= T6;
-		*str = step/T5;
-		*str += '0';
-		str++;
-		step   %= T5;
-		*str = step/T4;
-		*str += '0';
-		str++;
-		step   %= T4;
-
-		*str  = ',';
-		str++;
-
-		*str = step/T3;
-		*str += '0';
-		str++;
-		step   %= T3;
-		*str = step/T2;
-		*str += '0';
-		str++;
-		step   %= T2;
-		*str = step/T1;
-		*str += '0';
-		str++;
-		*str = '\0';
-	return;	 
-	}	*/
-	if(step >N5){
-		*str = step/T6;
-		*str += '0';
-		str++;
-		step   %= T6;
-		*str = step/T5;
-		*str += '0';
-		str++;
-		step   %= T5;
-		*str = step/T4;
-		*str += '0';
-		str++;
-		step   %= T4;
-
-		*str  = ',';
-		str++;
-
-		*str = step/T3;
-		*str += '0';
-		str++;
-		step   %= T3;
-		*str = step/T2;
-		*str += '0';
-		str++;
-		step   %= T2;
-		*str = step/T1;
-		*str += '0';
-		str++;
-		*str = '\0';
-		return; 
-	}
-	if(step >N4){
-		*str = step/T5;
-		*str += '0';
-		str++;
-		step   %= T5;
-		*str = step/T4;
-		*str += '0';
-		str++;
-		step   %= T4;
-
-		*str  = ',';
-		str++;
-
-		*str = step/T3;
-		*str += '0';
-		str++;
-		step   %= T3;
-		*str = step/T2;
-		*str += '0';
-		str++;
-		step   %= T2;
-		*str = step/T1;
-		*str += '0';
-		str++;
-		*str = '\0';
-		return; 
-	}
-		if(step >N3){
-		*str = step/T4;
-		*str += '0';
-		str++;
-		step   %= T4;
-
-		*str  = ',';
-		str++;
-
-		*str = step/T3;
-		*str += '0';
-		str++;
-		step   %= T3;
-		*str = step/T2;
-		*str += '0';
-		str++;
-		step   %= T2;
-		*str = step/T1;
-		*str += '0';
-		str++;
-		*str = '\0';
-		return; 
-	}
-	if(step >N2){
-		*str = step/T3;
-		*str += '0';
-		str++;
-		step   %= T3;
-		*str = step/T2;
-		*str += '0';
-		str++;
-		step   %= T2;
-		*str = step/T1;
-		*str += '0';
-		str++;
-		*str = '\0';
-		 return;
-	}	
-	if(step >N1){
-		*str = step/T2;
-		*str += '0';
-		str++;
-		step   %= T2;
-		*str = step/T1;
-		*str += '0';
-		str++;
-		*str = '\0';
-	return;	 
-	}
-	if(step >0){
-		*str = step;
-		*str += '0';
-		str++;
-		*str = '\0';
-		 
-	}	
 }

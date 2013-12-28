@@ -25,27 +25,6 @@ sbit _manualAcceleratePort  = P1^7;
 #define OUT_OF_LOW_LIMIT 3
 #define OUT_OF_HIGH_LIMIT 4
 
-#define T10 1000000000
-#define T9  100000000
-#define T8  10000000
-#define T7  1000000
-#define T6  100000
-#define T5  10000
-#define T4  1000
-#define T3  100
-#define T2  10
-#define T1  1
-
-#define N9  = 999999999
-#define N8  = 99999999
-#define N7  = 9999999
-#define N6  = 999999
-#define N5  = 99999
-#define N4  = 9999
-#define N3  = 999
-#define N2  = 99
-#define N1  = 9
-
 /*------------------------------------------------
                    º¯ÊýÉùÃ÷
 ------------------------------------------------*/
@@ -55,10 +34,11 @@ uchar SendPluse(ulong step);
 uchar FindUpLimit(bit flag);
 void refLCD();
 bool InitDevice();
-void ltoa(ulong step,char* str);
+bool checkBoundary();
 
+
+void ltoa(ulong step,char* str);
 void ManualMove(bit deriction,bit flag);
- 
 void delay(uchar interval);
-void delay_ms(unsigned int xms);
+void delay_ms(uchar xms);
 #endif
