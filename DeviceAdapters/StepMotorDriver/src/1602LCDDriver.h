@@ -7,9 +7,9 @@
 sbit LCDRS = P2^3;                    
 sbit LCDRW = P2^4;                        
 sbit LCDEn = P2^5;   
-                     
+
 #define DBPort  P0    
- 
+
 #define LCD_Command  0
 #define LCD_Data     1
 

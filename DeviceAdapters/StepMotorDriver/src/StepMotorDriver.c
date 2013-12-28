@@ -20,93 +20,99 @@ uchar ret;
 /************************************************************
 
  ************************************************************/
+bool checksum(uchar rec[])//rec[] = @ C XXXX C
+{
+	if(rec[6] == checksumCalc(rec))
+		return 1;
+	else
+		return 0;
+}
+uchar checksumCalc(uchar rec[])
+{
+	uchar checksum = rec[0];
+	uchar i=1;
+	for (i; i < 6; i++)
+	{
+		checksum = checksum ^ rec[i];
+	}
+	return checksum;
+} 
 void parseCMD(uchar rec[])
 {	
-	ulong step = 0;
-	ret = 99;
-	rec++;//skip @	
-	if( 0 == memcmp(rec,"QP",2) ){
-		LCD_Printf1("--Rec 'QP'");
-		ltoa(currPosition,str);
+
+	ulong recData = 0;
+	char cmd = 0;
+	ret = DEVICE_OK;
+	if(checksum(rec) == 0){
+		ret = CHECK_SUM_ERROR;
+	}else{
+		rec++;//skip @
+		cmd = *rec;
+		rec++;
+		recData = *(ulong *)rec;
+		switch(cmd){
+
+		case QueryPosition:
+			LCD_Printf1("CMD:QueryPosition");
+
+			ltoa(currPosition,str);
+			SendStr(str);
+			return;
+			break;
+
+		case SetZeroPosition:
+			LCD_Printf1("CMD:SetZero");
+			currPosition = 0;
+			break;
+
+		case MoveUp:
+			ltoa(recData,str);
+			LCD_Printf1(strcat(str,"--CMD:MOVEUP"));
+
+			ret = Move(recData,0);
+			break;
+
+		case MoveDown:
+			ltoa(recData,str);
+			LCD_Printf1(strcat(str,"--CMD:MOVEDOWN"));
+
+			ret = Move(recData,1);
+			break;
+
+		case SetRunningDelay:
+			runningdelay = recData;
+			ltoa(runningdelay,str);
+			LCD_Printf1(strcat(str,"--CMD:SetRunningDelay"));
+			break;
+
+		case SetStartDelay:
+			startdelay = recData;
+			ltoa(startdelay,str);
+			LCD_Printf1(strcat(str,"--CMD:SetStartDelay"));
+			break;
+
+		case FindLimit:
+			ltoa(recData,str);
+			LCD_Printf1(strcat(str,"--CMD:FindLimit"));
+			FindUpLimit(recData);
+			break;
+
+		case ReleasePower:
+			ltoa(recData,str);
+			LCD_Printf1(strcat(str,"--CMD:ReleasePower"));
+			_releasePort = recData;
+			break;
+		default:
+			ret = BAD_COMMAND;
+			break;
+		}
+	}
+	if(ret != DEVICE_OK){
+		//ltoa(ret,str);
+		str[0] = ret;
+		str[1] = '\0';
+		LCD_Printf1(strcat(str,"--ERROR!"));
 		SendStr(str);
-		ret = DEVICE_OK;
-	}
-	if( 0 == memcmp(rec,"SZ",2) ){
-		LCD_Printf1("--Rec 'SZ'");
-	    currPosition = 0;
-		ret = DEVICE_OK;
-	}
-	if( 0 == memcmp(rec,"MU",2) ){
-		rec += 2;
-		step = *(ulong *)rec;
-		ltoa(step,str);
-		LCD_Printf1(strcat(str,"--Rec 'MU'"));
-		ret = Move(step,0);
-	}
-	if(0 == memcmp(rec,"MD",2)){
-		rec += 2;
-		step = *(ulong *)rec;
-		ltoa(step,str);
-		LCD_Printf1("Rec 'MD'");
-		ret = Move(step,1);
-	}
-	if(0 == memcmp(rec,"SR",2)){
-	rec += 2;
-		runningdelay = *(ulong *)rec;
-		ltoa(runningdelay,str);
-			LCD_Printf1("Rec 'SR'");
-		ret = DEVICE_OK;
-	}
-	if(0 == memcmp(rec,"SS",2)){
-		
-		rec += 2;
-		startdelay = *(ulong *)rec;
-		ltoa(startdelay,str);
-			LCD_Printf1("Rec 'SS'");
-			ret = DEVICE_OK;
-	}
-	if(0 == memcmp(rec,"FL",2)){
-			rec += 2;
-		step = *(ulong *)rec;
-		ltoa(step,str);
-		LCD_Printf1("Rec 'FL'");
-		LCD_Printf2(str);
-		FindUpLimit(step);
-		
-		ret = DEVICE_OK;
-	}
-	 
-	if(0 == memcmp(rec,"RE",2)){
-		rec += 2;
-		step = *(ulong *)rec;
-		if(step == 1)
-			_releasePort = 1;
-		else
-			_releasePort = 0;
-		ltoa(step,str);
-		LCD_Printf1("Rec 'RE'");
-		LCD_Printf2(str);
-		ret = DEVICE_OK;
-	}
-//	if(ret == DEVICE_OK){
-	//	SendStr("DEVICE_OK");
-	//	LCD_Printf2(str);
-//	}
-	if(ret == 99){
-		SendStr("BAD_COMMAND");
-		LCD_Printf1("ERR!BAD_COMMAND");
-	}
-	if(ret == DEVICE_BUSY){
-		SendStr("DEVICE_BUSY");
-		LCD_Printf1("ERR!DEVICE_BUSY");
-	}
-	if(ret == OUT_OF_LOW_LIMIT){
-		SendStr("OUT_OF_LOW_LIMIT");
-		LCD_Printf1("ERR!OUT_LOW_LIMIT");
-	}
-	if(ret == OUT_OF_HIGH_LIMIT){
-		SendStr("OUT_OF_HIGH_LIMIT");
-		LCD_Printf1("ERR!OUT_HIGH_LIMIT");
 	}
 	refLCD();
 }
@@ -143,27 +149,27 @@ uchar Move(ulong step,bit flag)
 uchar FindUpLimit(bit flag)
 {
 	if(flag ==1){
-	while(_highLimitPort== 1)
-	{
-		ManualMove(0,1);
-	}
-	if(_highLimitPort== 0){
-		currPosition = 0;
-		isSetZero = 1;
-		ltoa(0,str);
-		LCD_Printf2(str);
-	}
+		while(_highLimitPort== 1)
+		{
+			ManualMove(0,1);
+		}
+		if(_highLimitPort== 0){
+			currPosition = 0;
+			isSetZero = 1;
+			ltoa(0,str);
+			LCD_Printf2(str);
+		}
 	}else{
-	while(_lowLimitPort== 1)
-	{
-		ManualMove(1,1);
-	}
-	if(_lowLimitPort== 0){
-		currPosition = 521557;
-		isSetZero = 1;
-		ltoa(521557,str);
-		LCD_Printf2(str);
-	}
+		while(_lowLimitPort== 1)
+		{
+			ManualMove(1,1);
+		}
+		if(_lowLimitPort== 0){
+			currPosition = 521557;
+			isSetZero = 1;
+			ltoa(521557,str);
+			LCD_Printf2(str);
+		}
 	}
 	return DEVICE_OK;
 }
@@ -194,25 +200,26 @@ void ManualMove(bit deriction,bit flag)//deriction 1 up,0 down,flag 1 fast 0 low
  ************************************************************/
 uchar SendPluse(ulong step)
 {
-	ulong i = 0,middle = 0,rest=0,acturalStep = 0;;
+	ulong i = 0,temp = 0,acturalStep = 0;;
 	isBusy =1;
 	if(step <=20){
-		middle = step/2;
-		rest = step - middle;
-
-		for(i=0;i<middle && checkBoundary();i++){
+		temp = step/2;
+		for(i=0;i<temp && checkBoundary();i++){
 			_plusePort = 1;
 			delay(startdelay-i);
+			acturalStep ++;
 			_plusePort = 0;
 			delay(startdelay-i);//加速
-			acturalStep ++;
+			
 		}
-		for(i=0;i<rest && checkBoundary();i++){
+		temp = step - temp;
+		for(i=0;i<temp && checkBoundary();i++){
 			_plusePort = 1;
-			delay(startdelay-middle+i);
-			_plusePort = 0;
-			delay(startdelay-middle+i);//减速
+			delay(startdelay-temp+i);
 			acturalStep ++;
+			_plusePort = 0;
+			delay(startdelay-temp+i);//减速
+			
 		}
 
 	}
@@ -221,26 +228,25 @@ uchar SendPluse(ulong step)
 		for(i=startdelay;i>runningdelay  && checkBoundary();i--){
 			_plusePort = 1;
 			delay(i);
-			_plusePort = 0;
-			delay(i);//加速
 			acturalStep ++;
+			_plusePort = 0;
+			delay(i);//加速			
 		}
-		rest = step - 2*(startdelay - runningdelay);
-
-		for(i=0;i<rest && checkBoundary();i++){
+		temp = step - 2*(startdelay - runningdelay);
+		for(i=0;i<temp && checkBoundary();i++){
 			_plusePort = 1;
 			delay(runningdelay);
+			acturalStep ++;
 			_plusePort = 0;
 			delay(runningdelay);//加速
-			acturalStep ++;
 		}
 
 		for(i=runningdelay;i<startdelay  && checkBoundary();i++){
 			_plusePort = 1;
 			delay(i);
+			acturalStep ++;
 			_plusePort = 0;
 			delay(i);//减速
-			acturalStep ++;
 		}
 
 	}
@@ -278,7 +284,7 @@ void delay_ms(uchar xms) //ms级延时子程序
 { 
 	uchar x,y; 
 	for(x=xms;x>0;x--)
-	for(y=130;y>0;y--);
+		for(y=130;y>0;y--);
 }
 
 void refLCD(  )
@@ -292,8 +298,8 @@ void refLCD(  )
  ************************************************************/
 void ltoa(ulong step,char* str)
 {
-   
-    uchar i,j=1;
+
+	uchar i,j=1;
 	if(step ==0){*str = '0';str++;*str = '\0';return;}
 	if(step > 0){str++;*str = ',';}
 	if(step >9){str++;*str = ',';}
