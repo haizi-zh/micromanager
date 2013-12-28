@@ -72,3 +72,7 @@ MMCoreJ_wrap/MMCoreJ_wrap.cxx
 acqEngine/classes/
 plugins/DLLAutoReloader/classes/
 plugins/DataBrowser/classes/
+#keil
+*.lst
+*.m51
+*.plg
