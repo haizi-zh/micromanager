@@ -28,10 +28,9 @@ sbit _manualAcceleratePort  = P1^7;
 #define OUT_OF_LOW_LIMIT 0x03 +'K'-3
 #define OUT_OF_HIGH_LIMIT 0x04 +'L'-4
 #define CHECK_SUM_ERROR 0x05  +'M'-5
-#define BAD_COMMAND	    0x0E +'N'-14
+#define BAD_COMMAND	    0x06 +'N'-6
 
 //command string
-#define QueryPosition   0x06 +'A'-6
 #define SetZeroPosition 0x07 +'B'-7
 #define MoveUp	        0x08 +'C'-8
 #define MoveDown	    0x09 +'D'-9
@@ -39,7 +38,8 @@ sbit _manualAcceleratePort  = P1^7;
 #define SetStartDelay 	0x0B +'F'-11	
 #define FindLimit		0x0C +'G'-12
 #define ReleasePower	0x0D +'H'-13
-
+#define QueryPosition   0x0E +'A'-14
+#define QueryStage   	0x0F +'A'-6
 
 /*------------------------------------------------
                    º¯ÊýÉùÃ÷

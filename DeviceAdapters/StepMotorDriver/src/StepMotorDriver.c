@@ -59,7 +59,12 @@ void parseCMD(uchar rec[])
 			SendStr(str);
 			return;
 			break;
-
+		case QueryStage:
+			LCD_Printf1("CMD:QueryStage");
+			SendStr("@DEADNIGHT");
+			return;
+			break;
+			  
 		case SetZeroPosition:
 			LCD_Printf1("CMD:SetZero");
 			currPosition = 0;
