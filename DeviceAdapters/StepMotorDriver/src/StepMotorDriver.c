@@ -11,7 +11,7 @@ bool isBusy = false;
 uchar	startdelay = 16;
 uchar	runningdelay = 0; 
 float   currPosition = 0;//nm
-float	step2nm = 0.09969;
+float	step2nm = 0.09969;//50 XIFEN
 bit	    isSetZero = 0;	
 char str[20];
 uchar ret;
@@ -27,25 +27,33 @@ void parseCMD(uchar rec[])
 	if(rec[1] == 'M' && rec[2] == 'U'){
 		step = *((ulong *)(rec+3));
 		ltoa(step,str);
+		LCD_Printf1("Rec 'MU'");
 		ret = Move(step,0);
 	}
 	if(rec[1] == 'M' && rec[2] == 'D'){
 		step =  *((ulong *)(rec+3));
 		ltoa(step,str);
+		LCD_Printf1("Rec 'MD'");
 		ret = Move(step,1);
 	}
 	if(rec[1] == 'S' && rec[2] == 'R'){
 		runningdelay =  *((ulong *)(rec+3));
 		ltoa(runningdelay,str);
+			LCD_Printf1("Rec 'SR'");
 		ret = DEVICE_OK;
 	}
 	if(rec[1] == 'S' && rec[2] == 'S'){
 		startdelay =  *((ulong *)(rec+3));
 		ltoa(startdelay,str);
+			LCD_Printf1("Rec 'SS'");
+			ret = DEVICE_OK;
 	}
-	if(rec[1] == 'F' && rec[2] == 'U'){
+	if(rec[1] == 'F' && rec[2] == 'L'){
 		step =  *((ulong *)(rec+3));
 		FindUpLimit(step);
+		ltoa(step,str);
+		LCD_Printf1("Rec 'FL'");
+		LCD_Printf2(str);
 		ret = DEVICE_OK;
 	}
 	 
@@ -56,6 +64,8 @@ void parseCMD(uchar rec[])
 		else
 			_releasePort = 0;
 		ltoa(step,str);
+		LCD_Printf1("Rec 'RE'");
+		LCD_Printf2(str);
 		ret = DEVICE_OK;
 	}
 	if(ret == DEVICE_OK){
@@ -78,6 +88,7 @@ void parseCMD(uchar rec[])
 		SendStr("OUT_OF_HIGH_LIMIT");
 		LCD_Printf1("ERROR!OUT_OF_HIGH_LIMIT");
 	}
+	refLCD();
 }
 /************************************************************
 
@@ -266,7 +277,7 @@ void ltoa(ulong step,char* str)
 		*str  = '\0';
 		return;
 	}
-	if(step >N9){
+/*	if(step >N9){
 		*str = step/T10; // 取第十位
 		*str += '0';
 		str++;
@@ -444,7 +455,7 @@ void ltoa(ulong step,char* str)
 		str++;
 		*str = '\0';
 	return;	 
-	}
+	}	*/
 	if(step >N5){
 		*str = step/T6;
 		*str += '0';

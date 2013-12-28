@@ -9,11 +9,12 @@ main()
 	EX1 =  1;
 	LCD_Initial();
 	P1 = 0xff;
-	LCD_Printf1("LCD init osk!");
+	LCD_Printf1("Device Init ok!");
 	refLCD(  );
 	InitSerial(); //Serial
 	InitDevice(); //StepMotor
 	SendStr("Device Init ok\r\n");
+	
 	while(1){}
 }
 
