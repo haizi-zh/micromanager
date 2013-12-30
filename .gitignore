@@ -76,3 +76,6 @@ plugins/DataBrowser/classes/
 *.lst
 *.m51
 *.plg
+*.A51
+*.Opt
+*.Bak

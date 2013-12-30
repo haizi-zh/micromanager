@@ -31,15 +31,17 @@ sbit _manualAcceleratePort  = P1^7;
 #define BAD_COMMAND	    0x06 +'N'-6
 
 //command string
-#define SetZeroPosition 0x07 +'B'-7
-#define MoveUp	        0x08 +'C'-8
+#define SetZeroPosition 0x07 +'Z'-7
+#define MoveUp	        0x08 +'U'-8
 #define MoveDown	    0x09 +'D'-9
-#define SetRunningDelay 0x0A +'E'-10
-#define SetStartDelay 	0x0B +'F'-11	
-#define FindLimit		0x0C +'G'-12
-#define ReleasePower	0x0D +'H'-13
-#define QueryPosition   0x0E +'A'-14
-#define QueryStage   	0x0F +'A'-6
+#define SetRunningDelay 0x0A +'R'-10
+#define SetStartDelay 	0x0B +'S'-11	
+#define FindLimit		0x0C +'L'-12
+#define ReleasePower	0x0D +'P'-13
+#define QueryPosition   0x0E +'Q'-14
+#define QueryStage   	0x0F +'E'-15
+#define SetPosition	    0x10 + 'T' - 16
+#define SetUM2Step	    0x11 + 'M'-17
 
 /*------------------------------------------------
                    º¯ÊýÉùÃ÷
@@ -47,6 +49,7 @@ sbit _manualAcceleratePort  = P1^7;
 void parseCMD(uchar rec[]);
 bool checksum(uchar rec[]);
 uchar Move(ulong step,bit flag);
+uchar SetStagePosition(ulong step);
 uchar SendPluse(ulong step);
 uchar FindUpLimit(bit flag);
 void refLCD();
@@ -58,4 +61,6 @@ void ltoa(ulong step,char* str);
 void ManualMove(bit deriction,bit flag);
 void delay(uchar interval);
 void delay_ms(uchar xms);
+
+void debug(uchar rec[]);
 #endif

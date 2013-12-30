@@ -17,6 +17,47 @@ uchar str[20];
 uchar ret;
 
 
+void debug(char rec[])
+{
+	uchar d = 0x00;
+	rec[2] = 0x00;
+	rec[3] = 0x00;
+	rec[4] = 0x00;
+	rec[5] = 0x00;
+
+	switch(rec[1]){
+	case SetZeroPosition:
+	break;
+	case MoveUp:
+	rec[5] = 0x0A;
+	break;
+	case MoveDown:
+	rec[5] = 0x0f;
+	break;
+	case SetRunningDelay:
+	rec[5] = 0x00;
+	break;
+	case SetStartDelay:
+	rec[5] = 0x10;
+	break;
+	case FindLimit:
+	rec[5] = d;
+	break;
+	case ReleasePower:
+	rec[5] = d;
+	break;
+	case SetPosition:
+	rec[5] = 0x10;
+	break;
+	case SetUM2Step:
+	rec[5] = 0x01;
+	rec[4] = 0x00;
+	rec[3] = 0x01;
+	rec[2] = 0x00;
+	break;
+	}
+	rec[6] = checksumCalc(rec);
+}
 /************************************************************
 
  ************************************************************/
@@ -43,6 +84,7 @@ void parseCMD(uchar rec[])
 	ulong recData = 0;
 	char cmd = 0;
 	ret = DEVICE_OK;
+	debug(rec);
 	if(checksum(rec) == 0){
 		ret = CHECK_SUM_ERROR;
 	}else{
@@ -53,58 +95,47 @@ void parseCMD(uchar rec[])
 		switch(cmd){
 
 		case QueryPosition:
-			LCD_Printf1("CMD:QueryPosition");
-
 			ltoa(currPosition,str);
 			SendStr(str);
 			return;
 			break;
+		case SetPosition:
+			ret = SetStagePosition(recData);
+			break;
+
 		case QueryStage:
-			LCD_Printf1("CMD:QueryStage");
 			SendStr("@DEADNIGHT");
 			return;
 			break;
-			  
+		case SetUM2Step:
+			step2nm = *(float *)rec;
+			rec = DEVICE_OK;
+			break;	  
 		case SetZeroPosition:
-			LCD_Printf1("CMD:SetZero");
 			currPosition = 0;
 			break;
 
 		case MoveUp:
-			ltoa(recData,str);
-			LCD_Printf1(strcat(str,"--CMD:MOVEUP"));
-
 			ret = Move(recData,0);
 			break;
 
 		case MoveDown:
-			ltoa(recData,str);
-			LCD_Printf1(strcat(str,"--CMD:MOVEDOWN"));
-
 			ret = Move(recData,1);
 			break;
 
 		case SetRunningDelay:
 			runningdelay = recData;
-			ltoa(runningdelay,str);
-			LCD_Printf1(strcat(str,"--CMD:SetRunningDelay"));
 			break;
 
 		case SetStartDelay:
 			startdelay = recData;
-			ltoa(startdelay,str);
-			LCD_Printf1(strcat(str,"--CMD:SetStartDelay"));
 			break;
 
 		case FindLimit:
-			ltoa(recData,str);
-			LCD_Printf1(strcat(str,"--CMD:FindLimit"));
 			FindUpLimit(recData);
 			break;
 
 		case ReleasePower:
-			ltoa(recData,str);
-			LCD_Printf1(strcat(str,"--CMD:ReleasePower"));
 			_releasePort = recData;
 			break;
 		default:
@@ -128,6 +159,15 @@ bool InitDevice()
 {
 	isBusy = false;
 	return true;
+}
+uchar SetStagePosition(ulong pos)
+{
+	if(pos > currPosition){
+	  Move((pos - currPosition)/step2nm,1);
+	}else{
+	  Move((currPosition - pos )/step2nm,1);
+	}
+	return DEVICE_OK;
 }
 /************************************************************
 
@@ -176,6 +216,7 @@ uchar FindUpLimit(bit flag)
 			LCD_Printf2(str);
 		}
 	}
+	refLCD();
 	return DEVICE_OK;
 }
 /************************************************************
@@ -257,9 +298,9 @@ uchar SendPluse(ulong step)
 	}
 
 	if(_directionPort == 0){
-		currPosition -= acturalStep;
+		currPosition -= acturalStep*step2nm;
 	}else{
-		currPosition += acturalStep;
+		currPosition += acturalStep*step2nm;
 	}
 	isBusy =0;
 	if(_lowLimitPort ==0)
