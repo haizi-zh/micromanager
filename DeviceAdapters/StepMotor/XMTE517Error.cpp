@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////////
-// FILE:          StepMotorError.cpp
+// FILE:          XMTE517Error.cpp
 // PROJECT:       Micro-Manager
 // SUBSYSTEM:     DeviceAdapters
 //-----------------------------------------------------------------------------
-// DESCRIPTION:   StepMotors Controller Driver
+// DESCRIPTION:   XMTE517s Controller Driver
 //
 // COPYRIGHT:     Sutter Instrument,
 //				  Mission Bay Imaging, San Francisco, 2011
@@ -42,7 +42,7 @@
 #include "../../MMCore/MMCore.h"
 #include "../../MMDevice/ModuleInterface.h"
 #include "../../MMDevice/DeviceUtils.h"
-#include "StepMotorError.h"
+#include "XMTE517Error.h"
 
 using namespace std;
 
@@ -57,9 +57,9 @@ MPError::MPError()
     MPError::m_sErrorText[MPError::MPERR_SerialBufferFull]      = "The input buffer is filled and CR has not been received";                   // Serial command buffer full
     MPError::m_sErrorText[MPError::MPERR_SerialInpInvalid]      = "Input cannot be interpreted -- command byte not valid";                     // Invalid serial command
     MPError::m_sErrorText[MPError::MPERR_SerialIntrupMove]      = "A requested move was interrupted by input of serial port";                  // Serial command interrupt motion
-    MPError::m_sErrorText[MPError::MPERR_SerialZeroReturn]      = "No response from StepMotor controller";                                         // No Response from serial port
+    MPError::m_sErrorText[MPError::MPERR_SerialZeroReturn]      = "No response from XMTE517 controller";                                         // No Response from serial port
     MPError::m_sErrorText[MPError::MPERR_SerialUnknownError]    = "Unknown error codes";                                                       // Unknown serial command
-    MPError::m_sErrorText[MPError::MPERR_GENERIC]               = "StepMotor adapter error occured";                                               // Unspecified StepMotor adapter errors
+    MPError::m_sErrorText[MPError::MPERR_GENERIC]               = "XMTE517 adapter error occured";                                               // Unspecified XMTE517 adapter errors
     MPError::m_sErrorText[MPError::MPERR_FileOpenFailed]        = "Fail to open file";                                                         // Fail to open file
 }
 
@@ -82,7 +82,7 @@ MPError* MPError::Instance()
 
 std::string MPError::GetErrorText(int nErrorCode) const
 {
-    string sErrorText;      // StepMotor String
+    string sErrorText;      // XMTE517 String
 
     if (m_pMPError != NULL)
     {

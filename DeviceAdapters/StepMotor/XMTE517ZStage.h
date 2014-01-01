@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////////////
-// FILE:          StepMotorZStage.h 
+// FILE:          XMTE517ZStage.h 
 // PROJECT:       Micro-Manager
 // SUBSYSTEM:     DeviceAdapters
 //-----------------------------------------------------------------------------
@@ -22,15 +22,15 @@
 // AUTHOR:        Lon Chu (lonchu@yahoo.com) created on June 2011
 //
 
-#ifndef _StepMotorZSTAGE_H_
-#define _StepMotorZSTAGE_H_
+#ifndef _XMTE517ZSTAGE_H_
+#define _XMTE517ZSTAGE_H_
 
 #include "../../MMDevice/MMDevice.h"
 #include "../../MMDevice/DeviceBase.h"
-#include "StepMotor.h"
+#include "XMTE517.h"
 
 //
-// define Z stage class that is atached to the StepMotor controller
+// define Z stage class that is atached to the XMTE517 controller
 //
 class ZStage : public CStageBase<ZStage>
 {
@@ -48,7 +48,7 @@ public:
     // Get Z stage device name
     void GetName(char* pszName) const;
 
-    // Busy is not aplicable for StepMotor
+    // Busy is not aplicable for XMTE517
     // It will return false always
     bool Busy() { return false; }
 
@@ -65,34 +65,26 @@ public:
     // Get Z stage position in um
     int GetPositionUm(double& dZPosUm);
 
-    // Move Z stage to positiion in uSteps
-    int SetPositionSteps(long lZPosSteps);
-	int SetRelativePositionSteps(long lZPosSteps);
-	int OnUmToStep(MM::PropertyBase* pProp, MM::ActionType eAct);
-    // Get Z stage position in uSteps
-    int GetPositionSteps(long& lZPosSteps);
+    int GetPositionSteps(long& dZPosUm){return DEVICE_OK;};
+    int SetPositionSteps(long dZPosUm){return DEVICE_OK;};
 
     // Set Z stage origin
-    int SetOrigin();
+    int SetOrigin(){return DEVICE_OK;};
 
     // Stop Z stage motion
-    int Stop();
+//    int Stop();
 
     // Get limits of Zstage
     // This function is not applicable for
-    // StepMotor, the function will return DEVICE_OK
+    // XMTE517, the function will return DEVICE_OK
     // insttead.
     int GetLimits(double& /*min*/, double& /*max*/) { return DEVICE_OK/*DEVICE_UNSUPPORTED_COMMAND*/; }
 
     // action interface
     // ----------------
-    int OnStepSize (MM::PropertyBase* /*pProp*/, MM::ActionType /*eAct*/);
-    int OnSpeed(MM::PropertyBase* /*pPro*/, MM::ActionType /*eAct*/);
-    int OnSetOrigin(MM::PropertyBase* /*pPro*/, MM::ActionType /*eAct*/);
-    int OnStageMirrorZ(MM::PropertyBase* /*pPro*/, MM::ActionType /*eAct*/);
     int OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct);
-    int OnPort(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnMotionMode(MM::PropertyBase* pProp, MM::ActionType eAct);
     // Sequence functions
     int IsStageSequenceable(bool& isSequenceable) const { isSequenceable = false; return DEVICE_OK;}
     int GetStageSequenceMaxLength(long& /*nrEvents*/) const  {return DEVICE_OK;}
@@ -105,14 +97,9 @@ public:
     bool IsContinuousFocusDrive() const {return true;}
 
 private:
-    void Escape(DWORD dwFunc);
-    void SetDTR();
-    void ClrDTR();
-    void SetRTS();
-    void ClrRTS();
+
     int WriteCommand(unsigned char* sCommand, int nLength);
     int ReadMessage(unsigned char* sResponse, int nBytesRead);
-    int CheckError(unsigned char bErrorCode);
     //int GetCommand(const std::string& cmd, std::string& response);
 
     //std::string m_sPort;              // serial port
@@ -124,4 +111,4 @@ private:
     //double    m_dOriginZ;             // Z stage origin
 };
 
-#endif  // _StepMotorZSTAGE_H_
+#endif  // _XMTE517ZSTAGE_H_

@@ -1,9 +1,9 @@
 ///////////////////////////////////////////////////////////////////////////////
-// FILE:          StepMotorError.h
+// FILE:          XMTE517Error.h
 // PROJECT:       Micro-Manager
 // SUBSYSTEM:     DeviceAdapters
 //-----------------------------------------------------------------------------
-// DESCRIPTION:   StepMotor Device Adapter Error Codes & Messages
+// DESCRIPTION:   XMTE517 Device Adapter Error Codes & Messages
 //
 // COPYRIGHT:     Sutter Instrument,
 //                Mission Bay Imaging, San Francisco, 2011
@@ -22,8 +22,8 @@
 // AUTHOR:        Lon Chu (lonchu@yahoo.com) created on June 2011
 //
 
-#ifndef _StepMotorERROR_H_
-#define _StepMotorERROR_H_
+#ifndef _XMTE517ERROR_H_
+#define _XMTE517ERROR_H_
 
 #include <string>
 #include <map>
@@ -44,7 +44,7 @@ public:
         MPERR_SerialIntrupMove          = 5,        // Serial command interrupt motion
         MPERR_SerialZeroReturn          = 6,        // No response from serial port
         MPERR_SerialUnknownError        = 7,        // Unknown serial command
-        MPERR_GENERIC                   = 8,        // Unspecified StepMotor adapter errors
+        MPERR_GENERIC                   = 8,        // Unspecified XMTE517 adapter errors
         MPERR_FileOpenFailed            = 9         // Fail to open file
     };
 
@@ -58,4 +58,4 @@ private:
     std::map<int, std::string> m_sErrorText;        // error messages
 };
 
-#endif  // _StepMotorERROR_H_
+#endif  // _XMTE517ERROR_H_

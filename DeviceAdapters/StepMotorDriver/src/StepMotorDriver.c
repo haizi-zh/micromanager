@@ -68,6 +68,7 @@ bool checksum(uchar rec[])//rec[] = @ C XXXX C
 	else
 		return 0;
 }
+ 
 uchar checksumCalc(uchar rec[])
 {
 	uchar checksum = rec[0];
@@ -95,8 +96,9 @@ void parseCMD(uchar rec[])
 		switch(cmd){
 
 		case QueryPosition:
-			ltoa(currPosition,str);
+			ltoa(currPosition,str);	
 			SendStr(str);
+			SendByte('E');
 			return;
 			break;
 		case SetPosition:
