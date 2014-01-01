@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////////
-// FILE:          XMTE517Ctrl.h
+// FILE:          StepMotorCtrl.h
 // PROJECT:       Micro-Manager
 // SUBSYSTEM:     DeviceAdapters
 //-----------------------------------------------------------------------------
-// DESCRIPTION:   XMTE517 Micromanipulator Controller
+// DESCRIPTION:   StepMotor Micromanipulator Controller
 //
 // COPYRIGHT:     Sutter Instrument,
 //                Mission Bay Imaging, San Francisco, 2011
@@ -22,8 +22,8 @@
 // AUTHOR:        Lon Chu (lonchu@yahoo.com) created on June 2011
 //
 
-#ifndef _XMTE517CTRL_H_
-#define _XMTE517CTRL_H_
+#ifndef _StepMotorCTRL_H_
+#define _StepMotorCTRL_H_
 
 #include "../../MMDevice/MMDevice.h"
 #include "../../MMDevice/DeviceBase.h"
@@ -32,14 +32,14 @@
 // MAP285 is a micromanipulator controller from Sutter Instrument Comapny.
 // It accept remote serial input to conrol micromanipulator.
 //
-class XMTE517Ctrl : public CGenericBase<XMTE517Ctrl>
+class StepMotorCtrl : public CGenericBase<StepMotorCtrl>
 {
     public:
 
         // contructor & destructor
         // .......................
-        XMTE517Ctrl();
-        ~XMTE517Ctrl();
+        StepMotorCtrl();
+        ~StepMotorCtrl();
 
         // Device API
         // ---------
@@ -48,7 +48,7 @@ class XMTE517Ctrl : public CGenericBase<XMTE517Ctrl>
 
         void GetName(char* pszName) const;
 
-        // XMTE517 doesn't support equivalent command 
+        // StepMotor doesn't support equivalent command 
         // return false for now
         bool Busy() { return false; }
 
@@ -78,4 +78,4 @@ class XMTE517Ctrl : public CGenericBase<XMTE517Ctrl>
         int           m_nAnswerTimeoutTrys;   // timeout trys
 };
 
-#endif  // _XMTE517CTRL_H_
+#endif  // _StepMotorCTRL_H_

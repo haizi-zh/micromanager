@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////////
-// FILE:          XMTE517ZStage.cpp
+// FILE:          StepMotorZStage.cpp
 // PROJECT:       Micro-Manager
 // SUBSYSTEM:     DeviceAdapters
 //-----------------------------------------------------------------------------
-// DESCRIPTION:   XMTE517s Controller Driver
+// DESCRIPTION:   StepMotors Controller Driver
 //
 // COPYRIGHT:     Sutter Instrument,
 //				  Mission Bay Imaging, San Francisco, 2011
@@ -42,8 +42,8 @@
 #include "../../MMCore/MMCore.h"
 #include "../../MMDevice/ModuleInterface.h"
 #include "../../MMDevice/DeviceUtils.h"
-#include "XMTE517Error.h"
-#include "XMTE517ZStage.h"
+#include "StepMotorError.h"
+#include "StepMotorZStage.h"
 
 using namespace std;
 
@@ -55,7 +55,7 @@ using namespace std;
 // Z Stage - single axis stage device.
 // Note that this adapter uses two coordinate systems.  There is the adapters own coordinate
 // system with the X and Y axis going the 'Micro-Manager standard' direction
-// Then, there is the XMTE517s native system.  All functions using 'steps' use the XMTE517 system
+// Then, there is the StepMotors native system.  All functions using 'steps' use the StepMotor system
 // All functions using Um use the Micro-Manager coordinate system
 //
 
@@ -71,17 +71,17 @@ ZStage::ZStage() :
 
 	// Name
 	char sZName[120];
-	sprintf(sZName, "%s%s", XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_ZDevNameLabel).c_str(), MM::g_Keyword_Name);
-	int ret = CreateProperty(sZName, XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_ZStageDevName).c_str(), MM::String, true);
+	sprintf(sZName, "%s%s", StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_ZDevNameLabel).c_str(), MM::g_Keyword_Name);
+	int ret = CreateProperty(sZName, StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_ZStageDevName).c_str(), MM::String, true);
 
-	m_nAnswerTimeoutMs = XMTE517::Instance()->GetTimeoutInterval();
-	m_nAnswerTimeoutTrys = XMTE517::Instance()->GetTimeoutTrys();
+	m_nAnswerTimeoutMs = StepMotor::Instance()->GetTimeoutInterval();
+	m_nAnswerTimeoutTrys = StepMotor::Instance()->GetTimeoutTrys();
 
 	std::ostringstream osMessage;
 
 	// Description
 	char sZDesc[120];
-	sprintf(sZDesc, "%s%s", XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_ZDevDescLabel).c_str(), MM::g_Keyword_Description);
+	sprintf(sZDesc, "%s%s", StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_ZDevDescLabel).c_str(), MM::g_Keyword_Description);
 	ret = CreateProperty(sZDesc, "MP-285 Z Stage Driver", MM::String, true);
 }
 
@@ -105,26 +105,26 @@ int ZStage::Initialize()
 {
 	std::ostringstream osMessage;
 
-	if (!XMTE517::Instance()->GetDeviceAvailability()) return DEVICE_NOT_CONNECTED;
+	if (!StepMotor::Instance()->GetDeviceAvailability()) return DEVICE_NOT_CONNECTED;
 	CPropertyAction* pActOnGetPosZ = new CPropertyAction(this, &ZStage::OnGetPositionZ);
 	char sPosZ[20];
-	double dPosZ = XMTE517::Instance()->GetPositionZ();
+	double dPosZ = StepMotor::Instance()->GetPositionZ();
 	sprintf(sPosZ, "%ld", (long)(dPosZ));
-	int ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_GetPositionZ).c_str(), sPosZ, MM::Integer, false, pActOnGetPosZ);  // get position Z 
+	int ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_GetPositionZ).c_str(), sPosZ, MM::Integer, false, pActOnGetPosZ);  // get position Z 
 	if (ret != DEVICE_OK)  return ret;
 
 	ret = GetPositionUm(dPosZ);
-	sprintf(sPosZ, "%ld", (long)(dPosZ * (double)XMTE517::Instance()->GetPositionZ()));
+	sprintf(sPosZ, "%ld", (long)(dPosZ * (double)StepMotor::Instance()->GetPositionZ()));
 	if (ret != DEVICE_OK)  return ret;
 
 	CPropertyAction* pActOnSetPosZ = new CPropertyAction(this, &ZStage::OnSetPositionZ);
 	sprintf(sPosZ, "%.2f", dPosZ);
-	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_SetPositionZ).c_str(), sPosZ, MM::Float, false, pActOnSetPosZ);  // Absolute  vs Relative
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_SetPositionZ).c_str(), sPosZ, MM::Float, false, pActOnSetPosZ);  // Absolute  vs Relative
 	if (ret != DEVICE_OK)  return ret;
 
-	XMTE517::Instance()->SetMotionMode(0);//Fast
+	StepMotor::Instance()->SetMotionMode(0);//Fast
 	CPropertyAction* pActOnMotionMode = new CPropertyAction(this, &ZStage::OnMotionMode);
-	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_MotionMode).c_str(), "Undefined", MM::Integer, false, pActOnMotionMode);  // Absolute  vs Relative
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_MotionMode).c_str(), "Undefined", MM::Integer, false, pActOnMotionMode);  // Absolute  vs Relative
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK) return ret;
 
@@ -139,7 +139,7 @@ int ZStage::OnMotionMode(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
 	std::string sMotionMode;
 	std::ostringstream osMessage;
-	long lMotionMode = (long)XMTE517::Instance()->GetMotionMode();
+	long lMotionMode = (long)StepMotor::Instance()->GetMotionMode();
 	int ret = DEVICE_OK;
 
 	osMessage.str("");
@@ -173,14 +173,14 @@ int ZStage::SetMotionMode(long lMotionMode)//1 high else low
 
 	unsigned char buf[9];
 	if (lMotionMode == 1)
-		XMTE517::Instance()->PackageCommand("QHH",NULL,buf);
+		StepMotor::Instance()->PackageCommand("QHH",NULL,buf);
 	else
-		XMTE517::Instance()->PackageCommand("QHL",NULL,buf);
+		StepMotor::Instance()->PackageCommand("QHL",NULL,buf);
 
 	ret = WriteCommand(buf, 9);
 	if (ret != DEVICE_OK) return ret;
 
-	XMTE517::Instance()->SetMotionMode(lMotionMode);
+	StepMotor::Instance()->SetMotionMode(lMotionMode);
 	return DEVICE_OK;
 }
 //
@@ -189,7 +189,7 @@ int ZStage::SetMotionMode(long lMotionMode)//1 high else low
 int ZStage::Shutdown()
 {
 	m_yInitialized = false;
-	XMTE517::Instance()->SetDeviceAvailable(false);
+	StepMotor::Instance()->SetDeviceAvailable(false);
 	return DEVICE_OK;
 }
 
@@ -198,7 +198,7 @@ int ZStage::Shutdown()
 //
 void ZStage::GetName(char* Name) const
 {
-	CDeviceUtils::CopyLimitedString(Name, XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_ZStageDevName).c_str());
+	CDeviceUtils::CopyLimitedString(Name, StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_ZStageDevName).c_str());
 }
 
 //
@@ -210,7 +210,7 @@ int ZStage::GetPositionUm(double& dZPosUm)
 
 	// get current position
 	unsigned char buf[9];
-	XMTE517::Instance()->PackageCommand("RB1",NULL,buf);
+	StepMotor::Instance()->PackageCommand(QueryPosition,NULL,buf);
 	int ret = WriteCommand(buf, 9);
 	if (ret != DEVICE_OK) return ret;
 
@@ -221,9 +221,9 @@ int ZStage::GetPositionUm(double& dZPosUm)
 
 	ostringstream osMessage;
 	char sCommStat[30];
-	dZPosUm  =  XMTE517::Instance()->RawToFloat((byte *)sResponse,2);
+	dZPosUm  =  StepMotor::Instance()->RawToFloat((byte *)sResponse,2);
 
-	XMTE517::Instance()->SetPositionZ(dZPosUm);
+	StepMotor::Instance()->SetPositionZ(dZPosUm);
 	return DEVICE_OK;
 }
 
@@ -275,16 +275,16 @@ int ZStage::SetPositionUm(double dZPosUm)
 	ret = DEVICE_OK;
 	byte rawData[4];
 	byte buf[10];
-	XMTE517::Instance()->FloatToRaw((float)dZPosUm,rawData);
+	StepMotor::Instance()->FloatToRaw((float)dZPosUm,rawData);
 	byte cmd[3];
 	cmd[0] = 'T';
 	cmd[1] = (char)0;
 	cmd[2] = 'S';
-	XMTE517::Instance()->PackageCommand((const char*)cmd,rawData,buf);
+	StepMotor::Instance()->PackageCommand((const char*)cmd,rawData,buf);
 	ret = WriteCommand(buf, 9);
 	if (ret != DEVICE_OK)  return ret;
 
-	XMTE517::Instance()->SetPositionZ(dZPosUm);
+	StepMotor::Instance()->SetPositionZ(dZPosUm);
 
 	double dPosZ = 0;
 
@@ -303,7 +303,7 @@ int ZStage::OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
 	std::ostringstream osMessage;
 	int ret = DEVICE_OK;
-	double dPos = XMTE517::Instance()->GetPositionZ();
+	double dPos = StepMotor::Instance()->GetPositionZ();
 
 	osMessage.str("");
 
@@ -312,7 +312,7 @@ int ZStage::OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 	sprintf(sPos, "%ld", (long)dPos);
 
 	pProp->Set(dPos);
-	XMTE517::Instance()->SetPositionZ(dPos);
+	StepMotor::Instance()->SetPositionZ(dPos);
 	if (ret != DEVICE_OK) return ret;
 	return DEVICE_OK;
 }
@@ -321,7 +321,7 @@ int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
 	std::ostringstream osMessage;
 	int ret = DEVICE_OK;
-	double dPos = XMTE517::Instance()->GetPositionZ();;
+	double dPos = StepMotor::Instance()->GetPositionZ();;
 
 	osMessage.str("");
 
@@ -354,10 +354,10 @@ int ZStage::WriteCommand(unsigned char* sCommand, int nLength)
 
 	for (int nBytes = 0; nBytes < nLength && ret == DEVICE_OK; nBytes++)
 	{
-		ret = WriteToComPort(XMTE517::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
+		ret = WriteToComPort(StepMotor::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
 		CDeviceUtils::SleepMs(1);
 	}
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage.str("");
 		osMessage << "<ZStage::WriteCommand> (Command=";
@@ -399,7 +399,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		unsigned long lByteRead;
 
 		const MM::Device* pDevice = this;
-		ret = (GetCoreCallback())->ReadFromSerial(pDevice, XMTE517::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nLength-lRead, lByteRead);
+		ret = (GetCoreCallback())->ReadFromSerial(pDevice, StepMotor::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nLength-lRead, lByteRead);
 
 
 		// concade new string
@@ -425,7 +425,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		sResponse[lIndx] = sAnswer[lIndx];
 	}
 
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage.str("");
 		osMessage << "<ZStage::ReadMessage> (ReadFromSerial =  <";
@@ -440,7 +440,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		this->LogMessage(osMessage.str().c_str());
 	}
 	if(yTimeout){
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "sss Timeout ok";
 			this->LogMessage(osMessage.str().c_str());

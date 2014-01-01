@@ -58,6 +58,7 @@ bool checkBoundary();
 uchar checksumCalc(uchar rec[]);
 
 void ltoa(ulong step,char* str);
+void ltoa1(ulong step,char* str);
 void ManualMove(bit deriction,bit flag);
 void delay(uchar interval);
 void delay_ms(uchar xms);

@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////////
-// FILE:          XMTE517Ctrl.cpp
+// FILE:          StepMotorCtrl.cpp
 // PROJECT:       Micro-Manager
 // SUBSYSTEM:     DeviceAdapters
 //-----------------------------------------------------------------------------
-// DESCRIPTION:   XMTE517 Controller Driver
+// DESCRIPTION:   StepMotor Controller Driver
 //
 
 
@@ -21,98 +21,98 @@
 #include "../../MMCore/MMCore.h"
 #include "../../MMDevice/ModuleInterface.h"
 #include "../../MMDevice/DeviceUtils.h"
-#include "XMTE517Error.h"
-#include "XMTE517.h"
-#include "XMTE517Ctrl.h"
+#include "StepMotorError.h"
+#include "StepMotor.h"
+#include "StepMotorCtrl.h"
 
 using namespace std;
 
 
 //////////////////////////////////////////////////////
-// XMTE517 Controller
+// StepMotor Controller
 //////////////////////////////////////////////////////
 //
 // Controller - Controller for XYZ Stage.
 // Note that this adapter uses two coordinate systems.  There is the adapters own coordinate
 // system with the X and Y axis going the 'Micro-Manager standard' direction
-// Then, there is the XMTE517s native system.  All functions using 'steps' use the XMTE517 system
+// Then, there is the StepMotors native system.  All functions using 'steps' use the StepMotor system
 // All functions using Um use the Micro-Manager coordinate system
 //
 
 
 //
-// XMTE517 Controller Constructor
+// StepMotor Controller Constructor
 //
-XMTE517Ctrl::XMTE517Ctrl() :
+StepMotorCtrl::StepMotorCtrl() :
     										m_yInitialized(false)       // initialized flag set to false
 {
 	// call initialization of error messages
 	InitializeDefaultErrorMessages();
 
-	m_nAnswerTimeoutMs = XMTE517::Instance()->GetTimeoutInterval();
-	m_nAnswerTimeoutTrys = XMTE517::Instance()->GetTimeoutTrys();
+	m_nAnswerTimeoutMs = StepMotor::Instance()->GetTimeoutInterval();
+	m_nAnswerTimeoutTrys = StepMotor::Instance()->GetTimeoutTrys();
 
 	// Port:
-	CPropertyAction* pAct = new CPropertyAction(this, &XMTE517Ctrl::OnPort);
+	CPropertyAction* pAct = new CPropertyAction(this, &StepMotorCtrl::OnPort);
 	int ret = CreateProperty(MM::g_Keyword_Port, "Undefined", MM::String, false, pAct, true);
 
 }
 
 //
-// XMTE517 Controller Destructor
+// StepMotor Controller Destructor
 //
-XMTE517Ctrl::~XMTE517Ctrl()
+StepMotorCtrl::~StepMotorCtrl()
 {
 	Shutdown();
 }
 
 //
-// return device name of the XMTE517 controller
+// return device name of the StepMotor controller
 //
-void XMTE517Ctrl::GetName(char* sName) const
+void StepMotorCtrl::GetName(char* sName) const
 {
-	CDeviceUtils::CopyLimitedString(sName, XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_CtrlDevName).c_str());
+	CDeviceUtils::CopyLimitedString(sName, StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_CtrlDevName).c_str());
 }
 
 //
-// Initialize the XMTE517 controller
+// Initialize the StepMotor controller
 //
-int XMTE517Ctrl::Initialize()
+int StepMotorCtrl::Initialize()
 {
 	std::ostringstream osMessage;
 
 	// empty the Rx serial buffer before sending command
 	int ret = DEVICE_OK ;
-	ret = ClearPort(*this, *GetCoreCallback(), XMTE517::Instance()->GetSerialPort().c_str());
+	ret = ClearPort(*this, *GetCoreCallback(), StepMotor::Instance()->GetSerialPort().c_str());
 	if (ret != DEVICE_OK) return ret;
 
 	// Name
 	char sCtrlName[120];
-	sprintf(sCtrlName, "%s%s", XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_CtrlDevNameLabel).c_str(), MM::g_Keyword_Name);
-	ret = CreateProperty(sCtrlName, XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_CtrlDevName).c_str(), MM::String, true);
+	sprintf(sCtrlName, "%s%s", StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_CtrlDevNameLabel).c_str(), MM::g_Keyword_Name);
+	ret = CreateProperty(sCtrlName, StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_CtrlDevName).c_str(), MM::String, true);
  	if (ret != DEVICE_OK) return ret;
 
 	// Description
 	char sCtrlDesc[120];
-	sprintf(sCtrlDesc, "%s%s", XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_CtrlDevDescLabel).c_str(), MM::g_Keyword_Description);
+	sprintf(sCtrlDesc, "%s%s", StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_CtrlDevDescLabel).c_str(), MM::g_Keyword_Description);
 	ret = CreateProperty(sCtrlDesc, "Sutter MP-285 Controller", MM::String, true);
 	if (ret != DEVICE_OK)  return ret;
 
-	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_XMTE517VerLabel).c_str(), XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_XMTE517Version).c_str(), MM::String, true);
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_StepMotorVerLabel).c_str(), StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_StepMotorVersion).c_str(), MM::String, true);
 	if (ret != DEVICE_OK) return ret;
 
 	char sTimeoutInterval[20];
 	memset(sTimeoutInterval, 0, 20);
-	sprintf(sTimeoutInterval, "%d", XMTE517::Instance()->GetTimeoutInterval());
-	CPropertyAction* pActOnTimeoutInterval = new CPropertyAction(this, &XMTE517Ctrl::OnTimeoutInterval);
-	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_TimeoutInterval).c_str(), sTimeoutInterval, MM::Integer,  false, pActOnTimeoutInterval);
+	sprintf(sTimeoutInterval, "%d", StepMotor::Instance()->GetTimeoutInterval());
+	CPropertyAction* pActOnTimeoutInterval = new CPropertyAction(this, &StepMotorCtrl::OnTimeoutInterval);
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_TimeoutInterval).c_str(), sTimeoutInterval, MM::Integer,  false, pActOnTimeoutInterval);
 	if (ret != DEVICE_OK) return ret;
 
 	char sTimeoutTrys[20];
 	memset(sTimeoutTrys, 0, 20);
-	sprintf(sTimeoutTrys, "%d", XMTE517::Instance()->GetTimeoutTrys());
-	CPropertyAction* pActOnTimeoutTrys = new CPropertyAction(this, &XMTE517Ctrl::OnTimeoutTrys);
-	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_TimeoutTrys).c_str(), sTimeoutTrys, MM::Integer,  false, pActOnTimeoutTrys);
+	sprintf(sTimeoutTrys, "%d", StepMotor::Instance()->GetTimeoutTrys());
+	CPropertyAction* pActOnTimeoutTrys = new CPropertyAction(this, &StepMotorCtrl::OnTimeoutTrys);
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_TimeoutTrys).c_str(), sTimeoutTrys, MM::Integer,  false, pActOnTimeoutTrys);
 	if (ret != DEVICE_OK) return ret;
 
 	// Read status data
@@ -125,41 +125,28 @@ int XMTE517Ctrl::Initialize()
 	if (ret != DEVICE_OK) return ret;
 
 	// Create  property for debug log flag
-	int nDebugLogFlag = XMTE517::Instance()->GetDebugLogFlag();
-	CPropertyAction* pActDebugLogFlag = new CPropertyAction (this, &XMTE517Ctrl::OnDebugLogFlag);
-	ret = CreateProperty(XMTE517::Instance()->GetXMTStr(XMTE517::XMTSTR_DebugLogFlagLabel).c_str(), CDeviceUtils::ConvertToString(nDebugLogFlag), MM::Integer, true, pActDebugLogFlag);
+	int nDebugLogFlag = StepMotor::Instance()->GetDebugLogFlag();
+	CPropertyAction* pActDebugLogFlag = new CPropertyAction (this, &StepMotorCtrl::OnDebugLogFlag);
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_DebugLogFlagLabel).c_str(), CDeviceUtils::ConvertToString(nDebugLogFlag), MM::Integer, true, pActDebugLogFlag);
 	m_yInitialized = true;
-	XMTE517::Instance()->SetDeviceAvailable(true);
+	StepMotor::Instance()->SetDeviceAvailable(true);
 	return DEVICE_OK;
 }
 
 //
 // check controller's status bytes
 //
-int XMTE517Ctrl::CheckStatus(unsigned char* sResponse, unsigned int nLength)
+int StepMotorCtrl::CheckStatus(unsigned char* sResponse, unsigned int nLength)
 {
 	std::ostringstream osMessage;
-	unsigned char buf[9];
-	XMTE517::Instance()->PackageCommand("ABC",NULL,buf);
-	int ret = WriteCommand(buf, 9);
+	unsigned char buf[8];
+
+	StepMotor::Instance()->PackageCommand(QueryStage,NULL,buf);
+	ret = WriteCommand(buf, 8);
 	if (ret != DEVICE_OK) return ret;
-
-	XMTE517::Instance()->PackageCommand("WEA",NULL,buf);
-	ret = WriteCommand(buf, 9);
-	if (ret != DEVICE_OK) return ret;
-
-	XMTE517::Instance()->PackageCommand("TQL",NULL,buf);
-	ret = WriteCommand(buf, 9);
-	if (ret != DEVICE_OK) return ret;
-
-	XMTE517::Instance()->PackageCommand("RAA",NULL,buf);
-	ret = WriteCommand(buf, 9);
-	if (ret != DEVICE_OK) return ret;
-
-
 
 	memset(sResponse, 0, nLength);
-	ret = ReadMessage(sResponse, 7);
+	ret = ReadMessage(sResponse, 10);
 	if (ret != DEVICE_OK) return ret;
 
 	return DEVICE_OK;
@@ -168,10 +155,10 @@ int XMTE517Ctrl::CheckStatus(unsigned char* sResponse, unsigned int nLength)
 //
 // shutdown the controller
 //
-int XMTE517Ctrl::Shutdown()
+int StepMotorCtrl::Shutdown()
 { 
 	m_yInitialized = false;
-	XMTE517::Instance()->SetDeviceAvailable(false);
+	StepMotor::Instance()->SetDeviceAvailable(false);
 	return DEVICE_OK;
 }
 
@@ -180,7 +167,7 @@ int XMTE517Ctrl::Shutdown()
 //
 // check for valid communication port
 //
-int XMTE517Ctrl::OnPort(MM::PropertyBase* pProp, MM::ActionType pAct)
+int StepMotorCtrl::OnPort(MM::PropertyBase* pProp, MM::ActionType pAct)
 {
 	std::ostringstream osMessage;
 
@@ -188,16 +175,16 @@ int XMTE517Ctrl::OnPort(MM::PropertyBase* pProp, MM::ActionType pAct)
 
 	if (pAct == MM::BeforeGet)
 	{
-		pProp->Set(XMTE517::Instance()->GetSerialPort().c_str());
+		pProp->Set(StepMotor::Instance()->GetSerialPort().c_str());
 	}
 	else if (pAct == MM::AfterSet)
 	{
 		if (m_yInitialized)
 		{
-			pProp->Set(XMTE517::Instance()->GetSerialPort().c_str());
+			pProp->Set(StepMotor::Instance()->GetSerialPort().c_str());
 			return DEVICE_INVALID_INPUT_PARAM;
 		}
-		pProp->Get(XMTE517::Instance()->GetSerialPort());
+		pProp->Get(StepMotor::Instance()->GetSerialPort());
 	}
 	return DEVICE_OK;
 }
@@ -205,9 +192,9 @@ int XMTE517Ctrl::OnPort(MM::PropertyBase* pProp, MM::ActionType pAct)
 //
 // get/set debug log flag
 //
-int XMTE517Ctrl::OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType pAct)
+int StepMotorCtrl::OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType pAct)
 {
-	long lDebugLogFlag = (long)XMTE517::Instance()->GetDebugLogFlag();
+	long lDebugLogFlag = (long)StepMotor::Instance()->GetDebugLogFlag();
 	std::ostringstream osMessage;
 
 	osMessage.str("");
@@ -219,7 +206,7 @@ int XMTE517Ctrl::OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType pAct)
 	else if (pAct == MM::AfterSet)
 	{
 		pProp->Get(lDebugLogFlag);
-		XMTE517::Instance()->SetDebugLogFlag((int)lDebugLogFlag);
+		StepMotor::Instance()->SetDebugLogFlag((int)lDebugLogFlag);
 	}
 
 	return DEVICE_OK;
@@ -229,10 +216,10 @@ int XMTE517Ctrl::OnDebugLogFlag(MM::PropertyBase* pProp, MM::ActionType pAct)
 /*
  * Set/Get Timeout Interval
  */
-int XMTE517Ctrl::OnTimeoutInterval(MM::PropertyBase* pProp, MM::ActionType eAct)
+int StepMotorCtrl::OnTimeoutInterval(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
 	std::ostringstream osMessage;
-	long lTimeoutInterval = (long)XMTE517::Instance()->GetTimeoutInterval();
+	long lTimeoutInterval = (long)StepMotor::Instance()->GetTimeoutInterval();
 	int ret = DEVICE_OK;
 
 	osMessage.str("");
@@ -244,7 +231,7 @@ int XMTE517Ctrl::OnTimeoutInterval(MM::PropertyBase* pProp, MM::ActionType eAct)
 	else if (eAct == MM::AfterSet)
 	{
 		pProp->Get(lTimeoutInterval);
-		XMTE517::Instance()->SetTimeoutInterval((int)lTimeoutInterval);
+		StepMotor::Instance()->SetTimeoutInterval((int)lTimeoutInterval);
 	}
 
 	if (ret != DEVICE_OK) return ret;
@@ -254,10 +241,10 @@ int XMTE517Ctrl::OnTimeoutInterval(MM::PropertyBase* pProp, MM::ActionType eAct)
 /*
  * Set/Get Timeout Trys
  */
-int XMTE517Ctrl::OnTimeoutTrys(MM::PropertyBase* pProp, MM::ActionType eAct)
+int StepMotorCtrl::OnTimeoutTrys(MM::PropertyBase* pProp, MM::ActionType eAct)
 {
 	std::ostringstream osMessage;
-	long lTimeoutTrys = (long)XMTE517::Instance()->GetTimeoutTrys();
+	long lTimeoutTrys = (long)StepMotor::Instance()->GetTimeoutTrys();
 	int ret = DEVICE_OK;
 
 	osMessage.str("");
@@ -269,7 +256,7 @@ int XMTE517Ctrl::OnTimeoutTrys(MM::PropertyBase* pProp, MM::ActionType eAct)
 	else if (eAct == MM::AfterSet)
 	{
 		pProp->Get(lTimeoutTrys);
-		XMTE517::Instance()->SetTimeoutTrys((int)lTimeoutTrys);
+		StepMotor::Instance()->SetTimeoutTrys((int)lTimeoutTrys);
 	}
 
 	if (ret != DEVICE_OK) return ret;
@@ -283,15 +270,15 @@ int XMTE517Ctrl::OnTimeoutTrys(MM::PropertyBase* pProp, MM::ActionType eAct)
 //
 // Write a coomand to serial port
 //
-int XMTE517Ctrl::WriteCommand(unsigned char* sCommand, int nLength)
+int StepMotorCtrl::WriteCommand(unsigned char* sCommand, int nLength)
 {
 	int ret = DEVICE_OK;
 	ostringstream osMessage;
 
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage.str("");
-		osMessage << "<XMTE517Ctrl::WriteCommand> (Command=";
+		osMessage << "<StepMotorCtrl::WriteCommand> (Command=";
 		for (int n=0; n < nLength; n++)
 		{
 			osMessage << "[" << (char)sCommand[n] << "|" << (byte)sCommand[n] << "]";
@@ -302,7 +289,7 @@ int XMTE517Ctrl::WriteCommand(unsigned char* sCommand, int nLength)
 
 	for (int nBytes = 0; nBytes < nLength && ret == DEVICE_OK; nBytes++)
 	{
-		ret = WriteToComPort(XMTE517::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
+		ret = WriteToComPort(StepMotor::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
 		CDeviceUtils::SleepMs(1);
 	}
 	Sleep(90);
@@ -314,7 +301,7 @@ int XMTE517Ctrl::WriteCommand(unsigned char* sCommand, int nLength)
 //
 // Read a message from serial port
 //
-int XMTE517Ctrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
+int StepMotorCtrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 {
 	// block/wait for acknowledge, or until we time out;
 	unsigned int nLength = 256;
@@ -333,12 +320,12 @@ int XMTE517Ctrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		unsigned long lByteRead;
 
 		const MM::Device* pDevice = this;
-		ret = (GetCoreCallback())->ReadFromSerial(pDevice, XMTE517::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nLength-lRead, lByteRead);
+		ret = (GetCoreCallback())->ReadFromSerial(pDevice, StepMotor::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nLength-lRead, lByteRead);
 
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage.str("");
-			osMessage << "<XMTE517Ctrl::ReadMessage> (ReadFromSerial = (" << nBytesRead << "," << lRead << "," << lByteRead << ")::<";
+			osMessage << "<StepMotorCtrl::ReadMessage> (ReadFromSerial = (" << nBytesRead << "," << lRead << "," << lByteRead << ")::<";
 
 			for (unsigned long lIndx=0; lIndx < lByteRead; lIndx++)
 			{
@@ -367,31 +354,31 @@ int XMTE517Ctrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 	}
 
 
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage.str("");
-		osMessage << "<XMTE517Ctrl::ReadMessage> (ReadFromSerial = <";
+		osMessage << "<StepMotorCtrl::ReadMessage> (ReadFromSerial = <";
 	}
 
 	for (unsigned long lIndx=0; lIndx < (unsigned long)nBytesRead; lIndx++)
 	{
 		sResponse[lIndx] = sAnswer[lIndx];
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 		{
-			XMTE517::Instance()->Byte2Hex(sResponse[lIndx], sHex);
+			StepMotor::Instance()->Byte2Hex(sResponse[lIndx], sHex);
 			osMessage << "[" << sHex  << ",";
-			XMTE517::Instance()->Byte2Hex(sAnswer[lIndx], sHex);
+			StepMotor::Instance()->Byte2Hex(sAnswer[lIndx], sHex);
 			osMessage << sHex  << "]";
 		}
 	}
 
-	if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 	{
 		osMessage << ">";
 		this->LogMessage(osMessage.str().c_str());
 	}
 	if(yTimeout){
-		if (XMTE517::Instance()->GetDebugLogFlag() > 1)
+		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage << "Timeout ok";
 			this->LogMessage(osMessage.str().c_str());

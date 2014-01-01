@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////////////
-// FILE:          XMTE517ZStage.h 
+// FILE:          StepMotorZStage.h 
 // PROJECT:       Micro-Manager
 // SUBSYSTEM:     DeviceAdapters
 //-----------------------------------------------------------------------------
@@ -22,15 +22,15 @@
 // AUTHOR:        Lon Chu (lonchu@yahoo.com) created on June 2011
 //
 
-#ifndef _XMTE517ZSTAGE_H_
-#define _XMTE517ZSTAGE_H_
+#ifndef _StepMotorZSTAGE_H_
+#define _StepMotorZSTAGE_H_
 
 #include "../../MMDevice/MMDevice.h"
 #include "../../MMDevice/DeviceBase.h"
-#include "XMTE517.h"
+#include "StepMotor.h"
 
 //
-// define Z stage class that is atached to the XMTE517 controller
+// define Z stage class that is atached to the StepMotor controller
 //
 class ZStage : public CStageBase<ZStage>
 {
@@ -48,7 +48,7 @@ public:
     // Get Z stage device name
     void GetName(char* pszName) const;
 
-    // Busy is not aplicable for XMTE517
+    // Busy is not aplicable for StepMotor
     // It will return false always
     bool Busy() { return false; }
 
@@ -76,7 +76,7 @@ public:
 
     // Get limits of Zstage
     // This function is not applicable for
-    // XMTE517, the function will return DEVICE_OK
+    // StepMotor, the function will return DEVICE_OK
     // insttead.
     int GetLimits(double& /*min*/, double& /*max*/) { return DEVICE_OK/*DEVICE_UNSUPPORTED_COMMAND*/; }
 
@@ -111,4 +111,4 @@ private:
     //double    m_dOriginZ;             // Z stage origin
 };
 
-#endif  // _XMTE517ZSTAGE_H_
+#endif  // _StepMotorZSTAGE_H_
