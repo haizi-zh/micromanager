@@ -2,18 +2,24 @@
 #include "1602LCDDriver.h" 
 #include "StepMotorDriver.h" 
 
+	unsigned char ch;
+	unsigned char rec[8];
+	unsigned char i=0;
+	bool databegin = 0;
+
 main()
 {	
+	 
 	TCON =0x08; 
 	EX1 =  1;
 	LCD_Initial();
 	P1 = 0xff;
 	LCD_Printf1("Device Init ok!");
-	refLCD(  );
+	
 	InitSerial(); //Serial
 	InitDevice(); //StepMotor
 	SendStr("Device Init ok\r\n");
-
+	refLCD(  );
 	while(1){}
 }
 
@@ -22,10 +28,7 @@ main()
 ------------------------------------------------*/
 void serial () interrupt 4
 {
-	unsigned char ch;
-	unsigned char rec[9];
-	static unsigned char i=0;
-	static unsigned char databegin = 0;
+
 	if(RI) {	
 		RI=0;
 		ch=SBUF;
@@ -36,8 +39,11 @@ void serial () interrupt 4
 		if(databegin ==1){
 			rec[i] = ch;
 			i++;	
-			if(i==6){
+			if(i==7){ 
+			EA =  0;
+			rec[7] = '\0';
 				parseCMD(rec);
+				EA =  1;
 				databegin = 0;
 				i=0;
 			}

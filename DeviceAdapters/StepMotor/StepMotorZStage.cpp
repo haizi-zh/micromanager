@@ -48,6 +48,28 @@
 using namespace std;
 
 
+//error code
+
+#define C51DEVICE_OK 0x01 +'I'-1
+#define C51DEVICE_BUSY 0x02 +'J'-2
+#define C51OUT_OF_LOW_LIMIT 0x03 +'K'-3
+#define C51OUT_OF_HIGH_LIMIT 0x04 +'L'-4
+#define C51CHECK_SUM_ERROR 0x05  +'M'-5
+#define C51BAD_COMMAND	    0x06 +'N'-6
+
+//command string
+#define SetZeroPosition 0x07 +'Z'-7
+#define MoveUp	        0x08 +'U'-8
+#define MoveDown	    0x09 +'D'-9
+#define SetRunningDelay 0x0A +'R'-10
+#define SetStartDelay 	0x0B +'S'-11
+#define FindLimit		0x0C +'L'-12
+#define ReleasePower	0x0D +'P'-13
+#define QueryPosition   0x0E +'Q'-14
+#define QueryStage   	0x0F +'E'-15
+#define SetPosition	    0x10 + 'T' - 16
+#define SetUM2Step	    0x11 + 'M'-17
+
 ///////////////////////////////////////////////////////////////////////////////
 // Z - Stage
 ///////////////////////////////////////////////////////////////////////////////
@@ -173,11 +195,11 @@ int ZStage::SetMotionMode(long lMotionMode)//1 high else low
 
 	unsigned char buf[9];
 	if (lMotionMode == 1)
-		StepMotor::Instance()->PackageCommand("QHH",NULL,buf);
+		StepMotor::Instance()->PackageCommand(MoveUp,NULL,buf);
 	else
-		StepMotor::Instance()->PackageCommand("QHL",NULL,buf);
+		StepMotor::Instance()->PackageCommand(MoveDown,NULL,buf);
 
-	ret = WriteCommand(buf, 9);
+	ret = WriteCommand(buf, 7);
 	if (ret != DEVICE_OK) return ret;
 
 	StepMotor::Instance()->SetMotionMode(lMotionMode);
@@ -211,9 +233,9 @@ int ZStage::GetPositionUm(double& dZPosUm)
 	// get current position
 	unsigned char buf[9];
 	StepMotor::Instance()->PackageCommand(QueryPosition,NULL,buf);
-	int ret = WriteCommand(buf, 9);
+	int ret = WriteCommand(buf, 7);
 	if (ret != DEVICE_OK) return ret;
-
+	Sleep(200);
 	unsigned char sResponse[64];
 	memset(sResponse, 0, 64);
 	ret = ReadMessage(sResponse, 7);
@@ -221,7 +243,7 @@ int ZStage::GetPositionUm(double& dZPosUm)
 
 	ostringstream osMessage;
 	char sCommStat[30];
-	dZPosUm  =  StepMotor::Instance()->RawToFloat((byte *)sResponse,2);
+	dZPosUm  =  StepMotor::Instance()->RawToFloat((byte *)sResponse,1);
 
 	StepMotor::Instance()->SetPositionZ(dZPosUm);
 	return DEVICE_OK;
@@ -233,23 +255,6 @@ int ZStage::GetPositionUm(double& dZPosUm)
 int ZStage::SetRelativePositionUm(double dZPosUm)
 {
 	int ret = DEVICE_OK;
-	ostringstream osMessage;
-
-//	double curr =0;
-//	double delta = 0;
-//	double lStartTime = GetClockTicksUs();
-//	for(int i =0;i<20;i++){
-//		double tar = 5+i*0.1;
-//		SetPositionUm(tar);
-//		GetPositionUm(curr);
-//		delta = curr - tar;
-//		osMessage<<"(["<<i<<"]"<<tar<<"----"<<curr<<"----"<<delta<<")--";
-//
-//	}
-//	osMessage<<"time"<<GetClockTicksUs() -lStartTime ;
-//	this->LogMessage(osMessage.str().c_str());
-//	return ret;
-
 	// convert um to steps
 	double currPos =0;
 	GetPositionUm(currPos);
@@ -259,6 +264,8 @@ int ZStage::SetRelativePositionUm(double dZPosUm)
 	ret = SetPositionUm(target);
 
 	if (ret != DEVICE_OK) return ret;
+	ret = UpdateStatus();
+		if (ret != DEVICE_OK) return ret;
 	return DEVICE_OK;
 }
 
@@ -275,15 +282,16 @@ int ZStage::SetPositionUm(double dZPosUm)
 	ret = DEVICE_OK;
 	byte rawData[4];
 	byte buf[10];
-	StepMotor::Instance()->FloatToRaw((float)dZPosUm,rawData);
+	StepMotor::Instance()->LongToRaw((unsigned long)dZPosUm,rawData);
 	byte cmd[3];
-	cmd[0] = 'T';
-	cmd[1] = (char)0;
-	cmd[2] = 'S';
-	StepMotor::Instance()->PackageCommand((const char*)cmd,rawData,buf);
-	ret = WriteCommand(buf, 9);
+	StepMotor::Instance()->PackageCommand(SetPosition,rawData,buf);
+	ret = WriteCommand(buf, 7);
 	if (ret != DEVICE_OK)  return ret;
-
+	Sleep(200);
+		unsigned char sResponse[64];
+		memset(sResponse, 0, 64);
+		ret = ReadMessage(sResponse, 7);
+		if (ret != DEVICE_OK) return ret;
 	StepMotor::Instance()->SetPositionZ(dZPosUm);
 
 	double dPosZ = 0;
@@ -382,7 +390,7 @@ int ZStage::WriteCommand(unsigned char* sCommand, int nLength)
 //
 int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 {
-	Sleep(90);
+
 	// block/wait for acknowledge, or until we time out;
 	unsigned int nLength = 256;
 	unsigned char sAnswer[256];
@@ -400,17 +408,28 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 
 		const MM::Device* pDevice = this;
 		ret = (GetCoreCallback())->ReadFromSerial(pDevice, StepMotor::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nLength-lRead, lByteRead);
+		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
+				{
+					osMessage.str("");
+					osMessage << "<StepMotorCtrl::ReadMessage> (ReadFromSerial = (" << nBytesRead << "," << lRead << "," << lByteRead << ")::<";
 
+					for (unsigned long lIndx=0; lIndx < lByteRead; lIndx++)
+					{
+						osMessage << "[" <<(char)sAnswer[lRead+lIndx]<<"|"<< (int)sAnswer[lRead+lIndx] << "]";
+					}
+					osMessage << ">";
+					this->LogMessage(osMessage.str().c_str());
+				}
 
 		// concade new string
 		lRead += lByteRead;
 
 		if (lRead >= 2)
 		{
-			yRead = (sAnswer[0] == '@') ;
+			yRead = (sAnswer[0] == '@') && sAnswer[lRead-1]=='\r';
 		}
 
-		yRead = yRead || (lRead >= (unsigned long)nBytesRead);
+		//yRead = yRead || (lRead >= (unsigned long)nBytesRead);
 
 		if (yRead) break;
 
@@ -425,28 +444,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		sResponse[lIndx] = sAnswer[lIndx];
 	}
 
-	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage.str("");
-		osMessage << "<ZStage::ReadMessage> (ReadFromSerial =  <";
 
-		for (unsigned long lIndx=0; lIndx < nBytesRead; lIndx++)
-		{
-			if(sAnswer[lIndx] == 0)
-				sAnswer[lIndx] = '#';
-			osMessage << "[" << (char)sAnswer[lIndx]<<"|"<<(int)sAnswer[lIndx]  << "]";
-		}
-		osMessage << ">";
-		this->LogMessage(osMessage.str().c_str());
-	}
-	if(yTimeout){
-		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "sss Timeout ok";
-			this->LogMessage(osMessage.str().c_str());
-		}
-		return 3;
-	}
 	return DEVICE_OK;
 }
 

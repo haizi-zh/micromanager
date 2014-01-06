@@ -28,6 +28,28 @@
 using namespace std;
 
 
+//error code
+
+#define C51DEVICE_OK 0x01 +'I'-1
+#define C51DEVICE_BUSY 0x02 +'J'-2
+#define C51OUT_OF_LOW_LIMIT 0x03 +'K'-3
+#define C51OUT_OF_HIGH_LIMIT 0x04 +'L'-4
+#define C51CHECK_SUM_ERROR 0x05  +'M'-5
+#define C51BAD_COMMAND	    0x06 +'N'-6
+
+//command string
+#define SetZeroPosition 0x07 +'Z'-7
+#define MoveUp	        0x08 +'U'-8
+#define MoveDown	    0x09 +'D'-9
+#define SetRunningDelay 0x0A +'R'-10
+#define SetStartDelay 	0x0B +'S'-11
+#define FindLimit		0x0C +'L'-12
+#define ReleasePower	0x0D +'P'-13
+#define QueryPosition   0x0E +'Q'-14
+#define QueryStage   	0x0F +'E'-15
+#define SetPosition	    0x10 + 'T' - 16
+#define SetUM2Step	    0x11 + 'M'-17
+
 //////////////////////////////////////////////////////
 // StepMotor Controller
 //////////////////////////////////////////////////////
@@ -140,11 +162,11 @@ int StepMotorCtrl::CheckStatus(unsigned char* sResponse, unsigned int nLength)
 {
 	std::ostringstream osMessage;
 	unsigned char buf[8];
-
+	int ret = DEVICE_OK ;
 	StepMotor::Instance()->PackageCommand(QueryStage,NULL,buf);
 	ret = WriteCommand(buf, 8);
 	if (ret != DEVICE_OK) return ret;
-
+	Sleep(800);
 	memset(sResponse, 0, nLength);
 	ret = ReadMessage(sResponse, 10);
 	if (ret != DEVICE_OK) return ret;
@@ -292,7 +314,7 @@ int StepMotorCtrl::WriteCommand(unsigned char* sCommand, int nLength)
 		ret = WriteToComPort(StepMotor::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
 		CDeviceUtils::SleepMs(1);
 	}
-	Sleep(90);
+
 	if (ret != DEVICE_OK) return ret;
 
 	return DEVICE_OK;
@@ -329,7 +351,7 @@ int StepMotorCtrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 
 			for (unsigned long lIndx=0; lIndx < lByteRead; lIndx++)
 			{
-				osMessage << "[" <<(char)sAnswer[lRead+lIndx]<<"|"<< (byte)sAnswer[lRead+lIndx] << "]";
+				osMessage << "[" <<(char)sAnswer[lRead+lIndx]<<"|"<< (int)sAnswer[lRead+lIndx] << "]";
 			}
 			osMessage << ">";
 			this->LogMessage(osMessage.str().c_str());
@@ -353,37 +375,5 @@ int StepMotorCtrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 
 	}
 
-
-	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage.str("");
-		osMessage << "<StepMotorCtrl::ReadMessage> (ReadFromSerial = <";
-	}
-
-	for (unsigned long lIndx=0; lIndx < (unsigned long)nBytesRead; lIndx++)
-	{
-		sResponse[lIndx] = sAnswer[lIndx];
-		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-		{
-			StepMotor::Instance()->Byte2Hex(sResponse[lIndx], sHex);
-			osMessage << "[" << sHex  << ",";
-			StepMotor::Instance()->Byte2Hex(sAnswer[lIndx], sHex);
-			osMessage << sHex  << "]";
-		}
-	}
-
-	if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-	{
-		osMessage << ">";
-		this->LogMessage(osMessage.str().c_str());
-	}
-	if(yTimeout){
-		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage << "Timeout ok";
-			this->LogMessage(osMessage.str().c_str());
-		}
-		return 3;
-	}
 	return DEVICE_OK;
 }

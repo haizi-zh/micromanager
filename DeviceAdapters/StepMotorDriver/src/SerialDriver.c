@@ -26,7 +26,9 @@ void SendByte(unsigned char dat)
  ************************************************************/
 void SendStr(unsigned char *s)
 {
-	s--;
+
+	SendByte(' ');
+	SendByte('@');
 	while(*s!='\0')
 	{
 		SendByte(*s);

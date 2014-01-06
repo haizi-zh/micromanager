@@ -13,7 +13,7 @@ uchar	runningdelay = 0;
 float   currPosition = 0;//nm
 float	step2nm = 0.09969;//50 XIFEN
 bit	    isSetZero = 0;	
-uchar str[20];
+uchar str[12];
 uchar ret;
 
 
@@ -29,10 +29,10 @@ void debug(char rec[])
 	case SetZeroPosition:
 	break;
 	case MoveUp:
-	rec[5] = 0x0A;
+	rec[5] = 0xFF;
 	break;
 	case MoveDown:
-	rec[5] = 0x0f;
+	rec[5] = 0xFF;
 	break;
 	case SetRunningDelay:
 	rec[5] = 0x00;
@@ -71,14 +71,15 @@ bool checksum(uchar rec[])//rec[] = @ C XXXX C
  
 uchar checksumCalc(uchar rec[])
 {
-	uchar checksum = rec[0];
-	uchar i=1;
-	for (i; i < 6; i++)
-	{
-		checksum = checksum ^ rec[i];
-	}
-	return checksum;
-} 
+	//uchar checksum = rec[0];
+//	uchar i=1;
+	//for (i; i < 6; i++)
+	//{
+	//	checksum = checksum ^ rec[i];
+	//} 
+	return ((uchar)rec[0])^((uchar)rec[1])^((uchar)rec[2])^((uchar)rec[3])^((uchar)rec[4])^((uchar)rec[5]);
+}
+ 
 void parseCMD(uchar rec[])
 {	
 
@@ -86,7 +87,8 @@ void parseCMD(uchar rec[])
 	char cmd = 0;
 	ret = DEVICE_OK;
 	debug(rec);
-	if(checksum(rec) == 0){
+	 LCD_Printf1(rec);
+	if( 0 == checksum(rec) ){
 		ret = CHECK_SUM_ERROR;
 	}else{
 		rec++;//skip @
@@ -98,15 +100,19 @@ void parseCMD(uchar rec[])
 		case QueryPosition:
 			ltoa1(currPosition,str);	
 			SendStr(str);
-			SendByte('E');
 			return;
 			break;
 		case SetPosition:
-			ret = SetStagePosition(recData);
+			ltoa(recData,str);
+			LCD_Printf1(strcat(str,"-S004"));
+			//recData = currPosition+50;
+	 	    //ret = SetStagePosition(recData);
+			currPosition += 10;
+			rec = DEVICE_OK;
 			break;
 
-		case QueryStage:
-			SendStr("@DEADNIGHT");
+		case QueryStage:	
+			SendStr("DEADNIGHT");
 			return;
 			break;
 		case SetUM2Step:
@@ -118,10 +124,14 @@ void parseCMD(uchar rec[])
 			break;
 
 		case MoveUp:
+			ltoa(recData,str);
+			LCD_Printf1(strcat(str,"-MU"));
 			ret = Move(recData,0);
 			break;
 
 		case MoveDown:
+			ltoa(recData,str);
+			LCD_Printf1(strcat(str,"-MD"));
 			ret = Move(recData,1);
 			break;
 
@@ -145,14 +155,15 @@ void parseCMD(uchar rec[])
 			break;
 		}
 	}
-	if(ret != DEVICE_OK){
-		//ltoa(ret,str);
-		str[0] = ret;
-		str[1] = '\0';
-		LCD_Printf1(strcat(str,"--ERROR!"));
+	str[0] = ret;
+	str[1] = '\0';
 		SendStr(str);
+	if(ret != DEVICE_OK){		
+	LCD_Printf1(strcat(str,"--ERROR!"));		
 	}
+
 	refLCD();
+	
 }
 /************************************************************
 
@@ -160,6 +171,8 @@ void parseCMD(uchar rec[])
 bool InitDevice()
 {
 	isBusy = false;
+	currPosition = 15624;
+//	FindUpLimit(1);
 	return true;
 }
 uchar SetStagePosition(ulong pos)
@@ -201,9 +214,9 @@ uchar FindUpLimit(bit flag)
 			ManualMove(0,1);
 		}
 		if(_highLimitPort== 0){
-			currPosition = 0;
+			currPosition = 521557;
 			isSetZero = 1;
-			ltoa(0,str);
+			ltoa(currPosition,str);
 			LCD_Printf2(str);
 		}
 	}else{
@@ -212,9 +225,9 @@ uchar FindUpLimit(bit flag)
 			ManualMove(1,1);
 		}
 		if(_lowLimitPort== 0){
-			currPosition = 521557;
+			currPosition = 0;
 			isSetZero = 1;
-			ltoa(521557,str);
+			ltoa(currPosition,str);
 			LCD_Printf2(str);
 		}
 	}
@@ -228,9 +241,9 @@ void ManualMove(bit deriction,bit flag)//deriction 1 up,0 down,flag 1 fast 0 low
 {
 	uchar _interval = 0;
 	if(deriction ==0) 
-		currPosition -= step2nm;
-	else
 		currPosition += step2nm;
+	else
+		currPosition -= step2nm;
 
 	if(flag ==1)
 		_interval = runningdelay;
@@ -300,20 +313,24 @@ uchar SendPluse(ulong step)
 	}
 
 	if(_directionPort == 0){
-		currPosition -= acturalStep*step2nm;
-	}else{
 		currPosition += acturalStep*step2nm;
+	}else{
+		currPosition -= acturalStep*step2nm;
 	}
-	isBusy =0;
+	ltoa(currPosition,str);
+	LCD_Printf1("ZPos:[um]");
+
+	 	isBusy =0;
 	if(_lowLimitPort ==0)
 		return OUT_OF_LOW_LIMIT;
 	if(_highLimitPort ==0)
 		return OUT_OF_HIGH_LIMIT;
+
 	return DEVICE_OK;
 }
 bool checkBoundary()
 {
-	return (_directionPort  ==  1 &&_lowLimitPort == 1) || (_directionPort  ==  0 &&_highLimitPort== 1);
+	return ( currPosition<0 && _directionPort  ==  1 &&_lowLimitPort == 1) || (_directionPort  ==  0 &&_highLimitPort== 1);
 }
 
 /************************************************************

@@ -29,30 +29,9 @@
 #define _StepMotor_H_
 
 
-//error code
-
-#define C51DEVICE_OK 0x01 +'I'-1
-#define C51DEVICE_BUSY 0x02 +'J'-2
-#define C51OUT_OF_LOW_LIMIT 0x03 +'K'-3
-#define C51OUT_OF_HIGH_LIMIT 0x04 +'L'-4
-#define C51CHECK_SUM_ERROR 0x05  +'M'-5
-#define C51BAD_COMMAND	    0x06 +'N'-6
-
-//command string
-#define SetZeroPosition 0x07 +'Z'-7
-#define MoveUp	        0x08 +'U'-8
-#define MoveDown	    0x09 +'D'-9
-#define SetRunningDelay 0x0A +'R'-10
-#define SetStartDelay 	0x0B +'S'-11
-#define FindLimit		0x0C +'L'-12
-#define ReleasePower	0x0D +'P'-13
-#define QueryPosition   0x0E +'Q'-14
-#define QueryStage   	0x0F +'E'-15
-#define SetPosition	    0x10 + 'T' - 16
-#define SetUM2Step	    0x11 + 'M'-17
-
 #include <string>
 #include <map>	
+
 
 
 
@@ -144,6 +123,7 @@ public:
 
     static float RawToFloat(byte* rawData,int offset);
     static void  FloatToRaw(float value,byte* rawData);
+    static void  LongToRaw(unsigned long value,byte* rawData);
     static void PackageCommand(const byte cmd,byte* data,byte * buf);
     static byte checkSumCalc(byte* data,int offset,int count);
 protected:
