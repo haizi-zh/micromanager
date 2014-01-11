@@ -118,7 +118,7 @@ int				StepMotor::m_nDebugLogFlag		= 2;			// StepMotor debug log flag
 StepMotor*        StepMotor::m_pStepMotor             = NULL;         // single copy StepMotor
 int             StepMotor::m_nMotionMode        = 0;            // motor motion mode
 int             StepMotor::m_nTimeoutInterval   = 500000;        // timeout interval
-int             StepMotor::m_nTimeoutTrys       = 5;            // timeout trys
+int             StepMotor::m_nTimeoutTrys       = 50;            // timeout trys
 double          StepMotor::m_dPositionZ         = 0.00;         // Z Position
 std::string StepMotor::m_sPort;                                 // serial port symbols
 
@@ -231,18 +231,17 @@ void StepMotor::PackageCommand(const byte cmd,byte* data,byte* buf)
 //
 float  StepMotor::RawToFloat(byte* rawData,int offset)
 {
-	return (float)atol((const char*)(rawData+offset));
-	//	if (rawData[offset + 0] >= 0x80)
-	//	{
-	//		// Negative number
-	//		return -(float)((rawData[offset + 0] - 0x80) * 256 + rawData[offset + 1]
-	//		                                                             + (rawData[offset + 2] * 256 + rawData[offset + 3]) * 0.001);
-	//	}
-	//	else
-	//	{
-	//		return (float)(rawData[offset + 0] * 256 + rawData[offset + 1]
-	//		                                                   + (rawData[offset + 2] * 256 + rawData[offset + 3]) * 0.001);
-	//	}
+		if (rawData[offset + 0] >= 0x80)
+		{
+			// Negative number
+			return -(float)((rawData[offset + 0] - 0x80) * 256 + rawData[offset + 1]
+			                                                             + (rawData[offset + 2] * 256 + rawData[offset + 3]) * 0.001);
+		}
+		else
+		{
+			return (float)(rawData[offset + 0] * 256 + rawData[offset + 1]
+			                                                   + (rawData[offset + 2] * 256 + rawData[offset + 3]) * 0.001);
+		}
 }
 //
 //Convert target position to XMT format
@@ -276,13 +275,17 @@ void StepMotor::FloatToRaw(float val,byte* rawData)
 }
 void  StepMotor::LongToRaw(unsigned long value,byte* rawData)
 {
-	rawData[3] = value % 255;
-	value /= value;
-	rawData[2] = value % 255;
-	value /= value;
-	rawData[1] = value % 255;
-	value /= value;
-	rawData[0] = value % 255;
+	rawData[3] = value % 256;
+	value /= 256;
+	rawData[2] = value % 256;
+	value /= 256;
+	rawData[1] = value % 256;
+	value /= 256;
+	rawData[0] = value % 256;
+}
+long  StepMotor::RawToLong(byte* rawData,int offset)
+{
+	return (long)atol((const char*)(rawData+offset));
 }
 //
 //checksum generator

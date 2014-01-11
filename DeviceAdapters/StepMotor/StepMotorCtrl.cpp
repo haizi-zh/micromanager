@@ -308,7 +308,12 @@ int StepMotorCtrl::WriteCommand(unsigned char* sCommand, int nLength)
 		osMessage << ")";
 		this->LogMessage(osMessage.str().c_str());
 	}
-
+	const unsigned char em = 'X';
+	for (int nBytes = 0; nBytes < 10 && ret == DEVICE_OK; nBytes++)
+		{
+			ret = WriteToComPort(StepMotor::Instance()->GetSerialPort().c_str(), &em, 1);
+			CDeviceUtils::SleepMs(1);
+		}
 	for (int nBytes = 0; nBytes < nLength && ret == DEVICE_OK; nBytes++)
 	{
 		ret = WriteToComPort(StepMotor::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
@@ -374,6 +379,6 @@ int StepMotorCtrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		if (!yTimeout) CDeviceUtils::SleepMs(3);
 
 	}
-
+	if (yTimeout) return DEVICE_SERIAL_TIMEOUT;
 	return DEVICE_OK;
 }

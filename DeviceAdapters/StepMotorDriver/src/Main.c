@@ -40,12 +40,10 @@ void serial () interrupt 4
 			rec[i] = ch;
 			i++;	
 			if(i==7){ 
-			EA =  0;
+			databegin = 0;
+			i=0;
 			rec[7] = '\0';
-				parseCMD(rec);
-				EA =  1;
-				databegin = 0;
-				i=0;
+			parseCMD(rec);				
 			}
 		}
 		TI=0;

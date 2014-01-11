@@ -11,7 +11,7 @@ bool isBusy = false;
 uchar	startdelay = 16;
 uchar	runningdelay = 0; 
 float   currPosition = 0;//nm
-float	step2nm = 0.09969;//50 XIFEN
+float	step2Um = 0.09969;//50 XIFEN
 bit	    isSetZero = 0;	
 uchar str[12];
 uchar ret;
@@ -86,8 +86,7 @@ void parseCMD(uchar rec[])
 	ulong recData = 0;
 	char cmd = 0;
 	ret = DEVICE_OK;
-	debug(rec);
-	 LCD_Printf1(rec);
+	//debug(rec);
 	if( 0 == checksum(rec) ){
 		ret = CHECK_SUM_ERROR;
 	}else{
@@ -104,10 +103,8 @@ void parseCMD(uchar rec[])
 			break;
 		case SetPosition:
 			ltoa(recData,str);
-			LCD_Printf1(strcat(str,"-S004"));
-			//recData = currPosition+50;
-	 	    //ret = SetStagePosition(recData);
-			currPosition += 10;
+			LCD_Printf1(strcat(str,"-SP"));
+	 	    ret = SetStagePosition(recData);
 			rec = DEVICE_OK;
 			break;
 
@@ -116,7 +113,9 @@ void parseCMD(uchar rec[])
 			return;
 			break;
 		case SetUM2Step:
-			step2nm = *(float *)rec;
+			step2Um = *(float *)rec;
+			ltoa(step2Um*1000,str);
+			LCD_Printf1(strcat(str,"-ST"));
 			rec = DEVICE_OK;
 			break;	  
 		case SetZeroPosition:
@@ -157,7 +156,7 @@ void parseCMD(uchar rec[])
 	}
 	str[0] = ret;
 	str[1] = '\0';
-		SendStr(str);
+	SendStr(str);
 	if(ret != DEVICE_OK){		
 	LCD_Printf1(strcat(str,"--ERROR!"));		
 	}
@@ -171,16 +170,16 @@ void parseCMD(uchar rec[])
 bool InitDevice()
 {
 	isBusy = false;
-	currPosition = 15624;
+	currPosition = 500;
 //	FindUpLimit(1);
 	return true;
 }
 uchar SetStagePosition(ulong pos)
 {
 	if(pos > currPosition){
-	  Move((pos - currPosition)/step2nm,1);
+	  Move((pos - currPosition)/step2Um,0);
 	}else{
-	  Move((currPosition - pos )/step2nm,1);
+	  Move((currPosition - pos )/step2Um,1);
 	}
 	return DEVICE_OK;
 }
@@ -241,9 +240,9 @@ void ManualMove(bit deriction,bit flag)//deriction 1 up,0 down,flag 1 fast 0 low
 {
 	uchar _interval = 0;
 	if(deriction ==0) 
-		currPosition += step2nm;
+		currPosition += step2Um;
 	else
-		currPosition -= step2nm;
+		currPosition -= step2Um;
 
 	if(flag ==1)
 		_interval = runningdelay;
@@ -313,9 +312,9 @@ uchar SendPluse(ulong step)
 	}
 
 	if(_directionPort == 0){
-		currPosition += acturalStep*step2nm;
+		currPosition += acturalStep*step2Um;
 	}else{
-		currPosition -= acturalStep*step2nm;
+		currPosition -= acturalStep*step2Um;
 	}
 	ltoa(currPosition,str);
 	LCD_Printf1("ZPos:[um]");
