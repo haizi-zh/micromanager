@@ -85,7 +85,7 @@ using namespace std;
 // Single axis stage constructor
 //
 ZStage::ZStage() :
-    																						m_yInitialized(false)
+    																								m_yInitialized(false)
 //m_nAnswerTimeoutMs(1000)
 //, stepSizeUm_(1)
 {
@@ -235,19 +235,16 @@ int ZStage::GetPositionUm(double& dZPosUm)
 	StepMotor::Instance()->PackageCommand(QueryPosition,NULL,buf);
 	int ret = WriteCommand(buf, 7);
 	if (ret != DEVICE_OK) return ret;
-	CDeviceUtils::SleepMs(50);
+	CDeviceUtils::SleepMs(200);
 	unsigned char sResponse[64];
 
 	bool yCommError = true;
-	int i = 0;
-	int trys = StepMotor::Instance()->GetTimeoutTrys();
-	while (yCommError)
+	while (yCommError )
 	{
 
 		memset(sResponse, 0, 64);
 		ret = ReadMessage(sResponse, 7);
-		i++;
-		yCommError = (ret != DEVICE_OK) || i>trys;
+		yCommError = (ret != DEVICE_OK);
 	}
 
 	dZPosUm  =  StepMotor::Instance()->RawToLong((byte *)sResponse,1);
@@ -297,26 +294,24 @@ int ZStage::SetPositionUm(double dZPosUm)
 
 	if(delta<0)
 		delta *= -1;
+
 	sleept = 0.2*delta/step2Um;
 
 	ret = WriteCommand(buf, 7);
-	if (ret != DEVICE_OK)  return ret;
 
+	if (ret != DEVICE_OK)  return ret;
 	CDeviceUtils::SleepMs(sleept);
+
 	unsigned char sResponse[64];
 
-	bool yCommError = true;
-	int i = 0;
-	int trys = StepMotor::Instance()->GetTimeoutTrys();
+	bool yCommError = false;
 	while (yCommError)
 	{
 
 		memset(sResponse, 0, 64);
 		ret = ReadMessage(sResponse, 7);
-		i++;
-		yCommError = (ret != DEVICE_OK) || i>trys;
+		yCommError = (ret != DEVICE_OK);
 	}
-
 
 	if (ret != DEVICE_OK) return ret;
 	StepMotor::Instance()->SetPositionZ(dZPosUm);
@@ -392,6 +387,8 @@ int ZStage::WriteCommand(unsigned char* sCommand, int nLength)
 		ret = WriteToComPort(StepMotor::Instance()->GetSerialPort().c_str(), &em, 1);
 		CDeviceUtils::SleepMs(1);
 	}
+	ret = ClearPort(*this, *GetCoreCallback(), StepMotor::Instance()->GetSerialPort().c_str());
+	if (ret != DEVICE_OK) return ret;
 	for (int nBytes = 0; nBytes < nLength && ret == DEVICE_OK; nBytes++)
 	{
 		ret = WriteToComPort(StepMotor::Instance()->GetSerialPort().c_str(), (const unsigned char*)&sCommand[nBytes], 1);
@@ -443,7 +440,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
 		{
 			osMessage.str("");
-			osMessage << "<StepMotorCtrl::ReadMessage> (ReadFromSerial = (" << nBytesRead << "," << lRead << "," << lByteRead << ")::<";
+			osMessage << "<StepMotorZstage::ReadMessage> (ReadFromSerial = (" << nBytesRead << "," << lRead << "," << lByteRead << ")::<";
 
 			for (unsigned long lIndx=0; lIndx < lByteRead; lIndx++)
 			{

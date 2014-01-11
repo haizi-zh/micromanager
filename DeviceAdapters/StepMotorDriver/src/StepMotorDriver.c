@@ -105,7 +105,6 @@ void parseCMD(uchar rec[])
 			ltoa(recData,str);
 			LCD_Printf1(strcat(str,"-SP"));
 	 	    ret = SetStagePosition(recData);
-			rec = DEVICE_OK;
 			break;
 
 		case QueryStage:	
@@ -154,9 +153,11 @@ void parseCMD(uchar rec[])
 			break;
 		}
 	}
+
 	str[0] = ret;
 	str[1] = '\0';
 	SendStr(str);
+
 	if(ret != DEVICE_OK){		
 	LCD_Printf1(strcat(str,"--ERROR!"));		
 	}

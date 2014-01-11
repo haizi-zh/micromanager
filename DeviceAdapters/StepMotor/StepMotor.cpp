@@ -117,8 +117,8 @@ bool            StepMotor::m_yDeviceAvailable   = false;        // StepMotor dev
 int				StepMotor::m_nDebugLogFlag		= 2;			// StepMotor debug log flag
 StepMotor*        StepMotor::m_pStepMotor             = NULL;         // single copy StepMotor
 int             StepMotor::m_nMotionMode        = 0;            // motor motion mode
-int             StepMotor::m_nTimeoutInterval   = 500000;        // timeout interval
-int             StepMotor::m_nTimeoutTrys       = 50;            // timeout trys
+int             StepMotor::m_nTimeoutInterval   = 200;        // timeout interval
+int             StepMotor::m_nTimeoutTrys       = 20;            // timeout trys
 double          StepMotor::m_dPositionZ         = 0.00;         // Z Position
 std::string StepMotor::m_sPort;                                 // serial port symbols
 
