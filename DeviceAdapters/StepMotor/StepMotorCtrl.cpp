@@ -375,7 +375,7 @@ int StepMotorCtrl::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		if (yRead) break;
 
 		// check for timeout
-		yTimeout = ((double)(GetClockTicksUs() - lStartTime)) > (double) m_nAnswerTimeoutMs;
+		 yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 1000) > (double) m_nAnswerTimeoutMs;
 		if (!yTimeout) CDeviceUtils::SleepMs(3);
 
 	}

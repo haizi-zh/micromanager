@@ -245,6 +245,7 @@ int ZStage::GetPositionUm(double& dZPosUm)
 		memset(sResponse, 0, 64);
 		ret = ReadMessage(sResponse, 7);
 		yCommError = (ret != DEVICE_OK);
+		CDeviceUtils::SleepMs(10);
 	}
 
 	dZPosUm  =  StepMotor::Instance()->RawToLong((byte *)sResponse,1);
@@ -304,13 +305,14 @@ int ZStage::SetPositionUm(double dZPosUm)
 
 	unsigned char sResponse[64];
 
-	bool yCommError = false;
+	bool yCommError = true;
 	while (yCommError)
 	{
 
 		memset(sResponse, 0, 64);
 		ret = ReadMessage(sResponse, 7);
 		yCommError = (ret != DEVICE_OK);
+		CDeviceUtils::SleepMs(10);
 	}
 
 	if (ret != DEVICE_OK) return ret;
@@ -455,15 +457,15 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 
 		if (lRead >= 2)
 		{
-			yRead = (sAnswer[0] == '@') && sAnswer[lRead-1]=='\r';
+			yRead = (sAnswer[0] == '@');// && sAnswer[lRead-1]=='\r';
 		}
 
-		//yRead = yRead || (lRead >= (unsigned long)nBytesRead);
+		yRead = yRead || (lRead >= (unsigned long)nBytesRead);
 
 		if (yRead) break;
 
 		// check for timeout
-		yTimeout = ((double)(GetClockTicksUs() - lStartTime)) > (double) m_nAnswerTimeoutMs;
+		 yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 1000) > (double) m_nAnswerTimeoutMs;
 		if (!yTimeout) CDeviceUtils::SleepMs(3);
 
 	}

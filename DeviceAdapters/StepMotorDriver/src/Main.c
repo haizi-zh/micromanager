@@ -8,16 +8,16 @@
 	bool databegin = 0;
 
 main()
-{	
-	 
-	TCON =0x08; 
-	EX1 =  1;
+{
+    EA = 1;//开总中断
+    EX1 = 1 ;// 开外部中断1
 	LCD_Initial();
 	P1 = 0xff;
 	LCD_Printf1("Device Init ok!");
 	
 	InitSerial(); //Serial
 	InitDevice(); //StepMotor
+
 	SendStr("Device Init ok\r\n");
 	refLCD(  );
 	while(1){}
@@ -30,23 +30,27 @@ void serial () interrupt 4
 {
 
 	if(RI) {	
-		RI=0;
+	
 		ch=SBUF;
-		TI=1; //置SBUF空
+		
+		
 		if(ch == '@'){//begin
 			databegin = 1;	
 		}
+	
 		if(databegin ==1){
 			rec[i] = ch;
 			i++;	
+			
 			if(i==7){ 
 			databegin = 0;
 			i=0;
 			rec[7] = '\0';
 			parseCMD(rec);				
 			}
+
 		}
-		TI=0;
+	 	RI=0;
 	}
 }
 
