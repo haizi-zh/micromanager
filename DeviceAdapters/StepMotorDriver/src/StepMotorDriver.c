@@ -97,18 +97,19 @@ void parseCMD(uchar rec[])
 		switch(cmd){
 
 		case QueryPosition:
-			ltoa1(currPosition,str);	
+			longToRaw(currPosition,str);
+			str[0] = 0;	
 			SendStr(str);
 			return;
 			break;
 		case SetPosition:
 			ltoa(recData,str);
 			LCD_Printf1(strcat(str,"-SP"));
-	 	    ret = SetStagePosition(recData);
+	 	    ret =SetStagePosition(recData);
 			break;
 
 		case QueryStage:	
-			SendStr("DEADNIGHT");
+			SendStr("DEADN");
 			return;
 			break;
 		case SetUM2Step:
@@ -155,7 +156,10 @@ void parseCMD(uchar rec[])
 	}
 
 	str[0] = ret;
-	str[1] = '\0';
+	str[1] = 'X';
+	str[2] = 'X';
+	str[3] = 'X';
+	str[4] = 'X';
 	SendStr(str);
 
 	if(ret != DEVICE_OK){		
@@ -178,10 +182,10 @@ bool InitDevice()
 uchar SetStagePosition(ulong pos)
 {
 	if(pos > currPosition){
-	  Move((pos - currPosition)/step2Um,0);
+	  Move((pos - currPosition)/step2Um,0);	//up
 	}else{
-	  Move((currPosition - pos )/step2Um,1);
-	}
+	  Move((currPosition - pos )/step2Um,1);//down
+	}  
 	return DEVICE_OK;
 }
 /************************************************************
@@ -193,15 +197,10 @@ uchar Move(ulong step,bit flag)
 	if(isBusy == 1)
 		return DEVICE_BUSY;
 
-	if(flag == 0){// up	   
-		_directionPort = 0;
-		delay(100);
-		return SendPluse(step);
-	}else{		  // down
-		_directionPort = 1;
-		delay(100);
-		return  SendPluse(step);
-	}
+	_directionPort = flag;
+	delay(100);
+	return SendPluse(step);
+
 }
 /************************************************************
 
@@ -237,9 +236,11 @@ uchar FindUpLimit(bit flag)
 /************************************************************
 
  ************************************************************/
-void ManualMove(bit deriction,bit flag)//deriction 1 up,0 down,flag 1 fast 0 low
+void ManualMove(bit deriction,bit flag)//deriction 0 up,1 down,flag 1 fast 0 low
 {
+
 	uchar _interval = 0;
+ 
 	if(deriction ==0) 
 		currPosition += step2Um;
 	else
@@ -261,7 +262,7 @@ void ManualMove(bit deriction,bit flag)//deriction 1 up,0 down,flag 1 fast 0 low
  ************************************************************/
 uchar SendPluse(ulong step)
 {
-	ulong i = 0,temp = 0,acturalStep = 0;;
+	ulong i = 0,temp = 0,acturalStep = 0;
 	isBusy =1;
 	if(step <=20){
 		temp = step/2;
@@ -285,7 +286,7 @@ uchar SendPluse(ulong step)
 
 	}
 	if(step>20){
-
+		 
 		for(i=startdelay;i>runningdelay  && checkBoundary();i--){
 			_plusePort = 1;
 			delay(i);
@@ -320,7 +321,8 @@ uchar SendPluse(ulong step)
 	ltoa(currPosition,str);
 	LCD_Printf1("ZPos:[um]");
 
-	 	isBusy =0;
+	isBusy =0;
+
 	if(_lowLimitPort ==0)
 		return OUT_OF_LOW_LIMIT;
 	if(_highLimitPort ==0)
@@ -361,7 +363,7 @@ void refLCD(  )
 /************************************************************
 
  ************************************************************/
-void ltoa(ulong step,char* str)
+void ltoa(ulong step,uchar* str)
 {
 
 	uchar i,j=1;
@@ -394,30 +396,14 @@ void ltoa(ulong step,char* str)
 /************************************************************
 
  ************************************************************/
-void ltoa1(ulong step,char* str)
+void longToRaw(ulong step,uchar* str)
 {
-
-	uchar i;
-	if(step ==0){*str = '0';str++;*str = '\0';return;}
-	if(step > 0){str++;*str = ',';}
-	if(step >9){str++;*str = ',';}
-	if(step >99){str++;*str = ',';}
-	if(step >999){str++;*str = ',';}
-	if(step >9999){str++;*str = ',';}
-	if(step >99999){str++;*str = ',';}
-	if(step >999999){str++;*str = ',';}
-	if(step >9999999){str++;*str = ',';}
-	if(step >99999999){str++;*str = ',';}
-	if(step >999999999){str++;*str = ',';}
-	if(step >9999999999){str++;*str = ',';}
-	if(step >99999999999){str++;*str = ',';}
-	*str = '\0';
-
-	while (step >0 )
-	{	
-		str--;
-		i = step % 10;
-		step /= 10;
-		*str = i+'0';
-	}
+	str[4] =  step%256;
+	step /= 256;
+	str[3] =  step%256;
+	step /= 256;
+	str[2] =  step%256;
+	step /= 256;
+	str[1] =  step%256;
+	 
 }

@@ -23,7 +23,7 @@ sbit _manualAcceleratePort  = P1^7;
 
 //error code
 
-#define DEVICE_OK 0x01 +'I'-1
+#define DEVICE_OK 0x00  
 #define DEVICE_BUSY 0x02 +'J'-2
 #define OUT_OF_LOW_LIMIT 0x03 +'K'-3
 #define OUT_OF_HIGH_LIMIT 0x04 +'L'-4
@@ -57,8 +57,8 @@ bool InitDevice();
 bool checkBoundary();
 uchar checksumCalc(uchar rec[]);
 
-void ltoa(ulong step,char* str);
-void ltoa1(ulong step,char* str);
+void ltoa(ulong step,uchar* str);
+void longToRaw(ulong step,uchar* str);
 void ManualMove(bit deriction,bit flag);
 void delay(uchar interval);
 void delay_ms(uchar xms);

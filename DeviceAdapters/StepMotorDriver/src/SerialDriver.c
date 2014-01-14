@@ -32,10 +32,10 @@ void SendByte(unsigned char dat)
 void SendStr(unsigned char *s)
 {
 	SendByte('@');
-	while(*s!='\0')
-	{
-		SendByte(*s);
-		s++;
-	}
-	SendByte('\r');
+	SendByte(s[0]);// 0OK 1NG
+	SendByte(s[1]);
+	SendByte(s[2]);
+	SendByte(s[3]);
+	SendByte(s[4]);
+	SendByte( ((uchar)'@')^((uchar)s[0])^((uchar)s[1])^((uchar)s[2])^((uchar)s[3])^((uchar)s[4]));
 }
