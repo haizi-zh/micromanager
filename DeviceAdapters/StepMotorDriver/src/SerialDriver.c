@@ -39,3 +39,14 @@ void SendStr(unsigned char *s)
 	SendByte(s[4]);
 	SendByte( ((uchar)'@')^((uchar)s[0])^((uchar)s[1])^((uchar)s[2])^((uchar)s[3])^((uchar)s[4]));
 }
+void SendErr(unsigned char s)
+{
+	SendByte('@');
+	SendByte(s);// 0OK 1NG
+	SendByte('X');
+	SendByte('X');
+	SendByte('X');
+	SendByte('X');
+	SendByte( ((uchar)'@')^((uchar)s)^((uchar)'X')^((uchar)'X')^((uchar)'X')^((uchar)'X'));
+	SendByte( 'X');
+}

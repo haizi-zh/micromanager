@@ -10,4 +10,5 @@
 void InitSerial();
 void SendStr(unsigned char *s);
 void SendByte(unsigned char dat);
+void SendErr(unsigned char s);
 #endif

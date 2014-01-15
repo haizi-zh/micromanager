@@ -155,12 +155,7 @@ void parseCMD(uchar rec[])
 		}
 	}
 
-	str[0] = ret;
-	str[1] = 'X';
-	str[2] = 'X';
-	str[3] = 'X';
-	str[4] = 'X';
-	SendStr(str);
+	SendErr(ret);
 
 	if(ret != DEVICE_OK){		
 	LCD_Printf1(strcat(str,"--ERROR!"));		
@@ -182,11 +177,11 @@ bool InitDevice()
 uchar SetStagePosition(ulong pos)
 {
 	if(pos > currPosition){
-	  Move((pos - currPosition)/step2Um,0);	//up
+	  return Move((pos - currPosition)/step2Um,0);	//up
 	}else{
-	  Move((currPosition - pos )/step2Um,1);//down
+	  return Move((currPosition - pos )/step2Um,1);//down
 	}  
-	return DEVICE_OK;
+	 
 }
 /************************************************************
 
@@ -332,7 +327,7 @@ uchar SendPluse(ulong step)
 }
 bool checkBoundary()
 {
-	return ( currPosition<0 && _directionPort  ==  1 &&_lowLimitPort == 1) || (_directionPort  ==  0 &&_highLimitPort== 1);
+	return ( _directionPort  ==  0 &&_highLimitPort == 1) || (currPosition>0 &&_directionPort  ==  1 && _lowLimitPort== 1);
 }
 
 /************************************************************
