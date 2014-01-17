@@ -9,8 +9,8 @@ sbit _directionPort 		= P1^1;
 sbit _releasePort   		= P1^2;
 sbit _highLimitPort  		= P1^3;
 sbit _lowLimitPort 			= P1^4;
-sbit _manualUpPort  		= P1^5;
-sbit _manualDownPort  		= P1^6;
+sbit _manualDownPort  		= P1^5;
+sbit _manualUpPort  		= P1^6;
 sbit _manualAcceleratePort  = P1^7;
 
 #define uchar unsigned char  //0~255
@@ -25,7 +25,7 @@ sbit _manualAcceleratePort  = P1^7;
 
 #define DEVICE_OK 0x00  
 #define DEVICE_BUSY 0x02 +'J'-2
-#define OUT_OF_LOW_LIMIT 0x03 +'Z'-3
+#define OUT_OF_LOW_LIMIT 0x03 +'K'-3
 #define OUT_OF_HIGH_LIMIT 0x04 +'L'-4
 #define CHECK_SUM_ERROR 0x05  +'M'-5
 #define BAD_COMMAND	    0x06 +'N'-6

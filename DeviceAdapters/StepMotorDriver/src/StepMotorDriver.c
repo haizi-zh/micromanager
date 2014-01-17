@@ -8,10 +8,10 @@
                    ±äÁ¿ÉùÃ÷
 ------------------------------------------------*/
 bool isBusy = false;
-uchar	startdelay = 16;
+uchar	startdelay = 32;
 uchar	runningdelay = 0; 
 float   currPosition = 0;//nm
-float	step2Um = 0.09969;//50 XIFEN
+float	step2Um = 0.49827043;//50 XIFEN
 bit	    isSetZero = 0;	
 uchar str[12];
 uchar ret;
@@ -70,13 +70,7 @@ bool checksum(uchar rec[])//rec[] = @ C XXXX C
 }
  
 uchar checksumCalc(uchar rec[])
-{
-	//uchar checksum = rec[0];
-//	uchar i=1;
-	//for (i; i < 6; i++)
-	//{
-	//	checksum = checksum ^ rec[i];
-	//} 
+{ 
 	return ((uchar)rec[0])^((uchar)rec[1])^((uchar)rec[2])^((uchar)rec[3])^((uchar)rec[4])^((uchar)rec[5]);
 }
  
@@ -103,9 +97,10 @@ void parseCMD(uchar rec[])
 			return;
 			break;
 		case SetPosition:
+		    
 			ltoa(recData,str);
 			LCD_Printf1(strcat(str,"-SP"));
-	 	    ret =SetStagePosition(recData);
+	 	    ret =  SetStagePosition(recData);
 			break;
 
 		case QueryStage:	
@@ -156,7 +151,8 @@ void parseCMD(uchar rec[])
 	}
 
 	SendErr(ret);
-
+	str[0]  = ret;
+	str[1] = '\0';
 	if(ret != DEVICE_OK){		
 	LCD_Printf1(strcat(str,"--ERROR!"));		
 	}
@@ -170,8 +166,8 @@ void parseCMD(uchar rec[])
 bool InitDevice()
 {
 	isBusy = false;
-	currPosition = 500;
-//	FindUpLimit(1);
+	currPosition = 0;   
+	FindUpLimit(0);			
 	return true;
 }
 uchar SetStagePosition(ulong pos)
@@ -202,29 +198,26 @@ uchar Move(ulong step,bit flag)
  ************************************************************/
 uchar FindUpLimit(bit flag)
 {
-	if(flag ==1){
-		while(_highLimitPort== 1)
-		{
-			ManualMove(0,1);
-		}
-		if(_highLimitPort== 0){
-			currPosition = 521557;
-			isSetZero = 1;
-			ltoa(currPosition,str);
-			LCD_Printf2(str);
-		}
-	}else{
+	if(flag == 0){
+	_directionPort = 0;
+	LCD_Printf1("FindUpLimit");	
+	while(_highLimitPort == 1)
+	{
+		ManualMove(0,1);//up fast
+	}
+	currPosition =  52000;	
+	}
+ if(flag == 1){
+	_directionPort = 1;
+		LCD_Printf1("FindlowLimit");	
 		while(_lowLimitPort== 1)
 		{
 			ManualMove(1,1);
 		}
-		if(_lowLimitPort== 0){
-			currPosition = 0;
-			isSetZero = 1;
-			ltoa(currPosition,str);
-			LCD_Printf2(str);
-		}
+	currPosition = 0;
 	}
+	ltoa(currPosition,str);
+	LCD_Printf2(str);
 	refLCD();
 	return DEVICE_OK;
 }
@@ -238,8 +231,11 @@ void ManualMove(bit deriction,bit flag)//deriction 0 up,1 down,flag 1 fast 0 low
  
 	if(deriction ==0) 
 		currPosition += step2Um;
-	else
+	else{
 		currPosition -= step2Um;
+		if(currPosition >24294967)
+			currPosition = 0;
+	}
 
 	if(flag ==1)
 		_interval = runningdelay;

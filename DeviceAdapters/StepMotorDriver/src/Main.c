@@ -13,13 +13,14 @@ main()
     EX1 = 1 ;// 开外部中断1
 	LCD_Initial();
 	P1 = 0xff;
-	LCD_Printf1("Device Init ok!");
+
 	
 	InitSerial(); //Serial
 	InitDevice(); //StepMotor
-
-	SendStr("Device Init ok\r\n");
+    LCD_Printf1("Device Init ok!");
 	refLCD(  );
+	SendStr("Device Init ok\r\n");
+
 	while(1){}
 }
 
@@ -29,6 +30,7 @@ main()
 void serial () interrupt 4
 {
 
+ 
 	if(RI) {	
 	
 		ch=SBUF;
@@ -52,6 +54,7 @@ void serial () interrupt 4
 		}
 	 	RI=0;
 	}
+
 }
 
 /*------------------------------------------------

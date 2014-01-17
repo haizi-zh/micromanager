@@ -6,14 +6,16 @@ void  InitSerial()
 {
 
 	SCON  = 0x50;//工作方式1，允许串行接收
-	
+	PCON =0x80;
+
 	TMOD |= 0x20;//计时器一 方式二 自动重载初始值
  
 	TH1   = 0xFD; //19200
  
 	ET1 = 0;//禁止计数器引起中断
 	TR1   = 1; //定时器1 开始工作
-
+	RI = 0;
+	TI = 0;
 	ES    = 1;	 //开串口中断
 	PS	  = 1 ;	 //串口中断高优先级
 }                            
@@ -48,5 +50,4 @@ void SendErr(unsigned char s)
 	SendByte('X');
 	SendByte('X');
 	SendByte( ((uchar)'@')^((uchar)s)^((uchar)'X')^((uchar)'X')^((uchar)'X')^((uchar)'X'));
-	SendByte( 'X');
 }
