@@ -5,8 +5,6 @@
 *.idb
 *.pdb
 *.vcxproj.user
-
-*.vcxproj
 *.sln
 *.suo
 *.sdf
