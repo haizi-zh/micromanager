@@ -146,7 +146,7 @@ int ZStage::Initialize()
 
 	StepMotor::Instance()->SetMotionMode(0);//Fast
 	CPropertyAction* pActOnMotionMode = new CPropertyAction(this, &ZStage::OnMotionMode);
-	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_MotionMode).c_str(), "Undefined", MM::Integer, false, pActOnMotionMode);  // Absolute  vs Relative
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_SetOrigin).c_str(), "Undefined", MM::Integer, false, pActOnMotionMode);  // Absolute  vs Relative
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK) return ret;
 
@@ -189,15 +189,13 @@ int ZStage::SetMotionMode(long lMotionMode)//1 high else low
 
 	unsigned char sResponse[64];
 	int ret = DEVICE_OK;
-	return ret;
+
 	char sCommStat[30];
 	bool yCommError = false;
-
+	byte RawData[4];
 	unsigned char buf[9];
-	if (lMotionMode == 1)
-		StepMotor::Instance()->PackageCommand(MoveUp,NULL,buf);
-	else
-		StepMotor::Instance()->PackageCommand(MoveDown,NULL,buf);
+	StepMotor::Instance()->LongToRaw(lMotionMode,RawData);
+	StepMotor::Instance()->PackageCommand(SetZeroPosition,RawData,buf);
 
 	ret = WriteCommand(buf, 7);
 	if (ret != DEVICE_OK) return ret;
