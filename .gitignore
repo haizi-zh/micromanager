@@ -55,7 +55,7 @@ bin/
 *.xslt
 *.old
 *.stackdump
-*.gitignore
+.gitignore
 
 micromanager/MMCoreJ_wrap/mmcorej/*.java
 Install_Win32/
@@ -70,3 +70,7 @@ MMCoreJ_wrap/MMCoreJ_wrap.cxx
 acqEngine/classes/
 plugins/DLLAutoReloader/classes/
 plugins/DataBrowser/classes/
+
+#C51
+*.lst
+*.m51

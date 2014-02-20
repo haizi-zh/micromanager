@@ -60,7 +60,9 @@ MPError::MPError()
     MPError::m_sErrorText[MPError::MPERR_SerialZeroReturn]      = "No response from XMTE517 controller";                                         // No Response from serial port
     MPError::m_sErrorText[MPError::MPERR_SerialUnknownError]    = "Unknown error codes";                                                       // Unknown serial command
     MPError::m_sErrorText[MPError::MPERR_GENERIC]               = "XMTE517 adapter error occured";                                               // Unspecified XMTE517 adapter errors
-    MPError::m_sErrorText[MPError::MPERR_FileOpenFailed]        = "Fail to open file";                                                         // Fail to open file
+    MPError::m_sErrorText[MPError::MPERR_FileOpenFailed]        = "Fail to open file";
+    MPError::m_sErrorText[MPError::MPERR_OutofLimit]        	= "travel range out of limit";
+    // Fail to open file
 }
 
 MPError::~MPError()

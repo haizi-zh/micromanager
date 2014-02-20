@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
-		<cconfiguration id="cdt.managedbuild.toolchain.gnu.mingw.base.874068633">
-			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.toolchain.gnu.mingw.base.874068633" moduleId="org.eclipse.cdt.core.settings" name="Default">
+		<cconfiguration id="cdt.managedbuild.toolchain.gnu.mingw.base.1360943042">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.toolchain.gnu.mingw.base.1360943042" moduleId="org.eclipse.cdt.core.settings" name="Default">
 				<externalSettings/>
 				<extensions>
 					<extension id="org.eclipse.cdt.core.PE" point="org.eclipse.cdt.core.BinaryParser"/>
@@ -12,17 +12,17 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration buildProperties="" id="cdt.managedbuild.toolchain.gnu.mingw.base.874068633" name="Default" parent="org.eclipse.cdt.build.core.emptycfg">
-					<folderInfo id="cdt.managedbuild.toolchain.gnu.mingw.base.874068633.202074500" name="/" resourcePath="">
-						<toolChain id="cdt.managedbuild.toolchain.gnu.mingw.base.2037412659" name="cdt.managedbuild.toolchain.gnu.mingw.base" superClass="cdt.managedbuild.toolchain.gnu.mingw.base">
-							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.PE" id="cdt.managedbuild.target.gnu.platform.mingw.base.569236908" name="Debug Platform" osList="win32" superClass="cdt.managedbuild.target.gnu.platform.mingw.base"/>
-							<builder buildPath="${workspace_loc:/PI_E761/Default}" id="cdt.managedbuild.tool.gnu.builder.mingw.base.2078158528" managedBuildOn="false" name="CDT Internal Builder.Default" superClass="cdt.managedbuild.tool.gnu.builder.mingw.base"/>
-							<tool id="cdt.managedbuild.tool.gnu.assembler.mingw.base.1485172212" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.mingw.base"/>
-							<tool id="cdt.managedbuild.tool.gnu.archiver.mingw.base.875601436" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.mingw.base"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.base.1635567976" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.base"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.compiler.mingw.base.1259448113" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.mingw.base"/>
-							<tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.base.828099618" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.base"/>
-							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.mingw.base.324245060" name="MinGW C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.mingw.base"/>
+				<configuration buildProperties="" id="cdt.managedbuild.toolchain.gnu.mingw.base.1360943042" name="Default" parent="org.eclipse.cdt.build.core.emptycfg">
+					<folderInfo id="cdt.managedbuild.toolchain.gnu.mingw.base.1360943042.1139652279" name="/" resourcePath="">
+						<toolChain id="cdt.managedbuild.toolchain.gnu.mingw.base.389788952" name="cdt.managedbuild.toolchain.gnu.mingw.base" superClass="cdt.managedbuild.toolchain.gnu.mingw.base">
+							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.PE" id="cdt.managedbuild.target.gnu.platform.mingw.base.1939695525" name="Debug Platform" osList="win32" superClass="cdt.managedbuild.target.gnu.platform.mingw.base"/>
+							<builder buildPath="${workspace_loc:/PI_E761}/Default" id="cdt.managedbuild.tool.gnu.builder.mingw.base.386751988" managedBuildOn="false" name="CDT Internal Builder.Default" superClass="cdt.managedbuild.tool.gnu.builder.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.assembler.mingw.base.1871625942" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.archiver.mingw.base.263551832" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.base.1660555971" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.c.compiler.mingw.base.955455158" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.base.1774676731" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.base"/>
+							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.mingw.base.1115445524" name="MinGW C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.mingw.base"/>
 						</toolChain>
 					</folderInfo>
 				</configuration>
@@ -46,33 +46,7 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-		<project id="PI_E761.null.1179943574" name="PI_E761"/>
-	</storageModule>
-	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
-		<buildTargets>
-			<target name="Clean" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>make</buildCommand>
-				<buildArguments/>
-				<buildTarget>clean</buildTarget>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>true</useDefaultCommand>
-				<runAllBuilders>false</runAllBuilders>
-			</target>
-			<target name="Debug" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>make</buildCommand>
-				<buildTarget>debug</buildTarget>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>true</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-			<target name="Release" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
-				<buildCommand>make</buildCommand>
-				<buildTarget>all</buildTarget>
-				<stopOnError>true</stopOnError>
-				<useDefaultCommand>true</useDefaultCommand>
-				<runAllBuilders>true</runAllBuilders>
-			</target>
-		</buildTargets>
+		<project id="PI_E761.null.249675575" name="PI_E761"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 </cproject>

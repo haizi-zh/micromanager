@@ -270,7 +270,8 @@ int ZStage::SetPositionUm(double dZPosUm)
 {
 	int ret = DEVICE_OK;
 	ostringstream osMessage;
-
+	if(dZPosUm >100 || dZPosUm<0)
+		return MPError::MPERR_OutofLimit;
 	// send move command to controller
 	ret = DEVICE_OK;
 	byte rawData[4];
@@ -445,7 +446,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 			osMessage << "sss Timeout ok";
 			this->LogMessage(osMessage.str().c_str());
 		}
-		return 3;
+		return MPError::MPERR_SerialTimeout;
 	}
 	return DEVICE_OK;
 }
