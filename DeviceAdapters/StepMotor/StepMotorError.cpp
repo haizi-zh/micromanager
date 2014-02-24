@@ -60,7 +60,8 @@ MPError::MPError()
     MPError::m_sErrorText[MPError::MPERR_SerialZeroReturn]      = "No response from StepMotor controller";                                         // No Response from serial port
     MPError::m_sErrorText[MPError::MPERR_SerialUnknownError]    = "Unknown error codes";                                                       // Unknown serial command
     MPError::m_sErrorText[MPError::MPERR_GENERIC]               = "StepMotor adapter error occured";                                               // Unspecified StepMotor adapter errors
-    MPError::m_sErrorText[MPError::MPERR_FileOpenFailed]        = "Fail to open file";                                                         // Fail to open file
+    MPError::m_sErrorText[MPError::MPERR_FileOpenFailed]        = "Fail to open file";
+    MPError::m_sErrorText[MPError::MPERR_OutOfLimit]        	= "OutOfLimit";    // Fail to open file
 }
 
 MPError::~MPError()

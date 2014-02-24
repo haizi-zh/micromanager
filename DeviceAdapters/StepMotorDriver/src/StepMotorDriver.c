@@ -323,7 +323,7 @@ uchar SendPluse(ulong step)
 }
 bool checkBoundary()
 {
-	return ( _directionPort  ==  0 &&_highLimitPort == 1) || (currPosition>0 &&_directionPort  ==  1 && _lowLimitPort== 1);
+	return (currPosition >=0) && ( _directionPort  ==  0 &&_highLimitPort == 1) || (currPosition>0 &&_directionPort  ==  1 && _lowLimitPort== 1);
 }
 
 /************************************************************

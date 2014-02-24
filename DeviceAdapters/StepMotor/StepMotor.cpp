@@ -285,7 +285,7 @@ void  StepMotor::LongToRaw(unsigned long value,byte* rawData)
 }
 long  StepMotor::RawToLong(byte* rawData,int offset)
 {
-	return (long)atol((const char*)(rawData+offset));
+	return -1*(rawData[offset]*256*256*256+rawData[offset+1]*256*256+rawData[offset+2]*256+rawData[offset+3]);
 }
 //
 //checksum generator

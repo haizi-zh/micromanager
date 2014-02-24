@@ -85,7 +85,7 @@ using namespace std;
 // Single axis stage constructor
 //
 ZStage::ZStage() :
-    																								m_yInitialized(false)
+    																										m_yInitialized(false)
 //m_nAnswerTimeoutMs(1000)
 //, stepSizeUm_(1)
 {
@@ -233,20 +233,21 @@ int ZStage::GetPositionUm(double& dZPosUm)
 	StepMotor::Instance()->PackageCommand(QueryPosition,NULL,buf);
 	int ret = WriteCommand(buf, 7);
 	if (ret != DEVICE_OK) return ret;
-	CDeviceUtils::SleepMs(200);
+	CDeviceUtils::SleepMs(500);
 	unsigned char sResponse[64];
+	ret = ReadMessage(sResponse, 7);
 
-	bool yCommError = true;
-	while (yCommError )
-	{
+	//	bool yCommError = true;
+	//	while (yCommError )
+	//	{
+	//
+	//		memset(sResponse, 0, 64);
+	//		ret = ReadMessage(sResponse, 7);
+	//		yCommError = (ret != DEVICE_OK);
+	//		CDeviceUtils::SleepMs(10);
+	//	}
 
-		memset(sResponse, 0, 64);
-		ret = ReadMessage(sResponse, 7);
-		yCommError = (ret != DEVICE_OK);
-		CDeviceUtils::SleepMs(10);
-	}
-
-	dZPosUm  =  StepMotor::Instance()->RawToLong((byte *)sResponse,1);
+	dZPosUm  =  StepMotor::Instance()->RawToLong((byte *)sResponse,2);
 
 	StepMotor::Instance()->SetPositionZ(dZPosUm);
 	return DEVICE_OK;
@@ -279,7 +280,8 @@ int ZStage::SetRelativePositionUm(double dZPosUm)
 int ZStage::SetPositionUm(double dZPosUm)
 {
 	int ret = DEVICE_OK;
-
+	if(dZPosUm>0)return MPError::MPERR_OutOfLimit;
+	dZPosUm*=-1;
 	ret = DEVICE_OK;
 	byte rawData[4];
 	byte buf[10];
@@ -419,15 +421,15 @@ int ZStage::WriteCommand(unsigned char* sCommand, int nLength)
 //
 int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 {
-
 	// block/wait for acknowledge, or until we time out;
 	unsigned int nLength = 256;
 	unsigned char sAnswer[256];
 	memset(sAnswer, 0, nLength);
 	unsigned long lRead = 0;
 	unsigned long lStartTime = GetClockTicksUs();
-
+	CDeviceUtils::SleepMs(100);
 	ostringstream osMessage;
+	char sHex[4] = { NULL, NULL, NULL, NULL };
 	int ret = DEVICE_OK;
 	bool yRead = false;
 	bool yTimeout = false;
@@ -436,44 +438,34 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		unsigned long lByteRead;
 
 		const MM::Device* pDevice = this;
-		ret = (GetCoreCallback())->ReadFromSerial(pDevice, StepMotor::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nLength-lRead, lByteRead);
-		if (StepMotor::Instance()->GetDebugLogFlag() > 1)
-		{
-			osMessage.str("");
-			osMessage << "<StepMotorZstage::ReadMessage> (ReadFromSerial = (" << nBytesRead << "," << lRead << "," << lByteRead << ")::<";
-
-			for (unsigned long lIndx=0; lIndx < lByteRead; lIndx++)
-			{
-				osMessage << "[" <<(char)sAnswer[lRead+lIndx]<<"|"<< (int)sAnswer[lRead+lIndx] << "]";
-			}
-			osMessage << ">";
-			this->LogMessage(osMessage.str().c_str());
-		}
-
-		// concade new string
+		ret = (GetCoreCallback())->ReadFromSerial(pDevice, StepMotor::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nBytesRead-lRead, lByteRead);
 		lRead += lByteRead;
+		// concade new string
 
-		if (lRead >= 2)
-		{
-			yRead = (sAnswer[0] == '@');// && sAnswer[lRead-1]=='\r';
-		}
+//
+//		if (lRead >= 2)
+//		{
+//			yRead = (sAnswer[0] == '@') ;
+//		}
 
 		yRead = yRead || (lRead >= (unsigned long)nBytesRead);
 
 		if (yRead) break;
 
 		// check for timeout
-		 yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 1000) > (double) m_nAnswerTimeoutMs;
+		yTimeout = ((double)(GetClockTicksUs() - lStartTime) / 1000) > (double) m_nAnswerTimeoutMs;
 		if (!yTimeout) CDeviceUtils::SleepMs(3);
 
 	}
-	if (yTimeout) return DEVICE_SERIAL_TIMEOUT;
-	for (unsigned long lIndx=0; lIndx < (unsigned long)nBytesRead; lIndx++)
+
+	for(int i=0;i<=7;i++)
 	{
-		sResponse[lIndx] = sAnswer[lIndx];
+		sResponse[i] = sAnswer[i];
 	}
 
 
+	if (yTimeout) return DEVICE_SERIAL_TIMEOUT;
 	return DEVICE_OK;
 }
+
 
