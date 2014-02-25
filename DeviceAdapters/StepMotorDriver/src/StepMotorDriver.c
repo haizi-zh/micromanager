@@ -77,17 +77,19 @@ uchar checksumCalc(uchar rec[])
 void parseCMD(uchar rec[])
 {	
 
-	ulong recData = 0;
+	long recData = 0;
 	char cmd = 0;
 	ret = DEVICE_OK;
 	//debug(rec);
 	if( 0 == checksum(rec) ){
 		ret = CHECK_SUM_ERROR;
 	}else{
-		rec++;//skip @
-		cmd = *rec;
-		rec++;
-		recData = *(ulong *)rec;
+ 
+		cmd =  rec[1];
+		
+		if(rec[2] ==0){recData =  rec[3]*256*256+rec[4]*256+rec[5];}
+		if(rec[2] ==2){recData =  -1*((long)(rec[3]*256*256+rec[4]*256+rec[5]));}
+		 
 		switch(cmd){
 
 		case QueryPosition:
@@ -98,8 +100,8 @@ void parseCMD(uchar rec[])
 			break;
 		case SetPosition:
 		    
-			ltoa(recData,str);
-			LCD_Printf1(strcat(str,"-SP"));
+		 	ltoa(recData,str);
+	 		LCD_Printf1(strcat(str,"-SP"));
 	 	    ret =  SetStagePosition(recData);
 			break;
 
@@ -117,7 +119,7 @@ void parseCMD(uchar rec[])
 			currPosition = 0;
 			break;
 
-		case MoveUp:
+	/*	case MoveUp:
 			ltoa(recData,str);
 			LCD_Printf1(strcat(str,"-MU"));
 			ret = Move(recData,0);
@@ -127,7 +129,7 @@ void parseCMD(uchar rec[])
 			ltoa(recData,str);
 			LCD_Printf1(strcat(str,"-MD"));
 			ret = Move(recData,1);
-			break;
+			break;	 */
 
 		case SetRunningDelay:
 			runningdelay = recData;
@@ -154,45 +156,30 @@ void parseCMD(uchar rec[])
 	str[0]  = ret;
 	str[1] = '\0';
 	if(ret != DEVICE_OK){		
-	LCD_Printf1(strcat(str,"--ERROR!"));		
+ 	LCD_Printf1(strcat(str,"--ERROR!"));		
 	}
 
-	refLCD();
+ 	refLCD();
 	
 }
-/************************************************************
 
- ************************************************************/
-bool InitDevice()
-{
-	isBusy = false;
-	currPosition = 0;   
-	FindUpLimit(0);			
-	return true;
-}
-uchar SetStagePosition(ulong pos)
-{
-	if(pos > currPosition){
-	  return Move((pos - currPosition)/step2Um,0);	//up
-	}else{
-	  return Move((currPosition - pos )/step2Um,1);//down
-	}  
-	 
-}
-/************************************************************
+uchar SetStagePosition(long pos)
+{	 
 
- ************************************************************/
-uchar Move(ulong step,bit flag)
-{
-
-	if(isBusy == 1)
-		return DEVICE_BUSY;
-
-	_directionPort = flag;
+	if(pos - currPosition>0){  //down
+   	
+	_directionPort = 1;
 	delay(100);
-	return SendPluse(step);
+	return SendPluse((pos - currPosition)/step2Um);
 
+	}else{
+	_directionPort = 0;
+	delay(100);
+	return SendPluse((currPosition - pos)/step2Um);
+	}
+ 	 
 }
+
 /************************************************************
 
  ************************************************************/
@@ -230,11 +217,9 @@ void ManualMove(bit deriction,bit flag)//deriction 0 up,1 down,flag 1 fast 0 low
 	uchar _interval = 0;
  
 	if(deriction ==0) 
-		currPosition += step2Um;
-	else{
 		currPosition -= step2Um;
-		if(currPosition >24294967)
-			currPosition = 0;
+	else{
+		currPosition += step2Um;
 	}
 
 	if(flag ==1)
@@ -255,7 +240,7 @@ uchar SendPluse(ulong step)
 {
 	ulong i = 0,temp = 0,acturalStep = 0;
 	isBusy =1;
-	if(step <=20){
+	if(step <=startdelay){
 		temp = step/2;
 		for(i=0;i<temp && checkBoundary();i++){
 			_plusePort = 1;
@@ -276,7 +261,7 @@ uchar SendPluse(ulong step)
 		}
 
 	}
-	if(step>20){
+	if(step>startdelay){
 		 
 		for(i=startdelay;i>runningdelay  && checkBoundary();i--){
 			_plusePort = 1;
@@ -304,13 +289,14 @@ uchar SendPluse(ulong step)
 
 	}
 
-	if(_directionPort == 0){
-		currPosition += acturalStep*step2Um;
-	}else{
+	if(_directionPort == 0){ //up
 		currPosition -= acturalStep*step2Um;
+
+	}else{
+		currPosition += acturalStep*step2Um;
 	}
 	ltoa(currPosition,str);
-	LCD_Printf1("ZPos:[um]");
+ 	LCD_Printf1("ZPos:[um]");
 
 	isBusy =0;
 
@@ -323,7 +309,7 @@ uchar SendPluse(ulong step)
 }
 bool checkBoundary()
 {
-	return (currPosition >=0) && ( _directionPort  ==  0 &&_highLimitPort == 1) || (currPosition>0 &&_directionPort  ==  1 && _lowLimitPort== 1);
+	return   ( _directionPort  ==  0 &&_highLimitPort == 1) || (currPosition<0 &&_directionPort  ==  1 && _lowLimitPort== 1);
 }
 
 /************************************************************
@@ -350,15 +336,26 @@ void refLCD(  )
 	ltoa(currPosition,str);
 	LCD_Printf2(str);
 }
-
 /************************************************************
 
  ************************************************************/
-void ltoa(ulong step,uchar* str)
+bool InitDevice()
+{
+	isBusy = false;  
+	FindUpLimit(0);			
+	return true;
+}
+/************************************************************
+
+ ************************************************************/
+void ltoa(long step,uchar* str)
 {
 
 	uchar i,j=1;
 	if(step ==0){*str = '0';str++;*str = '\0';return;}
+	
+	if(step > 0){*str = '+';str++;}
+	if(step < 0){*str = '-';str++;step*=-1;}
 	if(step > 0){str++;*str = ',';}
 	if(step >9){str++;*str = ',';}
 	if(step >99){str++;*str = ',';}
@@ -371,6 +368,7 @@ void ltoa(ulong step,uchar* str)
 	if(step >999999999){str++;*str = ',';str++;*str = ',';}
 	if(step >9999999999){str++;*str = ',';}
 	if(step >99999999999){str++;*str = ',';}
+	
 	*str = '\0';
 
 	while (step >0 )
@@ -387,14 +385,13 @@ void ltoa(ulong step,uchar* str)
 /************************************************************
 
  ************************************************************/
-void longToRaw(ulong step,uchar* str)
+void longToRaw(long step,uchar* str)
 {
+	if(step>0){	str[1] =  2;} 
+	if(step<0){	str[1] =  0; step*=-1;}
 	str[4] =  step%256;
 	step /= 256;
 	str[3] =  step%256;
 	step /= 256;
-	str[2] =  step%256;
-	step /= 256;
-	str[1] =  step%256;
-	 
+	str[2] =  step%256;	 
 }

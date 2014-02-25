@@ -123,7 +123,7 @@ public:
 
     static float RawToFloat(byte* rawData,int offset);
     static void  FloatToRaw(float value,byte* rawData);
-    static void  LongToRaw(unsigned long value,byte* rawData);
+    static void  LongToRaw(long value,byte* rawData);
     static long  RawToLong(byte* rawData,int offset);
     static void PackageCommand(const byte cmd,byte* data,byte * buf);
     static byte checkSumCalc(byte* data,int offset,int count);

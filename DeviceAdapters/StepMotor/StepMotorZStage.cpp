@@ -233,7 +233,7 @@ int ZStage::GetPositionUm(double& dZPosUm)
 	StepMotor::Instance()->PackageCommand(QueryPosition,NULL,buf);
 	int ret = WriteCommand(buf, 7);
 	if (ret != DEVICE_OK) return ret;
-	CDeviceUtils::SleepMs(500);
+	CDeviceUtils::SleepMs(300);
 	unsigned char sResponse[64];
 	ret = ReadMessage(sResponse, 7);
 
@@ -288,9 +288,10 @@ int ZStage::SetPositionUm(double dZPosUm)
 	double currPos =0;
 	double step2Um = 0.09969;
 	GetPositionUm(currPos);
-	StepMotor::Instance()->LongToRaw((unsigned long)dZPosUm,rawData);
+	StepMotor::Instance()->LongToRaw((long)dZPosUm,rawData);
 	StepMotor::Instance()->PackageCommand(SetPosition,rawData,buf);
 	long sleept =  0;
+
 	double delta = currPos - dZPosUm;
 
 	if(delta<0)

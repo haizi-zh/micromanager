@@ -48,8 +48,7 @@ sbit _manualAcceleratePort  = P1^7;
 ------------------------------------------------*/
 void parseCMD(uchar rec[]);
 bool checksum(uchar rec[]);
-uchar Move(ulong step,bit flag);
-uchar SetStagePosition(ulong step);
+uchar SetStagePosition(long step);
 uchar SendPluse(ulong step);
 uchar FindUpLimit(bit flag);
 void refLCD();
@@ -57,8 +56,8 @@ bool InitDevice();
 bool checkBoundary();
 uchar checksumCalc(uchar rec[]);
 
-void ltoa(ulong step,uchar* str);
-void longToRaw(ulong step,uchar* str);
+void ltoa(long step,uchar* str);
+void longToRaw(long step,uchar* str);
 void ManualMove(bit deriction,bit flag);
 void delay(uchar interval);
 void delay_ms(uchar xms);

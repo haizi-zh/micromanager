@@ -125,7 +125,7 @@ std::string StepMotor::m_sPort;                                 // serial port s
 StepMotor::StepMotor()
 {
 	StepMotor::m_sXMTStr[StepMotor::XMTSTR_CtrlDevName]       = "StepMotor Controller";					// StepMotor Controllet device name
-	StepMotor::m_sXMTStr[StepMotor::XMTSTR_ZStageDevName]     = "StepMotor Z Stage";						// MP286 Z Stage device name
+	StepMotor::m_sXMTStr[StepMotor::XMTSTR_ZStageDevName]     = "MP285 Z Stage";						// MP286 Z Stage device name
 	StepMotor::m_sXMTStr[StepMotor::XMTSTR_StepMotorVersion]      = "1.0.0";							// StepMotor adpater version number
 	StepMotor::m_sXMTStr[StepMotor::XMTSTR_CtrlDevNameLabel]  = "Controller ";					// StepMotor Controller device name label
 	StepMotor::m_sXMTStr[StepMotor::XMTSTR_CtrlDevDescLabel]  = "Controller ";					// StepMotor Controller device description label
@@ -273,19 +273,20 @@ void StepMotor::FloatToRaw(float val,byte* rawData)
 		rawData[3] = temp;
 	}
 }
-void  StepMotor::LongToRaw(unsigned long value,byte* rawData)
+void  StepMotor::LongToRaw(long value,byte* rawData)
 {
+	if(value>0){	rawData[0] =  2;}
+	if(value<0){	rawData[0] =  0; value*=-1;}
 	rawData[3] = value % 256;
 	value /= 256;
 	rawData[2] = value % 256;
 	value /= 256;
 	rawData[1] = value % 256;
-	value /= 256;
-	rawData[0] = value % 256;
+
 }
 long  StepMotor::RawToLong(byte* rawData,int offset)
 {
-	return -1*(rawData[offset]*256*256*256+rawData[offset+1]*256*256+rawData[offset+2]*256+rawData[offset+3]);
+	return (rawData[offset]-1)*(rawData[offset+1]*256*256+rawData[offset+2]*256+rawData[offset+3]);
 }
 //
 //checksum generator
