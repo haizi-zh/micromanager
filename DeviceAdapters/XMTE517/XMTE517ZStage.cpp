@@ -216,6 +216,7 @@ int ZStage::GetPositionUm(double& dZPosUm)
 
 	unsigned char sResponse[64];
 	memset(sResponse, 0, 64);
+	Sleep(100);
 	ret = ReadMessage(sResponse, 7);
 	if (ret != DEVICE_OK) return ret;
 
@@ -252,7 +253,9 @@ int ZStage::SetRelativePositionUm(double dZPosUm)
 
 	// convert um to steps
 	double currPos =0;
-	GetPositionUm(currPos);
+	ret = GetPositionUm(currPos);
+	if( ret != DEVICE_OK)return ret;
+
 	float target = (float)(dZPosUm + currPos);
 
 	// send move command to controller
@@ -383,7 +386,6 @@ int ZStage::WriteCommand(unsigned char* sCommand, int nLength)
 //
 int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 {
-	Sleep(90);
 	// block/wait for acknowledge, or until we time out;
 	unsigned int nLength = 256;
 	unsigned char sAnswer[256];
