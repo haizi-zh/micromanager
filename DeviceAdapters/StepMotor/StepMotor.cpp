@@ -143,6 +143,9 @@ StepMotor::StepMotor()
 	StepMotor::m_sXMTStr[StepMotor::XMTSTR_GetPositionZ]      = "Get Position Z (um)";		// StepMotor get POSITION Z label
 	StepMotor::m_sXMTStr[StepMotor::XMTSTR_Reset]             = "M.26 Reset (1=reset)";               // property RESET label
 	StepMotor::m_sXMTStr[StepMotor::XMTSTR_Status]            = "M.27 Status (1=update)";             // property STATUS label
+	StepMotor::m_sXMTStr[StepMotor::XMTSTR_ReleasePower]      = "ReleasePower(1=off,0=on)";			// StepMotor set POSITION Z label
+	StepMotor::m_sXMTStr[StepMotor::XMTSTR_SetRunDelay]       = "SetRunDelay";		// StepMotor get POSITION Z label
+	StepMotor::m_sXMTStr[StepMotor::XMTSTR_SetStartDelay]      = "SetStartDelay";               // property RESET label
 }
 
 StepMotor::~StepMotor()
@@ -288,9 +291,11 @@ long  StepMotor::RawToLong(byte* rawData,int offset)
 {
 	return (rawData[offset]-1)*(rawData[offset+1]*256*256+rawData[offset+2]*256+rawData[offset+3]);
 }
+
 //
 //checksum generator
 //
+
 byte  StepMotor::checkSumCalc(byte* rec,int offset,int count)
 {
 	//byte checksum = data[offset];

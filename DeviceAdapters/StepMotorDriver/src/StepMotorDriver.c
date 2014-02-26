@@ -87,8 +87,8 @@ void parseCMD(uchar rec[])
  
 		cmd =  rec[1];
 		
-		if(rec[2] ==0){recData =  rec[3]*256*256+rec[4]*256+rec[5];}
-		if(rec[2] ==2){recData =  -1*((long)(rec[3]*256*256+rec[4]*256+rec[5]));}
+		if(rec[2] ==2){recData =  rec[3]*256*256+rec[4]*256+rec[5];}
+		if(rec[2] ==0){recData =  -1*((long)(rec[3]*256*256+rec[4]*256+rec[5]));}
 		 
 		switch(cmd){
 
@@ -117,6 +117,8 @@ void parseCMD(uchar rec[])
 			break;	  
 		case SetZeroPosition:
 			currPosition = 0;
+			ltoa(0,str);
+	 		LCD_Printf1(strcat(str,"-SETZERO"));
 			break;
 
 	/*	case MoveUp:
@@ -133,10 +135,14 @@ void parseCMD(uchar rec[])
 
 		case SetRunningDelay:
 			runningdelay = recData;
+			ltoa(runningdelay,str);
+	 		LCD_Printf1(strcat(str,"-SETRD"));
 			break;
 
 		case SetStartDelay:
 			startdelay = recData;
+			ltoa(startdelay,str);
+	 		LCD_Printf1(strcat(str,"-SETSD"));
 			break;
 
 		case FindLimit:
@@ -144,7 +150,8 @@ void parseCMD(uchar rec[])
 			break;
 
 		case ReleasePower:
-			_releasePort = recData;
+			if(recData == 1){_releasePort = 1;}
+			if(recData == 0){_releasePort = 0;}
 			break;
 		default:
 			ret = BAD_COMMAND;
@@ -236,67 +243,134 @@ void ManualMove(bit deriction,bit flag)//deriction 0 up,1 down,flag 1 fast 0 low
 /************************************************************
 
  ************************************************************/
-uchar SendPluse(ulong step)
+uchar SendPluse(long step)
 {
-	ulong i = 0,temp = 0,acturalStep = 0;
+	ulong i = 0,temp = 0;
+	int k = 0;
 	isBusy =1;
-	if(step <=startdelay){
-		temp = step/2;
-		for(i=0;i<temp && checkBoundary();i++){
-			_plusePort = 1;
-			delay(startdelay-i);
-			acturalStep ++;
-			_plusePort = 0;
-			delay(startdelay-i);//加速
-			
-		}
-		temp = step - temp;
-		for(i=0;i<temp && checkBoundary();i++){
-			_plusePort = 1;
-			delay(startdelay-temp+i);
-			acturalStep ++;
-			_plusePort = 0;
-			delay(startdelay-temp+i);//减速
-			
-		}
-
-	}
-	if(step>startdelay){
-		 
-		for(i=startdelay;i>runningdelay  && checkBoundary();i--){
-			_plusePort = 1;
-			delay(i);
-			acturalStep ++;
-			_plusePort = 0;
-			delay(i);//加速			
-		}
-		temp = step - 2*(startdelay - runningdelay);
-		for(i=0;i<temp && checkBoundary();i++){
-			_plusePort = 1;
-			delay(runningdelay);
-			acturalStep ++;
-			_plusePort = 0;
-			delay(runningdelay);//加速
-		}
-
-		for(i=runningdelay;i<startdelay  && checkBoundary();i++){
-			_plusePort = 1;
-			delay(i);
-			acturalStep ++;
-			_plusePort = 0;
-			delay(i);//减速
-		}
-
-	}
-
 	if(_directionPort == 0){ //up
-		currPosition -= acturalStep*step2Um;
+		if(step <=startdelay){
+			temp = step/2;
+			for(i=0;i<temp && checkBoundary();i++){
+
+				_plusePort = 1;
+				currPosition -= step2Um;
+				delay(startdelay-i);
+
+				_plusePort = 0;
+				delay(startdelay-i);//加速
+
+			}
+			temp = step - temp;
+			for(i=0;i<temp && checkBoundary();i++){
+
+				_plusePort = 1;
+				currPosition -= step2Um;
+				delay(startdelay-temp+i);
+
+				_plusePort = 0;
+				delay(startdelay-temp+i);//减速
+
+			}
+
+		}	
+
+
+		if(step>startdelay){
+
+			for(i=startdelay;i>runningdelay  && checkBoundary();i--){
+				_plusePort = 1;
+				currPosition -= step2Um;
+				delay(i);
+
+				_plusePort = 0;
+				delay(i);//加速			
+			}
+			temp = step - 2*(startdelay - runningdelay);
+			for(i=0;i<temp && checkBoundary();i++){
+				_plusePort = 1;
+				currPosition -= step2Um;
+				delay(runningdelay);
+
+				_plusePort = 0;
+				delay(runningdelay);//正常行行
+			}
+
+			for(i=runningdelay;i<startdelay  && checkBoundary();i++){
+				_plusePort = 1;
+				currPosition -= step2Um;
+				delay(i);
+
+				_plusePort = 0;
+				delay(i);//减速
+			}
+
+		}
 
 	}else{
-		currPosition += acturalStep*step2Um;
+
+		if(step <=startdelay){
+			temp = step/2;
+			for(i=0;i<temp && checkBoundary();i++){
+				_plusePort = 1;
+				currPosition += step2Um;
+				delay(startdelay-i);
+
+				_plusePort = 0;
+				delay(startdelay-i);//加速
+
+			}
+			temp = step - temp;
+			for(i=0;i<temp && checkBoundary();i++){
+
+				_plusePort = 1;
+				currPosition += step2Um;
+				delay(startdelay-temp+i);
+
+				_plusePort = 0;
+				delay(startdelay-temp+i);//减速
+
+			}
+
+		}	
+
+
+		if(step>startdelay){
+
+			for(i=startdelay;i>runningdelay  && checkBoundary();i--){
+				_plusePort = 1;
+				currPosition += step2Um;
+				delay(i);
+
+				_plusePort = 0;
+				delay(i);//加速			
+			}
+			temp = step - 2*(startdelay - runningdelay);
+			for(i=0;i<temp && checkBoundary();i++){
+				_plusePort = 1;
+				currPosition += step2Um;
+				delay(runningdelay);
+
+				_plusePort = 0;
+				delay(runningdelay);//正常行
+			}
+
+			for(i=runningdelay;i<startdelay  && checkBoundary();i++){
+				_plusePort = 1;
+				currPosition += step2Um;
+				delay(i);
+
+				_plusePort = 0;
+				delay(i);//减速
+			}
+
+		}
 	}
+
+
+
 	ltoa(currPosition,str);
- 	LCD_Printf1("ZPos:[um]");
+	LCD_Printf1("ZPos:[um]");
 
 	isBusy =0;
 
@@ -306,6 +380,7 @@ uchar SendPluse(ulong step)
 		return OUT_OF_HIGH_LIMIT;
 
 	return DEVICE_OK;
+
 }
 bool checkBoundary()
 {

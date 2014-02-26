@@ -82,7 +82,10 @@ public:
         XMTSTR_GetPositionZ      = 29,           // StepMotor CURRENT POSITION Z label
         XMTSTR_PauseMode         = 30,           // property PAUSE label
         XMTSTR_Reset             = 31,           // property RESET label
-        XMTSTR_Status            = 32            // property STATUS label
+        XMTSTR_ReleasePower      = 32,           // property RESET label
+        XMTSTR_SetRunDelay       = 33,           // property RESET label
+        XMTSTR_SetStartDelay      = 34,           // property RESET label
+        XMTSTR_Status            = 35            // property STATUS label
     };
 
 

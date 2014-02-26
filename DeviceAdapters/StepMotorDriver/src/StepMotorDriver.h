@@ -49,7 +49,7 @@ sbit _manualAcceleratePort  = P1^7;
 void parseCMD(uchar rec[]);
 bool checksum(uchar rec[]);
 uchar SetStagePosition(long step);
-uchar SendPluse(ulong step);
+uchar SendPluse(long step);
 uchar FindUpLimit(bit flag);
 void refLCD();
 bool InitDevice();

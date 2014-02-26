@@ -58,17 +58,17 @@ using namespace std;
 #define C51BAD_COMMAND	    0x06 +'N'-6
 
 //command string
-#define SetZeroPosition 0x07 +'Z'-7
-#define MoveUp	        0x08 +'U'-8
-#define MoveDown	    0x09 +'D'-9
-#define SetRunningDelay 0x0A +'R'-10
-#define SetStartDelay 	0x0B +'S'-11
-#define FindLimit		0x0C +'L'-12
-#define ReleasePower	0x0D +'P'-13
-#define QueryPosition   0x0E +'Q'-14
-#define QueryStage   	0x0F +'E'-15
-#define SetPosition	    0x10 + 'T' - 16
-#define SetUM2Step	    0x11 + 'M'-17
+#define _SetZeroPosition 0x07 +'Z'-7
+#define _MoveUp	        0x08 +'U'-8
+#define _MoveDown	    0x09 +'D'-9
+#define _SetRunningDelay 0x0A +'R'-10
+#define _SetStartDelay 	0x0B +'S'-11
+#define _FindLimit		0x0C +'L'-12
+#define _ReleasePower	0x0D +'P'-13
+#define _QueryPosition   0x0E +'Q'-14
+#define _QueryStage   	0x0F +'E'-15
+#define _SetPosition	    0x10 + 'T' - 16
+#define _SetUM2Step	    0x11 + 'M'-17
 
 ///////////////////////////////////////////////////////////////////////////////
 // Z - Stage
@@ -85,7 +85,7 @@ using namespace std;
 // Single axis stage constructor
 //
 ZStage::ZStage() :
-    																										m_yInitialized(false)
+    																																								m_yInitialized(false)
 //m_nAnswerTimeoutMs(1000)
 //, stepSizeUm_(1)
 {
@@ -147,10 +147,27 @@ int ZStage::Initialize()
 	StepMotor::Instance()->SetMotionMode(0);//Fast
 	CPropertyAction* pActOnMotionMode = new CPropertyAction(this, &ZStage::OnMotionMode);
 	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_SetOrigin).c_str(), "Undefined", MM::Integer, false, pActOnMotionMode);  // Absolute  vs Relative
+	if (ret != DEVICE_OK)  return ret;
+
+	CPropertyAction* pActOnReleasePower = new CPropertyAction(this, &ZStage::OnReleasePower);
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_ReleasePower).c_str(), "Undefined", MM::Integer, false, pActOnReleasePower);  // Absolute  vs Relative
+	if (ret != DEVICE_OK)  return ret;
+
+	CPropertyAction* pActOnSetRunDelay = new CPropertyAction(this, &ZStage::OnSetRunDelay);
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_SetRunDelay).c_str(), "Undefined", MM::Integer, false, pActOnSetRunDelay);  // get position Z
+	if (ret != DEVICE_OK)  return ret;
+
+	CPropertyAction* pActOnSetStartDelay = new CPropertyAction(this, &ZStage::OnSetStartDelay);
+	ret = CreateProperty(StepMotor::Instance()->GetXMTStr(StepMotor::XMTSTR_SetStartDelay).c_str(), "Undefined", MM::Integer, false, pActOnSetStartDelay);  // get position Z
+	if (ret != DEVICE_OK)  return ret;
+
 	ret = UpdateStatus();
 	if (ret != DEVICE_OK) return ret;
 
 	m_yInitialized = true;
+
+
+
 	return DEVICE_OK;
 }
 
@@ -179,9 +196,95 @@ int ZStage::OnMotionMode(MM::PropertyBase* pProp, MM::ActionType eAct)
 	if (ret != DEVICE_OK) return ret;
 	return DEVICE_OK;
 }
+/*
+ * Speed as returned by device is in um/s
+ */
+int ZStage::OnReleasePower(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+	std::string sMotionMode;
+	std::ostringstream osMessage;
+	long lReleasePower = 0;
+	int ret = DEVICE_OK;
+
+	osMessage.str("");
+
+	if (eAct == MM::BeforeGet)
+	{
+		pProp->Set(lReleasePower);
+
+	}
+	else if (eAct == MM::AfterSet)
+	{
+		pProp->Get(lReleasePower);
+		ret = SetReleasePower(lReleasePower);
+	}
+	if (ret != DEVICE_OK) return ret;
+	return DEVICE_OK;
+}
 //
 // Set Motion Mode
 //
+int ZStage::SetReleasePower(int lMotionMode)//1 high else low
+{
+
+	std::ostringstream osMessage;
+
+	unsigned char sResponse[64];
+	int ret = DEVICE_OK;
+
+	char sCommStat[30];
+	bool yCommError = false;
+	byte RawData[4];
+	unsigned char buf[9];
+	StepMotor::Instance()->LongToRaw(lMotionMode,RawData);
+	StepMotor::Instance()->PackageCommand(_ReleasePower,RawData,buf);
+
+	ret = WriteCommand(buf, 7);
+	if (ret != DEVICE_OK) return ret;
+
+	return DEVICE_OK;
+}
+int ZStage::SetRunDelay(int lMotionMode)//1 high else low
+{
+
+	std::ostringstream osMessage;
+
+	unsigned char sResponse[64];
+	int ret = DEVICE_OK;
+
+	char sCommStat[30];
+	bool yCommError = false;
+	byte RawData[4];
+	unsigned char buf[9];
+	StepMotor::Instance()->LongToRaw(lMotionMode,RawData);
+	StepMotor::Instance()->PackageCommand(_SetRunningDelay,RawData,buf);
+
+	ret = WriteCommand(buf, 7);
+	if (ret != DEVICE_OK) return ret;
+
+	return DEVICE_OK;
+}
+int ZStage::SetStartDelay(int lMotionMode)//1 high else low
+{
+
+	std::ostringstream osMessage;
+
+	unsigned char sResponse[64];
+	int ret = DEVICE_OK;
+
+	char sCommStat[30];
+	bool yCommError = false;
+	byte RawData[4];
+	unsigned char buf[9];
+	StepMotor::Instance()->LongToRaw(lMotionMode,RawData);
+	StepMotor::Instance()->PackageCommand(_SetStartDelay,RawData,buf);
+
+	ret = WriteCommand(buf, 7);
+	if (ret != DEVICE_OK) return ret;
+
+	return DEVICE_OK;
+}
+
 int ZStage::SetMotionMode(long lMotionMode)//1 high else low
 {
 
@@ -195,12 +298,12 @@ int ZStage::SetMotionMode(long lMotionMode)//1 high else low
 	byte RawData[4];
 	unsigned char buf[9];
 	StepMotor::Instance()->LongToRaw(lMotionMode,RawData);
-	StepMotor::Instance()->PackageCommand(SetZeroPosition,RawData,buf);
+	StepMotor::Instance()->PackageCommand(_SetZeroPosition,RawData,buf);
 
 	ret = WriteCommand(buf, 7);
 	if (ret != DEVICE_OK) return ret;
 
-	StepMotor::Instance()->SetMotionMode(lMotionMode);
+	StepMotor::Instance()->SetMotionMode(0);
 	return DEVICE_OK;
 }
 //
@@ -230,10 +333,10 @@ int ZStage::GetPositionUm(double& dZPosUm)
 
 	// get current position
 	unsigned char buf[9];
-	StepMotor::Instance()->PackageCommand(QueryPosition,NULL,buf);
+	StepMotor::Instance()->PackageCommand(_QueryPosition,NULL,buf);
 	int ret = WriteCommand(buf, 7);
 	if (ret != DEVICE_OK) return ret;
-	CDeviceUtils::SleepMs(300);
+	CDeviceUtils::SleepMs(200);
 	unsigned char sResponse[64];
 	ret = ReadMessage(sResponse, 7);
 
@@ -246,7 +349,7 @@ int ZStage::GetPositionUm(double& dZPosUm)
 	//		yCommError = (ret != DEVICE_OK);
 	//		CDeviceUtils::SleepMs(10);
 	//	}
-
+	if (ret != DEVICE_OK) return ret;
 	dZPosUm  =  StepMotor::Instance()->RawToLong((byte *)sResponse,2);
 
 	StepMotor::Instance()->SetPositionZ(dZPosUm);
@@ -261,7 +364,8 @@ int ZStage::SetRelativePositionUm(double dZPosUm)
 	int ret = DEVICE_OK;
 	// convert um to steps
 	double currPos =0;
-	GetPositionUm(currPos);
+	ret = GetPositionUm(currPos);
+	if (ret != DEVICE_OK) return ret;
 	float target = (float)(dZPosUm + currPos);
 
 	// send move command to controller
@@ -281,15 +385,15 @@ int ZStage::SetPositionUm(double dZPosUm)
 {
 	int ret = DEVICE_OK;
 	if(dZPosUm>0)return MPError::MPERR_OutOfLimit;
-	dZPosUm*=-1;
+
 	ret = DEVICE_OK;
 	byte rawData[4];
 	byte buf[10];
 	double currPos =0;
-	double step2Um = 0.49827043;
+	float step2Um = 0.49827043;
 	GetPositionUm(currPos);
 	StepMotor::Instance()->LongToRaw((long)dZPosUm,rawData);
-	StepMotor::Instance()->PackageCommand(SetPosition,rawData,buf);
+	StepMotor::Instance()->PackageCommand(_SetPosition,rawData,buf);
 	long sleept =  0;
 
 	double delta = currPos - dZPosUm;
@@ -297,12 +401,19 @@ int ZStage::SetPositionUm(double dZPosUm)
 	if(delta<0)
 		delta *= -1;
 
-	sleept = 0.2*delta/step2Um;
+	sleept =  1000+0.2*(delta/step2Um);
 
 	ret = WriteCommand(buf, 7);
 
 	if (ret != DEVICE_OK)  return ret;
-	CDeviceUtils::SleepMs(sleept);
+
+	ostringstream osMessage;
+	osMessage.str("");
+	osMessage << "<ZStage::Go to sleep("<<sleept;
+	osMessage << ")";
+	this->LogMessage(osMessage.str().c_str());
+
+	//CDeviceUtils::SleepMs(sleept);
 
 	unsigned char sResponse[64];
 
@@ -311,12 +422,16 @@ int ZStage::SetPositionUm(double dZPosUm)
 	{
 
 		memset(sResponse, 0, 64);
+		CDeviceUtils::SleepMs(500);
 		ret = ReadMessage(sResponse, 7);
 		yCommError = (ret != DEVICE_OK);
-		CDeviceUtils::SleepMs(10);
+		ostringstream osMessage;
+			osMessage.str("");
+			osMessage << "SleepMs(500)";
+			osMessage << ")";
+			this->LogMessage(osMessage.str().c_str());
 	}
 
-	if (ret != DEVICE_OK) return ret;
 	StepMotor::Instance()->SetPositionZ(dZPosUm);
 
 	double dPosZ = 0;
@@ -366,6 +481,49 @@ int ZStage::OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct)
 	{
 		pProp->Get(dPos);
 		ret = SetPositionUm(dPos);
+	}
+	if (ret != DEVICE_OK) return ret;
+
+	return DEVICE_OK;
+}
+int ZStage::OnSetRunDelay(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+	std::ostringstream osMessage;
+	int ret = DEVICE_OK;
+	double runDelay = 0;
+
+	osMessage.str("");
+
+	if (eAct == MM::BeforeGet)
+	{
+		pProp->Set(runDelay);
+	}
+	else if (eAct == MM::AfterSet)
+	{
+		pProp->Get(runDelay);
+		ret = SetRunDelay(runDelay);
+	}
+	if (ret != DEVICE_OK) return ret;
+
+	return DEVICE_OK;
+}
+
+int ZStage::OnSetStartDelay(MM::PropertyBase* pProp, MM::ActionType eAct)
+{
+	std::ostringstream osMessage;
+	int ret = DEVICE_OK;
+	double startDelay = 0;
+
+	osMessage.str("");
+
+	if (eAct == MM::BeforeGet)
+	{
+		pProp->Set(startDelay);
+	}
+	else if (eAct == MM::AfterSet)
+	{
+		pProp->Get(startDelay);
+		ret = SetStartDelay(startDelay);
 	}
 	if (ret != DEVICE_OK) return ret;
 
@@ -428,7 +586,6 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 	memset(sAnswer, 0, nLength);
 	unsigned long lRead = 0;
 	unsigned long lStartTime = GetClockTicksUs();
-	CDeviceUtils::SleepMs(100);
 	ostringstream osMessage;
 	char sHex[4] = { NULL, NULL, NULL, NULL };
 	int ret = DEVICE_OK;
@@ -443,11 +600,11 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		lRead += lByteRead;
 		// concade new string
 
-//
-//		if (lRead >= 2)
-//		{
-//			yRead = (sAnswer[0] == '@') ;
-//		}
+		//
+		//		if (lRead >= 2)
+		//		{
+		//			yRead = (sAnswer[0] == '@') ;
+		//		}
 
 		yRead = yRead || (lRead >= (unsigned long)nBytesRead);
 
