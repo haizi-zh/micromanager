@@ -192,7 +192,7 @@ uchar FindUpLimit(bit flag)
 	{
 		ManualMove(0,1);//up fast
 	}
-	currPosition =  52000;	
+	currPosition =  -29760;	
 	}
  if(flag == 1){
 	_directionPort = 1;

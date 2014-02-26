@@ -286,7 +286,7 @@ int ZStage::SetPositionUm(double dZPosUm)
 	byte rawData[4];
 	byte buf[10];
 	double currPos =0;
-	double step2Um = 0.09969;
+	double step2Um = 0.49827043;
 	GetPositionUm(currPos);
 	StepMotor::Instance()->LongToRaw((long)dZPosUm,rawData);
 	StepMotor::Instance()->PackageCommand(SetPosition,rawData,buf);
