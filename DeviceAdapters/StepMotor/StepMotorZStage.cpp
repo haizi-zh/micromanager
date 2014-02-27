@@ -389,31 +389,11 @@ int ZStage::SetPositionUm(double dZPosUm)
 	ret = DEVICE_OK;
 	byte rawData[4];
 	byte buf[10];
-	double currPos =0;
-	float step2Um = 0.49827043;
-	GetPositionUm(currPos);
 	StepMotor::Instance()->LongToRaw((long)dZPosUm,rawData);
 	StepMotor::Instance()->PackageCommand(_SetPosition,rawData,buf);
-	long sleept =  0;
-
-	double delta = currPos - dZPosUm;
-
-	if(delta<0)
-		delta *= -1;
-
-	sleept =  1000+0.2*(delta/step2Um);
 
 	ret = WriteCommand(buf, 7);
-
 	if (ret != DEVICE_OK)  return ret;
-
-	ostringstream osMessage;
-	osMessage.str("");
-	osMessage << "<ZStage::Go to sleep("<<sleept;
-	osMessage << ")";
-	this->LogMessage(osMessage.str().c_str());
-
-	//CDeviceUtils::SleepMs(sleept);
 
 	unsigned char sResponse[64];
 
@@ -425,11 +405,6 @@ int ZStage::SetPositionUm(double dZPosUm)
 		CDeviceUtils::SleepMs(500);
 		ret = ReadMessage(sResponse, 7);
 		yCommError = (ret != DEVICE_OK);
-		ostringstream osMessage;
-			osMessage.str("");
-			osMessage << "SleepMs(500)";
-			osMessage << ")";
-			this->LogMessage(osMessage.str().c_str());
 	}
 
 	StepMotor::Instance()->SetPositionZ(dZPosUm);
@@ -437,7 +412,6 @@ int ZStage::SetPositionUm(double dZPosUm)
 	double dPosZ = 0;
 
 	ret = GetPositionUm(dPosZ);
-
 	if (ret != DEVICE_OK) return ret;
 
 	return ret;
@@ -598,15 +572,8 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 		const MM::Device* pDevice = this;
 		ret = (GetCoreCallback())->ReadFromSerial(pDevice, StepMotor::Instance()->GetSerialPort().c_str(), (unsigned char *)&sAnswer[lRead], (unsigned long)nBytesRead-lRead, lByteRead);
 		lRead += lByteRead;
-		// concade new string
 
-		//
-		//		if (lRead >= 2)
-		//		{
-		//			yRead = (sAnswer[0] == '@') ;
-		//		}
-
-		yRead = yRead || (lRead >= (unsigned long)nBytesRead);
+		yRead =  (lRead >= (unsigned long)nBytesRead);
 
 		if (yRead) break;
 

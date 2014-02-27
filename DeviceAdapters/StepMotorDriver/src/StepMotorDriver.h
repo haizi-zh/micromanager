@@ -42,6 +42,7 @@ sbit _manualAcceleratePort  = P1^7;
 #define QueryStage   	0x0F +'E'-15
 #define SetPosition	    0x10 + 'T' - 16
 #define SetUM2Step	    0x11 + 'M'-17
+#define SetDivMode		    0x12 + 'V'-18
 
 /*------------------------------------------------
                    º¯ÊýÉùÃ÷

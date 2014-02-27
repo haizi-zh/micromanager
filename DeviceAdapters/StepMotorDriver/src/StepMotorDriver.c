@@ -11,7 +11,7 @@ bool isBusy = false;
 uchar	startdelay = 32;
 uchar	runningdelay = 0; 
 float   currPosition = 0;//nm
-float	step2Um = 0.49827043;//50 XIFEN
+float	step2Um = 0.124601;	   //40xf
 bit	    isSetZero = 0;	
 uchar str[12];
 uchar ret;
@@ -133,6 +133,26 @@ void parseCMD(uchar rec[])
 			ret = Move(recData,1);
 			break;	 */
 
+		case SetDivMode:
+			if(recData == 2){ step2Um = 2.491516;}
+			if(recData == 4){ step2Um = 1.245758;}
+			if(recData == 8){ step2Um = 0.622879;}
+			if(recData == 16){ step2Um = 0.31144;}
+			if(recData == 64){ step2Um = 0.15572;}
+			if(recData == 128){ step2Um = 0.07786;}
+
+			if(recData == 5){  step2Um = 0.996806;}
+			if(recData == 10){ step2Um = 0.498403;}
+			if(recData == 20){ step2Um = 0.249201;}
+			if(recData == 40){ step2Um = 0.124601;}
+			if(recData == 50){ step2Um = 0.099681;}
+			if(recData == 100){ step2Um = 0.04984;}
+			if(recData == 125){ step2Um = 0.039872;}
+
+			ltoa(recData,str);
+	 		LCD_Printf1(strcat(str,"-SETDM"));
+			break;
+		
 		case SetRunningDelay:
 			runningdelay = recData;
 			ltoa(runningdelay,str);
