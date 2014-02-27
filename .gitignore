@@ -5,6 +5,8 @@
 *.idb
 *.pdb
 *.vcxproj.user
+*.vcxproj.filters
+*.vcxproj
 *.sln
 *.suo
 *.sdf
@@ -55,7 +57,7 @@ bin/
 *.xslt
 *.old
 *.stackdump
-.gitignore
+*.gitignore
 
 micromanager/MMCoreJ_wrap/mmcorej/*.java
 Install_Win32/
@@ -70,7 +72,10 @@ MMCoreJ_wrap/MMCoreJ_wrap.cxx
 acqEngine/classes/
 plugins/DLLAutoReloader/classes/
 plugins/DataBrowser/classes/
-
-#C51
+#keil
 *.lst
 *.m51
+*.plg
+*.A51
+*.Opt
+*.Bak
