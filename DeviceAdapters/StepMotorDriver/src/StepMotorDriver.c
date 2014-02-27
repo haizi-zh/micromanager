@@ -265,7 +265,7 @@ void ManualMove(bit deriction,bit flag)//deriction 0 up,1 down,flag 1 fast 0 low
  ************************************************************/
 uchar SendPluse(long step)
 {
-	ulong i = 0,temp = 0;
+	long i = 0,temp = 0;
 	int k = 0;
 	isBusy =1;
 	if(_directionPort == 0){ //up
@@ -366,6 +366,7 @@ uchar SendPluse(long step)
 				delay(i);//º”ÀŸ			
 			}
 			temp = step - 2*(startdelay - runningdelay);
+
 			for(i=0;i<temp && checkBoundary();i++){
 				_plusePort = 1;
 				currPosition += step2Um;
