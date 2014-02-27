@@ -45,7 +45,8 @@ public:
         MPERR_SerialZeroReturn          = 6,        // No response from serial port
         MPERR_SerialUnknownError        = 7,        // Unknown serial command
         MPERR_GENERIC                   = 8,        // Unspecified StepMotor adapter errors
-        MPERR_FileOpenFailed            = 9         // Fail to open file
+        MPERR_FileOpenFailed            = 9,         // Fail to open file
+        MPERR_OutOfLimit				= 10
     };
 
     static MPError* Instance();

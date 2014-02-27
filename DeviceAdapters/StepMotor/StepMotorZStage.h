@@ -65,18 +65,14 @@ public:
     // Get Z stage position in um
     int GetPositionUm(double& dZPosUm);
 
-    // Move Z stage to positiion in uSteps
-    int SetPositionSteps(long lZPosSteps);
-	int SetRelativePositionSteps(long lZPosSteps);
-	int OnUmToStep(MM::PropertyBase* pProp, MM::ActionType eAct);
-    // Get Z stage position in uSteps
-    int GetPositionSteps(long& lZPosSteps);
+    int GetPositionSteps(long& dZPosUm){return DEVICE_OK;};
+    int SetPositionSteps(long dZPosUm){return DEVICE_OK;};
 
     // Set Z stage origin
-    int SetOrigin();
+    int SetOrigin(){return DEVICE_OK;};
 
     // Stop Z stage motion
-    int Stop();
+//    int Stop();
 
     // Get limits of Zstage
     // This function is not applicable for
@@ -86,13 +82,15 @@ public:
 
     // action interface
     // ----------------
-    int OnStepSize (MM::PropertyBase* /*pProp*/, MM::ActionType /*eAct*/);
-    int OnSpeed(MM::PropertyBase* /*pPro*/, MM::ActionType /*eAct*/);
-    int OnSetOrigin(MM::PropertyBase* /*pPro*/, MM::ActionType /*eAct*/);
-    int OnStageMirrorZ(MM::PropertyBase* /*pPro*/, MM::ActionType /*eAct*/);
     int OnGetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct);
     int OnSetPositionZ(MM::PropertyBase* pProp, MM::ActionType eAct);
-    int OnPort(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnMotionMode(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnReleasePower(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int SetReleasePower(int ReleasePower);
+    int SetRunDelay(int RunDelay);
+    int SetStartDelay(int StartDelay);
+    int OnSetRunDelay(MM::PropertyBase* pProp, MM::ActionType eAct);
+    int OnSetStartDelay(MM::PropertyBase* pProp, MM::ActionType eAct);
     // Sequence functions
     int IsStageSequenceable(bool& isSequenceable) const { isSequenceable = false; return DEVICE_OK;}
     int GetStageSequenceMaxLength(long& /*nrEvents*/) const  {return DEVICE_OK;}
@@ -105,14 +103,9 @@ public:
     bool IsContinuousFocusDrive() const {return true;}
 
 private:
-    void Escape(DWORD dwFunc);
-    void SetDTR();
-    void ClrDTR();
-    void SetRTS();
-    void ClrRTS();
+
     int WriteCommand(unsigned char* sCommand, int nLength);
     int ReadMessage(unsigned char* sResponse, int nBytesRead);
-    int CheckError(unsigned char bErrorCode);
     //int GetCommand(const std::string& cmd, std::string& response);
 
     //std::string m_sPort;              // serial port

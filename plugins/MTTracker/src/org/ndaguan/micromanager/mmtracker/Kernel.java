@@ -173,9 +173,15 @@ public class Kernel {
 
 
 	public  static void main(String[] args) {
+		char str[] = new char[]{'@','M','U',0x00,0x00,0x00,0x0A,'X'};
+		char checksum = '@';
+		for(int i=1;i<6;i++){
+			checksum ^= str[i];
+		}
+		char b = checksum;
 		List<RoiItem> rt = Collections.synchronizedList(new ArrayList<RoiItem>());
 		rt.add(RoiItem.createInstance(new double[]{130,130},"bean2"));
-
+		
 		Function fc = new Function( rt);
 		Kernel kl = new Kernel(rt);
 
