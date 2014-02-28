@@ -114,7 +114,7 @@ int ClearPort(MM::Device& device, MM::Core& core, const char* sPort)
 
 bool            StepMotor::m_yInstanceFlag      = false;        // instance flag
 bool            StepMotor::m_yDeviceAvailable   = false;        // StepMotor devices availability
-int				StepMotor::m_nDebugLogFlag		= 2;			// StepMotor debug log flag
+int				StepMotor::m_nDebugLogFlag		= 0;			// StepMotor debug log flag
 StepMotor*        StepMotor::m_pStepMotor             = NULL;         // single copy StepMotor
 int             StepMotor::m_nMotionMode        = 0;            // motor motion mode
 int             StepMotor::m_nTimeoutInterval   = 200;        // timeout interval

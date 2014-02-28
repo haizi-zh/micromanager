@@ -290,12 +290,6 @@ int ZStage::SetPositionUm(double dZPosUm)
 
 	XMTE517::Instance()->SetPositionZ(dZPosUm);
 
-	double dPosZ = 0;
-
-	ret = GetPositionUm(dPosZ);
-
-	if (ret != DEVICE_OK) return ret;
-
 	return ret;
 }
 
