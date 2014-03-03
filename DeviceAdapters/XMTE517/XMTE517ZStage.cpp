@@ -219,7 +219,8 @@ int ZStage::GetPositionUm(double& dZPosUm)
 	Sleep(100);
 	ret = ReadMessage(sResponse, 7);
 	if (ret != DEVICE_OK) return ret;
-
+	if(sResponse[6] != XMTE517::Instance()->checkSumCalc(sResponse, 0, 6))
+		return MPError::MPERR_SerialInpInvalid;
 	ostringstream osMessage;
 	char sCommStat[30];
 	dZPosUm  =  XMTE517::Instance()->RawToFloat((byte *)sResponse,2);
@@ -407,7 +408,7 @@ int ZStage::ReadMessage(unsigned char* sResponse, int nBytesRead)
 			yRead = (sAnswer[0] == '@') ;
 		}
 
-		yRead = yRead || (lRead >= (unsigned long)nBytesRead);
+		yRead = yRead && (lRead >= (unsigned long)nBytesRead);
 
 		if (yRead) break;
 
