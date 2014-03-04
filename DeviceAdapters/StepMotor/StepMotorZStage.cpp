@@ -288,6 +288,7 @@ int ZStage::SetStartDelay(int lMotionMode)//1 high else low
 int ZStage::SetMotionMode(long lMotionMode)//1 high else low
 {
 
+	if(lMotionMode == 0)return DEVICE_OK;
 	std::ostringstream osMessage;
 
 	unsigned char sResponse[64];
