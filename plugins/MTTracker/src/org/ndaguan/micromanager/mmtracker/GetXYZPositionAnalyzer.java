@@ -122,7 +122,8 @@ public class GetXYZPositionAnalyzer extends TaggedImageAnalyzer {
 					MMT.logError("Save data error");
 				}
 			Function.getInstance().updateChart(frameNum_);
-			Function.getInstance().reDraw(acqName, frameNum_, update,false);
+			Function.getInstance().reDraw(acqName, frameNum_, false,true);
+			Function.getInstance().reDraw(acqName, frameNum_, false,true);
 			Function.getInstance().PullMagnet(frameNum_);
 			
 

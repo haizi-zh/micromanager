@@ -256,7 +256,7 @@ public  class RoiItem {
 					chart_.getDataSeries().get(MMT.CHARTLIST[i]).add(frameNum,data[i],update&&(i == selectedIndex));
 				}
 
-				if(update){
+				if(update  && (MMT.VariablesNUPD.AutoRange.value() == 1)){
 					double[] mean = getMean();
 					double[] drawScale = getDrawScale();
 					for(int i=0;i<4;i++){

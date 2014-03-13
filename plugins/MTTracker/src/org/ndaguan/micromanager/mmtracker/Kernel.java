@@ -113,10 +113,12 @@ public class Kernel {
 			int roiX = (int) (xy[0] - beanRadiuPixel);
 			int roiY = (int) (xy[1] - beanRadiuPixel);
 			if(isRoiOutOfImage(roiX,roiY)){
-				roiList_.remove(k);
-				if(isCalibrated_){
-					if(roiList_.size() == 0){
-						setIsCalibrated(false);
+				if(MMT.VariablesNUPD.AutoDeleteRoi.value() ==1){
+					roiList_.remove(k);
+					if(isCalibrated_){
+						if(roiList_.size() == 0){
+							setIsCalibrated(false);
+						}
 					}
 				}
 				return false;
@@ -181,7 +183,7 @@ public class Kernel {
 		char b = checksum;
 		List<RoiItem> rt = Collections.synchronizedList(new ArrayList<RoiItem>());
 		rt.add(RoiItem.createInstance(new double[]{130,130},"bean2"));
-		
+
 		Function fc = new Function( rt);
 		Kernel kl = new Kernel(rt);
 
@@ -513,17 +515,19 @@ public class Kernel {
 			int roiX = (int) (xy[0] -beanRadiuPixel);
 			int roiY = (int) (xy[1] -beanRadiuPixel);
 			if(isRoiOutOfImage(roiX,roiY)){
-				roiList_.remove(i);
-				MMT.lastError_ = "Roi out of image,removed!";
-				if(MMT.isCalibrationRunning_ || MMT.isTestingRunning_)return null;
-				if(isCalibrated_ && (roiList_.size() == 0))
-				{
-					setIsCalibrated(false);
-					MMT.lastError_ = "Roi out of image,removed,there is no roi in the image,new calibrateion is needed!";
-					return null;
+				if(MMT.VariablesNUPD.AutoDeleteRoi.value() == 1){
+					roiList_.remove(i);
+					MMT.lastError_ = "Roi out of image,removed!";
+					if(MMT.isCalibrationRunning_ || MMT.isTestingRunning_)return null;
+					if(isCalibrated_ && (roiList_.size() == 0))
+					{
+						setIsCalibrated(false);
+						MMT.lastError_ = "Roi out of image,removed,there is no roi in the image,new calibrateion is needed!";
+						return null;
+					}
+					i--;
+					roiNum --;
 				}
-				i--;
-				roiNum --;
 				continue;
 			}
 			int crossSize = (int) MMT.VariablesNUPD.crossSize.value();
