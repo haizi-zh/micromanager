@@ -82,7 +82,7 @@ public  class RoiItem {
 
 		int calcForceWindowSize = (int) MMT.VariablesNUPD.frameToCalcForce.value();
 		int showChartWindowSize = (int) MMT.VariablesNUPD.chartStatisWindow.value();
-		int feedbackWindowSize = (int) MMT.VariablesNUPD.frameToFeedBack.value();
+		int feedbackWindowSize = (int) MMT.VariablesNUPD.feedBackWindowSize.value();
 
 		calcForceXYZStatis_ = new DescriptiveStatistics[3];//x,y,cross
 		showChartXYZStatis_ = new DescriptiveStatistics[4];//z,x,y,l

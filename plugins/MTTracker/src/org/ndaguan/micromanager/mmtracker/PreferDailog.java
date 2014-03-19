@@ -44,7 +44,7 @@ public class PreferDailog extends JFrame {
 
 	}
 	public void enableEdit(boolean flag){
-		 
+
 		for (int i = 0; i < MMT.unEditAfterCalbration.length; i++) {
 			this.jTextField[MMT.unEditAfterCalbration[i]].setEnabled(flag);
 		}
@@ -78,7 +78,7 @@ public class PreferDailog extends JFrame {
 			MMT.Coefficients[1][1] = MMT.VariablesNUPD.iTerm_y.value();
 			MMT.Coefficients[2][0] = MMT.VariablesNUPD.pTerm_z.value();
 			MMT.Coefficients[2][1] = MMT.VariablesNUPD.iTerm_z.value();
-			
+
 			MMTracker mmt = MMTracker.getInstance();
 			if(mmt != null){
 				List<RoiItem> roilist = mmt.getRoiList();
@@ -107,29 +107,29 @@ public class PreferDailog extends JFrame {
 				return null;
 			}
 			String[] temp = line.split(","); 
-			
+
 			if((line = in.readLine()) != null)
 				userDataDir_ = line;
-			
+
 			double[] userDataSet = new double[MMT.VariablesNUPD.values().length];
 			if((temp.length-1) < MMT.VariablesNUPD.values().length){
-				
+
 				for (int i = 0; i < temp.length-1; i++) {//old var
 					userDataSet[i] = Double.parseDouble(temp[i]);				
 				}
-				
+
 				for (int i = temp.length-1; i < MMT.VariablesNUPD.values().length; i++) {//new var,user default
-					 userDataSet[i]  = MMT.VariablesNUPD.values()[i].value();
+					userDataSet[i]  = MMT.VariablesNUPD.values()[i].value();
 				}
 				onDataChange(userDataSet);
 				saveUserData();
 			}
 			else{
-			for (int i = 0; i < userDataSet.length; i++) {
-				userDataSet[i] = Double.parseDouble(temp[i]);				
+				for (int i = 0; i < userDataSet.length; i++) {
+					userDataSet[i] = Double.parseDouble(temp[i]);				
+				}
 			}
-			}
-			
+
 			in.close();
 			return userDataSet;
 		} catch (IOException e) {
@@ -177,7 +177,7 @@ public class PreferDailog extends JFrame {
 					str = String.format("%s.%df","%" , 0);
 				}
 				else{
-				str = String.format("%s.%df","%" ,(int)(Math.log10(1/presicion)));
+					str = String.format("%s.%df","%" ,(int)(Math.log10(1/presicion)));
 				}
 				jTextField[i].setText(String.format(str,getUserData()[i]));
 			}	
@@ -197,7 +197,7 @@ public class PreferDailog extends JFrame {
 			int frameHeight = 2*ITEMHEIGHT*preferencesLen/columnNum + ITEMHEIGHT*ITEMROW/3 ;
 			setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 			final JTabbedPane tabbedPane = new JTabbedPane();
-	 
+
 			int classifyLen = MMT.VariablesClassify.values().length;
 			JPanel tab[] = new JPanel[classifyLen];
 			for(int i = 0;i<classifyLen;i++){
@@ -213,13 +213,13 @@ public class PreferDailog extends JFrame {
 				jLabel[i] = new JLabel();
 				jLabel[i].setText(String.format("%s%s", MMT.VariablesNUPD.values()[i].name(),MMT.VariablesNUPD.values()[i].getUnit()));
 				jLabel[i].setBounds(tabX[tabIndex],tabY[tabIndex],ITEMWIDTH,ITEMHEIGHT);
-				
+
 				tabY[tabIndex] += ITEMHEIGHT;
 				jTextField[i] = new JTextField();
 				jTextField[i].setBounds(tabX[tabIndex], tabY[tabIndex], ITEMWIDTH,ITEMHEIGHT);
 				jTextField[i].setToolTipText(MMT.VariablesNUPD.values()[i].getToolTip());
 				if(MMT.VariablesNUPD.values()[i].getImp()==1)
-				jTextField[i].setForeground(new Color(255,0,0));
+					jTextField[i].setForeground(new Color(255,0,0));
 				tab[tabIndex].add(jLabel[i]);
 				tab[tabIndex].add(jTextField[i]);
 				tabX[tabIndex] += ITEMWIDTH;
@@ -237,25 +237,25 @@ public class PreferDailog extends JFrame {
 			y += ITEMHEIGHT;
 			frameHeight = y+ITEMHEIGHT*4;
 			setBounds((int)(screen.width -frameWidth)/2,(int)(screen.height-frameHeight)/2,frameWidth ,frameHeight);
-			
+
 			tabbedPane.setBounds(0,0,(int)(ITEMWIDTH*(columnNum+0.2)), y);
 			getContentPane().add(tabbedPane);
 			final JPanel buttonBox = new JPanel();
 			buttonBox.setLayout(null);
 			buttonBox.setBounds(0, 10,  frameWidth,frameHeight);
 			getContentPane().add(buttonBox);
-			
+
 			final JSeparator separator2 = new JSeparator();
 			separator2.setBounds(0,y, ITEMWIDTH*4, 50);
 			buttonBox.add(separator2);
-			
+
 			ITEMWIDTH = ITEMWIDTH*3/4;
-			
+
 			final JButton OK = new JButton("OK");
 			OK.setBounds(0,  y,ITEMWIDTH,(int)(ITEMHEIGHT*1.5));
 			buttonBox.add(OK);
 			x += ITEMWIDTH;
-			
+
 			final JButton Apply = new JButton("Apply");
 			Apply.setBounds(x,y,ITEMWIDTH,(int)(ITEMHEIGHT*1.5));
 			buttonBox.add(Apply);
@@ -280,9 +280,9 @@ public class PreferDailog extends JFrame {
 			Cancel.addActionListener(DialogListener);
 			SelectDir.addActionListener(DialogListener);
 			OpenDir.addActionListener(DialogListener);
-			
-			
-			
+
+
+
 	}
 
 	private void PhraseActionEvent(ActionEvent e){
@@ -303,7 +303,7 @@ public class PreferDailog extends JFrame {
 					UpdateData(true);//flush
 				}
 			});
-			
+
 		}
 		if (e.getActionCommand().equals("Cancel")) {
 			SwingUtilities.invokeLater(new Runnable() {
